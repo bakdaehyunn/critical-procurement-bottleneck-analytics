@@ -35,6 +35,12 @@ class ApprovedQueryCatalogTest {
                 "semanticIncidentTimeline",
                 "semanticDependencyImpactByAsset",
                 "semanticBlastRadiusByAsset",
+                "semanticPromotionReviewQueue",
+                "semanticReasoningReviewQueue",
+                "semanticAvailableActionsByFinding",
+                "semanticActionAuditHistoryByRelease",
+                "semanticActionAuditHistoryByIncident",
+                "semanticActionAuditHistoryByTarget",
             ),
             manifest.entries.keys,
         )
@@ -50,6 +56,26 @@ class ApprovedQueryCatalogTest {
             manifest.requireQuery("semanticTrustFindingList").graphScope,
         )
         assertTrue(manifest.requireQuery("semanticTrustFindingList").sparql.contains("urn:dcai:graph:reasoning:"))
+        assertEquals(
+            "fixture or promoted canonical graph, reasoning graph",
+            manifest.requireQuery("semanticAvailableActionsByFinding").graphScope,
+        )
+        assertTrue(manifest.requireQuery("semanticAvailableActionsByFinding").sparql.contains("AcknowledgeRestoreBlocker"))
+        assertEquals(
+            "fixture or promoted source, canonical, and provenance graph lifecycle state",
+            manifest.requireQuery("semanticPromotionReviewQueue").graphScope,
+        )
+        assertTrue(manifest.requireQuery("semanticPromotionReviewQueue").sparql.contains("ApprovePromotionBatch"))
+        assertEquals(
+            "promoted canonical graph, reasoning-audit graph, reasoning graph",
+            manifest.requireQuery("semanticReasoningReviewQueue").graphScope,
+        )
+        assertTrue(manifest.requireQuery("semanticReasoningReviewQueue").sparql.contains("RequestReasoningRefresh"))
+        assertEquals(
+            "managed action-audit graph, promoted canonical graph",
+            manifest.requireQuery("semanticActionAuditHistoryByIncident").graphScope,
+        )
+        assertTrue(manifest.requireQuery("semanticActionAuditHistoryByIncident").sparql.contains("urn:dcai:graph:action-audit:"))
     }
 
     @Test

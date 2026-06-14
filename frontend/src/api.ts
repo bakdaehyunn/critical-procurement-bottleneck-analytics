@@ -255,6 +255,61 @@ export type OntologyActionAffordance = {
   disabled_reasons: string[]
 }
 
+export type OntologyActionAuditHistoryItem = {
+  graph_uri: string
+  action_audit_release_id: string
+  execution_uri: string
+  execution_id: string
+  request_uri: string
+  request_id: string
+  validation_report_uri: string
+  action_type_uri: string
+  action_type_id: string
+  action_type_label: string | null
+  idempotency_key: string
+  actor_id: string
+  action_reason: string
+  action_status: string
+  requested_at: string
+  executed_at: string
+  target_object_uri: string | null
+  validation_status: string
+  validation_summary: string | null
+  source_record_uri: string | null
+  assigned_team: string | null
+  assignee_id: string | null
+  reviewed_status: string | null
+  review_summary: string | null
+  supporting_evidence_uri: string | null
+}
+
+export type OntologyReviewQueueItem = {
+  graph_uri: string
+  queue_id: string
+  queue_kind: string
+  review_action_id: string
+  review_action_label: string
+  review_status: string
+  target_uri: string
+  target_type: string
+  target_label: string
+  release_id: string
+  source_graph_uri: string | null
+  canonical_graph_uri: string | null
+  provenance_graph_uri: string | null
+  reasoning_audit_graph_uri: string | null
+  reasoning_graph_uri: string | null
+  evidence_summary: string
+  action_status: 'DISABLED'
+  disabled_reason: string
+  incident_count: number
+  asset_count: number
+  source_record_count: number
+  activity_count: number
+  generated_fact_count: number
+  priority_sort_order: number
+}
+
 export type WorkOrder = {
   work_order_id: string
   assigned_team: string
@@ -329,6 +384,7 @@ export type RequestDetail = {
   }[]
   provenance_trace: ProvenanceTraceItem[]
   ontology_actions: OntologyActionAffordance[]
+  action_audit_history: OntologyActionAuditHistoryItem[]
 }
 
 export type FilterOption = {
@@ -375,6 +431,7 @@ export type DashboardData = {
   qualityChecks: DataQualityCheck[]
   impactSummary: ImpactSummary
   topologyDependencies: InfrastructureDependency[]
+  ontologyReviewQueue: OntologyReviewQueueItem[]
 }
 
 type SemanticEnvelope<T> = {
@@ -641,6 +698,80 @@ type SemanticBlastRadiusRecord = {
   findingSummary?: string
 }
 
+type SemanticActionAvailabilityRecord = {
+  graphUri: string
+  incidentUri: string
+  incidentId: string
+  assetUri: string
+  assetId: string
+  sourceRecordUri: string
+  actionId: string
+  actionLabel: string
+  actionDescription: string
+  actionStatus: string
+  uiPlacement: OntologyActionPlacement
+  detailKind: 'targetObject' | 'requiredParameter' | 'precondition' | 'provenanceRequirement' | 'disabledReason'
+  detailRole: string
+  detailLabel: string
+  detailValue: string
+  detailSortOrder: number
+}
+
+type SemanticActionAuditHistoryRecord = {
+  graphUri: string
+  actionAuditReleaseId: string
+  executionUri: string
+  executionId: string
+  requestUri: string
+  requestId: string
+  validationReportUri: string
+  actionTypeUri: string
+  actionTypeId: string
+  actionTypeLabel?: string
+  idempotencyKey: string
+  actorId: string
+  actionReason: string
+  actionStatus: string
+  requestedAt: string
+  executedAt: string
+  targetObjectUri?: string
+  validationStatus: string
+  validationSummary?: string
+  sourceRecordUri?: string
+  assignedTeam?: string
+  assigneeId?: string
+  reviewedStatus?: string
+  reviewSummary?: string
+  supportingEvidenceUri?: string
+}
+
+type SemanticOntologyReviewQueueRecord = {
+  graphUri: string
+  queueId: string
+  queueKind: string
+  reviewActionId: string
+  reviewActionLabel: string
+  reviewStatus: string
+  targetUri: string
+  targetType: string
+  targetLabel: string
+  releaseId: string
+  sourceGraphUri?: string
+  canonicalGraphUri?: string
+  provenanceGraphUri?: string
+  reasoningAuditGraphUri?: string
+  reasoningGraphUri?: string
+  evidenceSummary: string
+  actionStatus: string
+  disabledReason: string
+  incidentCount: number
+  assetCount: number
+  sourceRecordCount: number
+  activityCount: number
+  generatedFactCount: number
+  prioritySortOrder: number
+}
+
 export async function fetchDashboardData(filters: DashboardFilters = {}): Promise<DashboardData> {
   const [
     overviewRecords,
@@ -653,6 +784,8 @@ export async function fetchDashboardData(filters: DashboardFilters = {}): Promis
     trustFindings,
     impactRecords,
     dependencyRecords,
+    promotionReviewQueue,
+    reasoningReviewQueue,
   ] = await Promise.all([
     postSemanticQuery<SemanticDashboardOverviewRecord>('semanticDashboardOverview'),
     postSemanticQuery<SemanticFollowUpQueueRecord>('semanticFollowUpQueueList'),
@@ -664,6 +797,8 @@ export async function fetchDashboardData(filters: DashboardFilters = {}): Promis
     postSemanticQuery<SemanticTrustFindingRecord>('semanticTrustFindingList'),
     postSemanticQuery<SemanticImpactSummaryRecord>('semanticImpactSummary'),
     postSemanticQuery<SemanticTopologyDependencyRecord>('semanticTopologyDependencies'),
+    postSemanticQuery<SemanticOntologyReviewQueueRecord>('semanticPromotionReviewQueue'),
+    postSemanticQuery<SemanticOntologyReviewQueueRecord>('semanticReasoningReviewQueue'),
   ])
 
   const followUps = applyDashboardFilters(buildFollowUps(queueRecords, detailRecords, dependencyRecords), filters)
@@ -678,6 +813,7 @@ export async function fetchDashboardData(filters: DashboardFilters = {}): Promis
     qualityChecks: trustFindings.map(mapTrustFinding),
     impactSummary: buildImpactSummary(impactRecords[0], followUps),
     topologyDependencies: buildTopologyDependencies(dependencyRecords, followUps),
+    ontologyReviewQueue: buildOntologyReviewQueue([...promotionReviewQueue, ...reasoningReviewQueue]),
   }
 }
 
@@ -692,6 +828,7 @@ export function filterDashboardData(data: DashboardData, filters: DashboardFilte
     },
     followUps,
     impactSummary: buildImpactSummary(undefined, followUps),
+    ontologyReviewQueue: data.ontologyReviewQueue,
   }
 }
 
@@ -720,11 +857,13 @@ export async function fetchFilterMetadata(): Promise<FilterMetadata> {
 }
 
 export async function fetchRequestDetail(infrastructureRequestId: string): Promise<RequestDetail> {
-  const [queueRecords, detailRecords, evidenceRecords, timelineRecords] = await Promise.all([
+  const [queueRecords, detailRecords, evidenceRecords, timelineRecords, actionAvailabilityRecords, actionAuditRecords] = await Promise.all([
     postSemanticQuery<SemanticFollowUpQueueRecord>('semanticFollowUpQueueList'),
     postSemanticQuery<SemanticFollowUpDetailRecord>('semanticFollowUpDetail', { incidentIdParam: infrastructureRequestId }),
     postSemanticQuery<SemanticIncidentEvidenceRecord>('semanticIncidentEvidence', { incidentIdParam: infrastructureRequestId }),
     postSemanticQuery<SemanticIncidentTimelineRecord>('semanticIncidentTimeline', { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticActionAvailabilityRecord>('semanticAvailableActionsByFinding', { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticActionAuditHistoryRecord>('semanticActionAuditHistoryByIncident', { incidentIdParam: infrastructureRequestId }),
   ])
   const request = buildFollowUps(queueRecords, detailRecords).find((row) => row.incident_id === infrastructureRequestId)
   if (!request) {
@@ -733,7 +872,7 @@ export async function fetchRequestDetail(infrastructureRequestId: string): Promi
   const detailRecord = detailRecords.find((record) => record.incidentId === infrastructureRequestId)
   const evidence = evidenceRecords
   const timeline = timelineRecords
-  return buildRequestDetail(request, detailRecord, evidence, timeline)
+  return buildRequestDetail(request, detailRecord, evidence, timeline, actionAvailabilityRecords, actionAuditRecords)
 }
 
 export async function fetchDataQualityCheck(checkResultId: string): Promise<DataQualityCheck> {
@@ -892,6 +1031,37 @@ function applyDashboardFilters(rows: FollowUpItem[], filters: DashboardFilters):
   })
 }
 
+function buildOntologyReviewQueue(records: SemanticOntologyReviewQueueRecord[]): OntologyReviewQueueItem[] {
+  return records
+    .map((record) => ({
+      graph_uri: record.graphUri,
+      queue_id: record.queueId,
+      queue_kind: record.queueKind,
+      review_action_id: record.reviewActionId,
+      review_action_label: record.reviewActionLabel,
+      review_status: record.reviewStatus,
+      target_uri: record.targetUri,
+      target_type: record.targetType,
+      target_label: record.targetLabel,
+      release_id: record.releaseId,
+      source_graph_uri: record.sourceGraphUri ?? null,
+      canonical_graph_uri: record.canonicalGraphUri ?? null,
+      provenance_graph_uri: record.provenanceGraphUri ?? null,
+      reasoning_audit_graph_uri: record.reasoningAuditGraphUri ?? null,
+      reasoning_graph_uri: record.reasoningGraphUri ?? null,
+      evidence_summary: record.evidenceSummary,
+      action_status: 'DISABLED' as const,
+      disabled_reason: record.disabledReason,
+      incident_count: record.incidentCount,
+      asset_count: record.assetCount,
+      source_record_count: record.sourceRecordCount,
+      activity_count: record.activityCount,
+      generated_fact_count: record.generatedFactCount,
+      priority_sort_order: record.prioritySortOrder,
+    }))
+    .sort((left, right) => left.priority_sort_order - right.priority_sort_order || left.queue_id.localeCompare(right.queue_id))
+}
+
 function buildOverview(record: SemanticDashboardOverviewRecord | undefined, followUps: FollowUpItem[]): Overview {
   const capacityRiskKw = record?.capacityRiskKw ?? followUps.reduce((total, row) => total + row.estimated_capacity_risk_kw, 0)
   const affectedGpuCount = record?.affectedGpuCount ?? followUps.reduce((total, row) => total + row.affected_gpu_count, 0)
@@ -1029,6 +1199,8 @@ function buildRequestDetail(
   detail: SemanticFollowUpDetailRecord | undefined,
   evidence: SemanticIncidentEvidenceRecord[],
   workflowTimeline: SemanticIncidentTimelineRecord[],
+  actionAvailabilityRecords: SemanticActionAvailabilityRecord[],
+  actionAuditRecords: SemanticActionAuditHistoryRecord[],
 ): RequestDetail {
   const evidenceIssues = uniqueTrustFindingEvidence(evidence.filter((record) => record.trustFindingUri))
   const telemetryEvidence = evidence.filter(isTelemetryEvidence)
@@ -1173,177 +1345,126 @@ function buildRequestDetail(
       },
     })),
     provenance_trace: provenanceTrace,
-    ontology_actions: buildOntologyActionAffordances(request, detail, evidenceIssues, validationEvidence, provenanceTrace),
+    ontology_actions: mapOntologyActionAffordances(actionAvailabilityRecords),
+    action_audit_history: actionAuditRecords.map(mapActionAuditHistory),
   }
 }
 
-function buildOntologyActionAffordances(
-  request: FollowUpItem,
-  detail: SemanticFollowUpDetailRecord | undefined,
-  evidenceIssues: SemanticIncidentEvidenceRecord[],
-  validationEvidence: SemanticIncidentEvidenceRecord[],
-  provenanceTrace: ProvenanceTraceItem[],
-): OntologyActionAffordance[] {
-  const incidentUri = detail?.incidentUri ?? `urn:dcai:incident:${request.incident_id}`
-  const restoreReadinessUri = detail?.restoreReadinessUri ?? ''
-  const recoveryBlockerUri = detail?.recoveryBlockerUri ?? ''
-  const trustFindingUri = evidenceIssues[0]?.trustFindingUri ?? detail?.trustFindingUri ?? ''
-  const validationEvidenceUri = validationEvidence[0]?.evidenceUri ?? validationEvidence[0]?.validationId ?? ''
-  const sourceRecordUri = detail?.sourceRecordUri ?? provenanceTrace.find((item) => item.step === 'Source extract')?.resource_uri ?? ''
-  const commonDisabledReasons = [
-    'Action execution runtime is not implemented in this read-only UI slice',
-    'No public or private write endpoint is available for ontology actions',
-    'Actor identity and authorization policy are not configured',
-  ]
-  const commonProvenanceRequirements = [
-    'Action audit event with actor, timestamp, action type, and target object',
-    'prov:used links to selected finding, incident, source record, and supporting evidence',
-    'Validation report before any future operations/reasoning graph promotion',
-  ]
-
-  return [
-    {
-      action_id: 'AcknowledgeRestoreBlocker',
-      label: 'Acknowledge restore blocker',
-      description: 'Record that an operator reviewed the restore-readiness blocker without changing canonical or reasoning graph state.',
-      status: 'DISABLED',
-      ui_placement: ['summary'],
-      target_objects: compactTargets([
-        target('RestoreReadinessFinding', restoreReadinessLabelForAction(request.restore_readiness_status), restoreReadinessUri),
-        target('RecoveryBlocker', formatActionStage(request.current_stage), recoveryBlockerUri),
-        target('InfrastructureIncident', request.incident_id, incidentUri),
-      ]),
-      required_parameters: ['findingUri', 'incidentUri', 'actorId', 'acknowledgedAt', 'acknowledgementReason', 'nextReviewAt?'],
-      preconditions: [
-        'Restore-readiness finding exists',
-        'Finding status is NOT_READY or REVIEW',
-        'Incident is not terminal/restored',
-        'Reasoning and source provenance are present',
-      ],
-      provenance_requirements: commonProvenanceRequirements,
-      disabled_reasons: [
-        ...commonDisabledReasons,
-        ...missingReason(restoreReadinessUri, 'Restore-readiness finding URI is missing'),
-        ...missingReason(recoveryBlockerUri, 'Recovery blocker URI is missing'),
-        ...statusReason(request.restore_readiness_status === 'NOT_READY' || request.restore_readiness_status === 'REVIEW', 'Restore readiness is not in a blocked/review state'),
-      ],
-    },
-    {
-      action_id: 'AssignEvidenceReview',
-      label: 'Assign evidence review',
-      description: 'Assign a trust or evidence issue to a controlled review owner without editing source evidence.',
-      status: 'DISABLED',
-      ui_placement: ['summary', 'trust'],
-      target_objects: compactTargets([
-        target('TrustFinding', evidenceIssues[0]?.trustSummary ?? trustStatusLabelForAction(request.impact_confidence_status), trustFindingUri),
-        target('InfrastructureIncident', request.incident_id, incidentUri),
-        target('SourceRecord', 'Source evidence', sourceRecordUri),
-      ]),
-      required_parameters: ['trustFindingUri', 'incidentUri', 'assignedTeam', 'assigneeId?', 'dueAt?', 'priority?', 'assignmentReason'],
-      preconditions: [
-        'Trust finding exists or selected evidence is unverified',
-        'Assignment target uses controlled team vocabulary',
-        'Referenced evidence or source record is available',
-      ],
-      provenance_requirements: commonProvenanceRequirements,
-      disabled_reasons: [
-        ...commonDisabledReasons,
-        ...statusReason(request.impact_confidence_status !== 'TRUSTED' || evidenceIssues.length > 0, 'No active trust finding requires assignment'),
-        ...missingReason(sourceRecordUri, 'Source record provenance is missing'),
-      ],
-    },
-    {
-      action_id: 'RecordValidationReview',
-      label: 'Record validation review',
-      description: 'Record operator review of validation evidence without overwriting canonical validation evidence.',
-      status: 'DISABLED',
-      ui_placement: ['summary', 'trust'],
-      target_objects: compactTargets([
-        target('ValidationEvidence', validationEvidence[0]?.validationStatus ?? 'Validation evidence', validationEvidenceUri),
-        target('InfrastructureIncident', request.incident_id, incidentUri),
-        target('RestoreReadinessFinding', restoreReadinessLabelForAction(request.restore_readiness_status), restoreReadinessUri),
-      ]),
-      required_parameters: ['incidentUri', 'validationEvidenceUri', 'reviewedStatus', 'reviewerId', 'reviewedAt', 'reviewSummary', 'supportingEvidenceUri?'],
-      preconditions: [
-        'Incident is in validation or blocked by validation evidence',
-        'Reviewed status uses controlled validation vocabulary',
-        'Conflicting evidence is surfaced before submission',
-      ],
-      provenance_requirements: commonProvenanceRequirements,
-      disabled_reasons: [
-        ...commonDisabledReasons,
-        ...statusReason(request.current_stage === 'VALIDATION' || validationEvidence.length > 0, 'Selected finding is not currently tied to validation evidence'),
-        ...missingReason(validationEvidenceUri, 'Validation evidence URI is missing'),
-      ],
-    },
-    {
-      action_id: 'RequestReasoningRefresh',
-      label: 'Request reasoning refresh',
-      description: 'Request an internal reasoning refresh for the selected incident or asset scope while preserving current approved graph state.',
-      status: 'DISABLED',
-      ui_placement: ['summary'],
-      target_objects: compactTargets([
-        target('InfrastructureIncident', request.incident_id, incidentUri),
-        target('InfrastructureAsset', request.asset_id, `urn:dcai:asset:${request.asset_id}`),
-      ]),
-      required_parameters: ['scopeType', 'scopeUri', 'requestedBy', 'requestReason', 'ruleSetId?', 'canonicalGraphRelease?'],
-      preconditions: [
-        'Canonical graph exists and conforms',
-        'Reasoning rule set is approved',
-        'No refresh is already running for the same scope',
-        'Scope is controlled and not a browser-supplied graph URI',
-      ],
-      provenance_requirements: [
-        ...commonProvenanceRequirements,
-        'ReasoningActivity provenance for any candidate output',
-      ],
-      disabled_reasons: [
-        ...commonDisabledReasons,
-        'Internal action runner is required before refresh requests can be accepted from the UI',
-      ],
-    },
-  ]
-}
-
-function target(role: string, label: string, resourceUri: string): OntologyActionTarget {
+function mapActionAuditHistory(record: SemanticActionAuditHistoryRecord): OntologyActionAuditHistoryItem {
   return {
-    role,
-    label,
-    resource_uri: resourceUri,
+    graph_uri: record.graphUri,
+    action_audit_release_id: record.actionAuditReleaseId,
+    execution_uri: record.executionUri,
+    execution_id: record.executionId,
+    request_uri: record.requestUri,
+    request_id: record.requestId,
+    validation_report_uri: record.validationReportUri,
+    action_type_uri: record.actionTypeUri,
+    action_type_id: record.actionTypeId,
+    action_type_label: record.actionTypeLabel ?? null,
+    idempotency_key: record.idempotencyKey,
+    actor_id: record.actorId,
+    action_reason: record.actionReason,
+    action_status: record.actionStatus,
+    requested_at: record.requestedAt,
+    executed_at: record.executedAt,
+    target_object_uri: record.targetObjectUri ?? null,
+    validation_status: record.validationStatus,
+    validation_summary: record.validationSummary ?? null,
+    source_record_uri: record.sourceRecordUri ?? null,
+    assigned_team: record.assignedTeam ?? null,
+    assignee_id: record.assigneeId ?? null,
+    reviewed_status: record.reviewedStatus ?? null,
+    review_summary: record.reviewSummary ?? null,
+    supporting_evidence_uri: record.supportingEvidenceUri ?? null,
   }
 }
 
-function compactTargets(targets: OntologyActionTarget[]): OntologyActionTarget[] {
-  return targets.filter((item) => item.resource_uri)
+function mapOntologyActionAffordances(records: SemanticActionAvailabilityRecord[]): OntologyActionAffordance[] {
+  const grouped = new Map<string, {
+    action: OntologyActionAffordance
+    sortOrders: Map<string, number>
+  }>()
+  records.forEach((record) => {
+    const existing = grouped.get(record.actionId)
+    const action = existing?.action ?? {
+      action_id: record.actionId,
+      label: record.actionLabel,
+      description: record.actionDescription,
+      status: 'DISABLED',
+      ui_placement: [],
+      target_objects: [],
+      required_parameters: [],
+      preconditions: [],
+      provenance_requirements: [],
+      disabled_reasons: [],
+    }
+    const sortOrders = existing?.sortOrders ?? new Map<string, number>()
+    appendUnique(action.ui_placement, record.uiPlacement)
+    sortOrders.set(`${record.detailKind}:${record.detailRole}:${record.detailValue}`, record.detailSortOrder)
+    if (record.detailKind === 'targetObject') {
+      appendUniqueTarget(action.target_objects, {
+        role: record.detailRole,
+        label: record.detailLabel,
+        resource_uri: record.detailValue,
+      })
+    } else if (record.detailKind === 'requiredParameter') {
+      appendUnique(action.required_parameters, record.detailValue)
+    } else if (record.detailKind === 'precondition') {
+      appendUnique(action.preconditions, record.detailValue)
+    } else if (record.detailKind === 'provenanceRequirement') {
+      appendUnique(action.provenance_requirements, record.detailValue)
+    } else if (record.detailKind === 'disabledReason') {
+      appendUnique(action.disabled_reasons, record.detailValue)
+    }
+    grouped.set(record.actionId, { action, sortOrders })
+  })
+  return Array.from(grouped.values())
+    .map(({ action, sortOrders }) => ({
+      ...action,
+      ui_placement: [...action.ui_placement].sort(),
+      target_objects: sortTargets(action.target_objects, sortOrders),
+      required_parameters: sortStrings(action.required_parameters, 'requiredParameter', sortOrders),
+      preconditions: sortStrings(action.preconditions, 'precondition', sortOrders),
+      provenance_requirements: sortStrings(action.provenance_requirements, 'provenanceRequirement', sortOrders),
+      disabled_reasons: sortStrings(action.disabled_reasons, 'disabledReason', sortOrders),
+    }))
+    .sort((left, right) => left.action_id.localeCompare(right.action_id))
 }
 
-function missingReason(value: string, reason: string): string[] {
-  return value ? [] : [reason]
+function appendUnique(values: string[], value: string) {
+  if (!values.includes(value)) {
+    values.push(value)
+  }
 }
 
-function statusReason(condition: boolean, reason: string): string[] {
-  return condition ? [] : [reason]
+function appendUniqueTarget(values: OntologyActionTarget[], value: OntologyActionTarget) {
+  if (!values.some((item) => item.role === value.role && item.resource_uri === value.resource_uri)) {
+    values.push(value)
+  }
 }
 
-function formatActionStage(value: string) {
-  return value
-    .toLowerCase()
-    .split(/[_-]+/)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
+function sortTargets(values: OntologyActionTarget[], sortOrders: Map<string, number>): OntologyActionTarget[] {
+  return [...values].sort((left, right) => {
+    const leftOrder = sortOrders.get(`targetObject:${left.role}:${left.resource_uri}`) ?? 999
+    const rightOrder = sortOrders.get(`targetObject:${right.role}:${right.resource_uri}`) ?? 999
+    return leftOrder - rightOrder || left.role.localeCompare(right.role) || left.resource_uri.localeCompare(right.resource_uri)
+  })
 }
 
-function trustStatusLabelForAction(status: string) {
-  if (status === 'TRUSTED') return 'Trusted evidence'
-  if (status === 'WARNING') return 'Evidence requires review'
-  return 'Unverified evidence'
+function sortStrings(values: string[], kind: string, sortOrders: Map<string, number>): string[] {
+  return [...values].sort((left, right) => {
+    const leftOrder = minSortOrder(kind, left, sortOrders)
+    const rightOrder = minSortOrder(kind, right, sortOrders)
+    return leftOrder - rightOrder || left.localeCompare(right)
+  })
 }
 
-function restoreReadinessLabelForAction(status: string) {
-  if (status === 'NOT_READY') return 'Restore blocked'
-  if (status === 'READY') return 'Restore ready'
-  if (status === 'REVIEW') return 'Review readiness'
-  return 'Unknown readiness'
+function minSortOrder(kind: string, value: string, sortOrders: Map<string, number>): number {
+  const matches = Array.from(sortOrders.entries())
+    .filter(([key]) => key.startsWith(`${kind}:`) && key.endsWith(`:${value}`))
+    .map(([, order]) => order)
+  return matches.length ? Math.min(...matches) : 999
 }
 
 function buildProvenanceTrace(

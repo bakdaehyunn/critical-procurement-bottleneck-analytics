@@ -104,6 +104,81 @@ class PrivateSemanticQueryEndpointTest {
     }
 
     @Test
+    fun returnsSerializedActionAuditHistoryPayloadForApprovedReadModel() {
+        val executor = CapturingQueryExecutor(
+            QueryExecutionReport(
+                queryId = "semanticActionAuditHistoryByIncident",
+                mode = QueryMode.SELECT,
+                rows = listOf(actionAuditHistoryRow()),
+            ),
+        )
+        val endpoint = PrivateSemanticQueryEndpoint(
+            queryExecutor = executor,
+            queryResultShaper = QueryResultShaper(manifestWith("semanticActionAuditHistoryByIncident")),
+        )
+
+        val response = endpoint.handle(
+            post(
+                path = "/semantic/query/semanticActionAuditHistoryByIncident",
+                body = """{"parameters":{"incidentIdParam":"INC-REASONING-0001"}}""",
+            ),
+        )
+
+        assertEquals(200, response.statusCode)
+        assertEquals("semanticActionAuditHistoryByIncident", response.payload["queryId"])
+        assertEquals("action-audit-history", response.payload["resultType"])
+        assertEquals(mapOf("incidentIdParam" to "INC-REASONING-0001"), executor.lastParameters)
+        assertTrue(response.jsonBody().contains("\"idempotencyKey\":\"ack-restore-001\""))
+    }
+
+    @Test
+    fun returnsSerializedActionAvailabilityPayloadForApprovedReadModel() {
+        val executor = CapturingQueryExecutor(
+            QueryExecutionReport(
+                queryId = "semanticAvailableActionsByFinding",
+                mode = QueryMode.SELECT,
+                rows = listOf(actionAvailabilityRow()),
+            ),
+        )
+        val endpoint = PrivateSemanticQueryEndpoint(
+            queryExecutor = executor,
+            queryResultShaper = QueryResultShaper(manifestWith("semanticAvailableActionsByFinding")),
+        )
+
+        val response = endpoint.handle(
+            post(
+                path = "/semantic/query/semanticAvailableActionsByFinding",
+                body = """{"parameters":{"incidentIdParam":"INC-REASONING-0001"}}""",
+            ),
+        )
+
+        assertEquals(200, response.statusCode)
+        assertEquals("semanticAvailableActionsByFinding", response.payload["queryId"])
+        assertEquals("action-availability", response.payload["resultType"])
+        assertEquals(mapOf("incidentIdParam" to "INC-REASONING-0001"), executor.lastParameters)
+        assertTrue(response.jsonBody().contains("\"actionId\":\"AcknowledgeRestoreBlocker\""))
+    }
+
+    @Test
+    fun returnsSerializedOntologyReviewQueuePayloadForApprovedReadModel() {
+        val endpoint = endpointWith(
+            QueryExecutionReport(
+                queryId = "semanticPromotionReviewQueue",
+                mode = QueryMode.SELECT,
+                rows = listOf(ontologyReviewQueueRow()),
+            ),
+        )
+
+        val response = endpoint.handle(post("/semantic/query/semanticPromotionReviewQueue"))
+
+        assertEquals(200, response.statusCode)
+        assertEquals("semanticPromotionReviewQueue", response.payload["queryId"])
+        assertEquals("ontology-review-queue", response.payload["resultType"])
+        assertTrue(response.jsonBody().contains("\"reviewActionId\":\"ApprovePromotionBatch\""))
+        assertTrue(response.jsonBody().contains("\"actionStatus\":\"DISABLED\""))
+    }
+
+    @Test
     fun rejectsUnapprovedQueryIdWithSemanticErrorEnvelope() {
         val response = endpointWith(
             QueryExecutionReport(
@@ -396,6 +471,76 @@ class PrivateSemanticQueryEndpointTest {
     ) {
         val error = response.payload["error"] as Map<*, *>
         assertEquals(expected, error["code"])
+    }
+
+    private fun actionAuditHistoryRow(): Map<String, String> {
+        return mapOf(
+            "graph" to "urn:dcai:graph:action-audit:local-action-audit-v1",
+            "actionAuditReleaseId" to "local-action-audit-v1",
+            "execution" to "urn:dcai:ontology-action-execution:ack-restore-001",
+            "executionId" to "ack-restore-001",
+            "request" to "urn:dcai:ontology-action-request:ack-restore-001",
+            "requestId" to "REQ-ACTION-001",
+            "validationReport" to "urn:dcai:action-validation-report:ack-restore-001",
+            "actionType" to "urn:dcai:ontology-action-type:AcknowledgeRestoreBlocker",
+            "actionTypeId" to "AcknowledgeRestoreBlocker",
+            "idempotencyKey" to "ack-restore-001",
+            "actorId" to "operator-001",
+            "actionReason" to "Reviewed restore blocker before shift handoff.",
+            "actionStatus" to "AUDITED",
+            "requestedAt" to "2026-06-14T10:15:30Z",
+            "executedAt" to "2026-06-14T10:15:30Z",
+            "targetObject" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+            "validationStatus" to "CONFORMS",
+        )
+    }
+
+    private fun actionAvailabilityRow(): Map<String, String> {
+        return mapOf(
+            "graph" to "urn:dcai:graph:fixture:canonical:reasoning-output",
+            "incident" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+            "incidentId" to "INC-REASONING-0001",
+            "asset" to "urn:dcai:fixture:valid:reasoning-output:asset-a",
+            "assetId" to "ASSET-A",
+            "sourceRecord" to "urn:dcai:fixture:valid:reasoning-output:source-record-0001",
+            "actionId" to "AcknowledgeRestoreBlocker",
+            "actionLabel" to "Acknowledge restore blocker",
+            "actionDescription" to "Record that an operator reviewed the restore-readiness blocker.",
+            "actionStatus" to "DISABLED",
+            "uiPlacement" to "summary",
+            "detailKind" to "targetObject",
+            "detailRole" to "RestoreReadinessFinding",
+            "detailLabel" to "Restore is not ready.",
+            "detailValue" to "urn:dcai:fixture:valid:reasoning-output:restore-readiness-0001",
+            "detailSortOrder" to "100",
+        )
+    }
+
+    private fun ontologyReviewQueueRow(): Map<String, String> {
+        return mapOf(
+            "graph" to "urn:dcai:graph:canonical:local-controlled-source-v1",
+            "queueId" to "promotion-batch:local-controlled-source-v1",
+            "queueKind" to "promotion-batch",
+            "reviewActionId" to "ApprovePromotionBatch",
+            "reviewActionLabel" to "Review promotion batch",
+            "reviewStatus" to "READ_ONLY_REVIEW",
+            "targetUri" to "urn:dcai:graph:canonical:local-controlled-source-v1",
+            "targetType" to "CanonicalGraphRelease",
+            "targetLabel" to "local-controlled-source-v1",
+            "releaseId" to "local-controlled-source-v1",
+            "sourceGraph" to "urn:dcai:graph:source:local-controlled-source-v1",
+            "canonicalGraph" to "urn:dcai:graph:canonical:local-controlled-source-v1",
+            "provenanceGraph" to "urn:dcai:graph:provenance:local-controlled-source-v1",
+            "evidenceSummary" to "Canonical/source/provenance graph batch is available for lifecycle review.",
+            "actionStatus" to "DISABLED",
+            "disabledReason" to "Approval remains internal-only.",
+            "incidentCount" to "4",
+            "assetCount" to "6",
+            "sourceRecordCount" to "24",
+            "activityCount" to "1",
+            "generatedFactCount" to "18",
+            "prioritySortOrder" to "200",
+        )
     }
 
     private class StaticQueryExecutor(

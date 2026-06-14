@@ -11,6 +11,7 @@
 .exposure-strip,
 .queue-intelligence,
 .queue-intelligence-grid,
+.ontology-review-queue,
 .queue-scope-bar,
 .queue-workspace {
   display: grid;
@@ -333,6 +334,106 @@ select:focus {
 .queue-intelligence-item.danger {
   border-color: #efc8c3;
   box-shadow: inset 4px 0 0 #c9574e;
+}
+
+.ontology-review-queue {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  align-items: stretch;
+  margin-bottom: 14px;
+}
+
+.ontology-review-card {
+  display: grid;
+  min-width: 0;
+  gap: 11px;
+  align-content: start;
+  padding: 13px;
+  border: 1px solid #d9e0e3;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 22px rgba(27, 35, 32, 0.045);
+}
+
+.ontology-review-card.warning {
+  border-color: #efd49a;
+  box-shadow: inset 4px 0 0 #d49a2f, 0 10px 22px rgba(27, 35, 32, 0.045);
+}
+
+.ontology-review-card.ok {
+  border-color: #b8dbc0;
+  box-shadow: inset 4px 0 0 #4f9a62, 0 10px 22px rgba(27, 35, 32, 0.045);
+}
+
+.ontology-review-card-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.ontology-review-card-header span,
+.ontology-review-disabled span,
+.ontology-review-graphs span {
+  color: #55636a;
+  font-size: 0.73rem;
+  font-weight: 850;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.ontology-review-card-header strong,
+.ontology-review-disabled strong {
+  display: block;
+  min-width: 0;
+  color: #172026;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.ontology-review-card-header button {
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid #d9c390;
+  border-radius: 999px;
+  background: #fff8e8;
+  color: #8a5a0f;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.ontology-review-card p {
+  color: #52616b;
+  font-size: 0.84rem;
+  line-height: 1.42;
+}
+
+.ontology-review-facts,
+.ontology-review-graphs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.ontology-review-graphs div,
+.ontology-review-disabled {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid #e6ecee;
+  border-radius: 7px;
+  background: #fbfcfc;
+}
+
+.ontology-review-graphs code {
+  min-width: 0;
+  color: #52616b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .kpi,
@@ -1150,6 +1251,115 @@ select:focus {
   white-space: normal;
 }
 
+.ontology-action-audit-history {
+  display: grid;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.ontology-action-history-header,
+.ontology-action-history-card-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.ontology-action-history-header svg {
+  color: #2f766d;
+}
+
+.ontology-action-history-header span,
+.ontology-action-history-card-header span,
+.ontology-action-history-links span,
+.ontology-action-review-note span {
+  color: #55636a;
+  font-size: 0.74rem;
+  font-weight: 850;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.ontology-action-history-header strong,
+.ontology-action-history-card-header strong,
+.ontology-action-review-note strong {
+  min-width: 0;
+  color: #172026;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.ontology-action-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ontology-action-history-card {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #d6e2df;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.ontology-action-history-card-header {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.history-status {
+  width: max-content;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #efd49a;
+  border-radius: 999px;
+  background: #fff8e8;
+  color: #8a5a0f;
+  overflow-wrap: anywhere;
+}
+
+.history-status.ok {
+  border-color: #b8dbc0;
+  background: #f4fbf6;
+  color: #2f6f41;
+}
+
+.ontology-action-history-card p {
+  margin: 0;
+  color: #52616b;
+  font-size: 0.84rem;
+  line-height: 1.42;
+}
+
+.ontology-action-history-facts,
+.ontology-action-history-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.ontology-action-history-links div,
+.ontology-action-review-note {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid #e6ecee;
+  border-radius: 7px;
+  background: #fbfcfc;
+}
+
+.ontology-action-history-links code {
+  min-width: 0;
+  color: #52616b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .semantic-explanation-canvas {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.35fr);
@@ -1606,6 +1816,7 @@ select:focus {
   .kpi-grid,
   .exposure-strip,
   .queue-intelligence,
+  .ontology-review-queue,
   .command-strip,
   .queue-scope-bar {
     grid-template-columns: 1fr;

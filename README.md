@@ -220,9 +220,19 @@ The React frontend is built as a semantic operations workbench:
   for restore blocker acknowledgement, evidence review assignment, and
   validation review; it does not expose public write endpoints.
 - Read-only action affordances in selected finding Summary and Trust views.
-  These show action labels, target ontology objects, required parameters,
-  preconditions, provenance requirements, and disabled reasons without executing
-  writes.
+  These are backed by the approved `semanticAvailableActionsByFinding` read
+  model and show action labels, target ontology objects, required parameters,
+  preconditions, provenance requirements, and disabled reasons without
+  executing writes.
+- Read-only action-audit history in the selected finding action panel, backed by
+  approved semantic query IDs for managed action-audit graph releases, incident
+  targets, and target object URIs. It shows action status, actor, action type,
+  validation result, provenance links, idempotency key, and graph lifecycle
+  context without enabling browser execution.
+- Read-only internal lifecycle review queues on the dashboard, backed by
+  `semanticPromotionReviewQueue` and `semanticReasoningReviewQueue`. They show
+  promotion batch, reasoning refresh, and reasoning approval state from managed
+  graph facts while keeping all actions disabled.
 
 Run the frontend build:
 

@@ -1,0 +1,315 @@
+PREFIX dcai: <urn:dcai:ontology:>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT DISTINCT
+  ?graph
+  ?incident
+  ?incidentId
+  ?asset
+  ?assetId
+  ?sourceRecord
+  ?actionId
+  ?actionLabel
+  ?actionDescription
+  ?actionStatus
+  ?uiPlacement
+  ?detailKind
+  ?detailRole
+  ?detailLabel
+  ?detailValue
+  ?detailSortOrder
+WHERE {
+  GRAPH ?graph {
+    ?incident rdf:type dcai:InfrastructureIncident ;
+      dcai:hasIdentifier ?incidentId ;
+      dcai:affectsAsset ?asset ;
+      dcai:hasCurrentStage ?stage ;
+      prov:wasDerivedFrom ?sourceRecord .
+
+    ?asset dcai:hasIdentifier ?assetId .
+    OPTIONAL { ?stage rdfs:label ?stageLabel . }
+    OPTIONAL {
+      ?impact rdf:type dcai:ImpactObservation ;
+        dcai:impactForIncident ?incident .
+    }
+    OPTIONAL {
+      ?validationEvidence rdf:type dcai:ValidationEvidence ;
+        dcai:supportsFact ?validationSupportedFact .
+      FILTER(?validationSupportedFact = ?incident || (BOUND(?impact) && ?validationSupportedFact = ?impact))
+      OPTIONAL { ?validationEvidence dcai:hasValidationStatus ?validationStatus . }
+    }
+  }
+
+  OPTIONAL {
+    GRAPH ?reasoningGraph {
+      ?restoreReadiness rdf:type dcai:RestoreReadinessFinding ;
+        prov:wasDerivedFrom ?incident ;
+        dcai:hasFindingSummary ?restoreReadinessSummary .
+    }
+    FILTER(STRSTARTS(STR(?reasoningGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?reasoningGraph), "urn:dcai:graph:reasoning:"))
+  }
+  OPTIONAL {
+    GRAPH ?reasoningGraph {
+      ?recoveryBlocker rdf:type dcai:RecoveryBlocker ;
+        prov:wasDerivedFrom ?incident ;
+        dcai:hasFindingSummary ?blockerSummary .
+    }
+    FILTER(STRSTARTS(STR(?reasoningGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?reasoningGraph), "urn:dcai:graph:reasoning:"))
+  }
+  OPTIONAL {
+    GRAPH ?reasoningGraph {
+      ?trustFinding rdf:type dcai:TrustFinding ;
+        prov:wasDerivedFrom ?trustSource ;
+        dcai:hasFindingSummary ?trustSummary .
+    }
+    FILTER(STRSTARTS(STR(?reasoningGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?reasoningGraph), "urn:dcai:graph:reasoning:"))
+    FILTER(?trustSource = ?incident || (BOUND(?impact) && ?trustSource = ?impact) || (BOUND(?validationEvidence) && ?trustSource = ?validationEvidence))
+  }
+
+  VALUES ?actionStatus { "DISABLED" }
+  VALUES (?sharedKind ?sharedRole ?sharedLabel ?sharedValue ?sharedSort) {
+    ("disabledReason" "runtime" "Action execution runtime is not implemented in this read-only UI slice" "Action execution runtime is not implemented in this read-only UI slice" 900)
+    ("disabledReason" "endpoint" "No public or private write endpoint is available for ontology actions" "No public or private write endpoint is available for ontology actions" 901)
+    ("disabledReason" "authorization" "Actor identity and authorization policy are not configured" "Actor identity and authorization policy are not configured" 902)
+    ("provenanceRequirement" "audit" "Action audit event with actor, timestamp, action type, and target object" "Action audit event with actor, timestamp, action type, and target object" 700)
+    ("provenanceRequirement" "used-links" "prov:used links to selected finding, incident, source record, and supporting evidence" "prov:used links to selected finding, incident, source record, and supporting evidence" 701)
+    ("provenanceRequirement" "validation-report" "Validation report before any future operations/reasoning graph promotion" "Validation report before any future operations/reasoning graph promotion" 702)
+  }
+
+  {
+    VALUES (?actionId ?actionLabel ?actionDescription ?uiPlacement) {
+      ("AcknowledgeRestoreBlocker" "Acknowledge restore blocker" "Record that an operator reviewed the restore-readiness blocker without changing canonical or reasoning graph state." "summary")
+    }
+    {
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("requiredParameter" "findingUri" "findingUri" "findingUri" 300)
+        ("requiredParameter" "incidentUri" "incidentUri" "incidentUri" 301)
+        ("requiredParameter" "actorId" "actorId" "actorId" 302)
+        ("requiredParameter" "acknowledgedAt" "acknowledgedAt" "acknowledgedAt" 303)
+        ("requiredParameter" "acknowledgementReason" "acknowledgementReason" "acknowledgementReason" 304)
+        ("requiredParameter" "nextReviewAt" "nextReviewAt?" "nextReviewAt?" 305)
+        ("precondition" "restore-readiness" "Restore-readiness finding exists" "Restore-readiness finding exists" 500)
+        ("precondition" "blocked-state" "Finding status is NOT_READY or REVIEW" "Finding status is NOT_READY or REVIEW" 501)
+        ("precondition" "incident-active" "Incident is not terminal/restored" "Incident is not terminal/restored" 502)
+        ("precondition" "provenance-present" "Reasoning and source provenance are present" "Reasoning and source provenance are present" 503)
+      }
+    }
+    UNION {
+      BIND("targetObject" AS ?detailKind)
+      BIND("RestoreReadinessFinding" AS ?detailRole)
+      BIND(COALESCE(?restoreReadinessSummary, "Restore readiness finding") AS ?detailLabel)
+      BIND(STR(?restoreReadiness) AS ?detailValue)
+      BIND(100 AS ?detailSortOrder)
+      FILTER(BOUND(?restoreReadiness))
+    }
+    UNION {
+      BIND("targetObject" AS ?detailKind)
+      BIND("RecoveryBlocker" AS ?detailRole)
+      BIND(COALESCE(?blockerSummary, COALESCE(?stageLabel, STR(?stage))) AS ?detailLabel)
+      BIND(STR(?recoveryBlocker) AS ?detailValue)
+      BIND(101 AS ?detailSortOrder)
+      FILTER(BOUND(?recoveryBlocker))
+    }
+    UNION {
+      BIND("targetObject" AS ?detailKind)
+      BIND("InfrastructureIncident" AS ?detailRole)
+      BIND(?incidentId AS ?detailLabel)
+      BIND(STR(?incident) AS ?detailValue)
+      BIND(102 AS ?detailSortOrder)
+    }
+    UNION {
+      BIND("disabledReason" AS ?detailKind)
+      BIND("missing-restore-readiness" AS ?detailRole)
+      BIND("Restore-readiness finding URI is missing" AS ?detailLabel)
+      BIND("Restore-readiness finding URI is missing" AS ?detailValue)
+      BIND(910 AS ?detailSortOrder)
+      FILTER(!BOUND(?restoreReadiness))
+    }
+    UNION {
+      BIND("disabledReason" AS ?detailKind)
+      BIND("missing-recovery-blocker" AS ?detailRole)
+      BIND("Recovery blocker URI is missing" AS ?detailLabel)
+      BIND("Recovery blocker URI is missing" AS ?detailValue)
+      BIND(911 AS ?detailSortOrder)
+      FILTER(!BOUND(?recoveryBlocker))
+    }
+    UNION {
+      BIND(?sharedKind AS ?detailKind)
+      BIND(?sharedRole AS ?detailRole)
+      BIND(?sharedLabel AS ?detailLabel)
+      BIND(?sharedValue AS ?detailValue)
+      BIND(?sharedSort AS ?detailSortOrder)
+    }
+  }
+  UNION {
+    VALUES (?actionId ?actionLabel ?actionDescription ?uiPlacement) {
+      ("AssignEvidenceReview" "Assign evidence review" "Assign a trust or evidence issue to a controlled review owner without editing source evidence." "summary")
+      ("AssignEvidenceReview" "Assign evidence review" "Assign a trust or evidence issue to a controlled review owner without editing source evidence." "trust")
+    }
+    {
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("requiredParameter" "trustFindingUri" "trustFindingUri" "trustFindingUri" 300)
+        ("requiredParameter" "incidentUri" "incidentUri" "incidentUri" 301)
+        ("requiredParameter" "assignedTeam" "assignedTeam" "assignedTeam" 302)
+        ("requiredParameter" "assigneeId" "assigneeId?" "assigneeId?" 303)
+        ("requiredParameter" "dueAt" "dueAt?" "dueAt?" 304)
+        ("requiredParameter" "priority" "priority?" "priority?" 305)
+        ("requiredParameter" "assignmentReason" "assignmentReason" "assignmentReason" 306)
+        ("precondition" "trust-finding" "Trust finding exists or selected evidence is unverified" "Trust finding exists or selected evidence is unverified" 500)
+        ("precondition" "team-vocabulary" "Assignment target uses controlled team vocabulary" "Assignment target uses controlled team vocabulary" 501)
+        ("precondition" "evidence-present" "Referenced evidence or source record is available" "Referenced evidence or source record is available" 502)
+      }
+    }
+    UNION {
+      BIND("targetObject" AS ?detailKind)
+      BIND("TrustFinding" AS ?detailRole)
+      BIND(COALESCE(?trustSummary, "Trust finding") AS ?detailLabel)
+      BIND(STR(?trustFinding) AS ?detailValue)
+      BIND(100 AS ?detailSortOrder)
+      FILTER(BOUND(?trustFinding))
+    }
+    UNION {
+      BIND("targetObject" AS ?detailKind)
+      BIND("InfrastructureIncident" AS ?detailRole)
+      BIND(?incidentId AS ?detailLabel)
+      BIND(STR(?incident) AS ?detailValue)
+      BIND(101 AS ?detailSortOrder)
+    }
+    UNION {
+      BIND("targetObject" AS ?detailKind)
+      BIND("SourceRecord" AS ?detailRole)
+      BIND("Source evidence" AS ?detailLabel)
+      BIND(STR(?sourceRecord) AS ?detailValue)
+      BIND(102 AS ?detailSortOrder)
+    }
+    UNION {
+      BIND("disabledReason" AS ?detailKind)
+      BIND("no-trust-finding" AS ?detailRole)
+      BIND("No active trust finding requires assignment" AS ?detailLabel)
+      BIND("No active trust finding requires assignment" AS ?detailValue)
+      BIND(910 AS ?detailSortOrder)
+      FILTER(!BOUND(?trustFinding))
+    }
+    UNION {
+      BIND("disabledReason" AS ?detailKind)
+      BIND("missing-source-record" AS ?detailRole)
+      BIND("Source record provenance is missing" AS ?detailLabel)
+      BIND("Source record provenance is missing" AS ?detailValue)
+      BIND(911 AS ?detailSortOrder)
+      FILTER(!BOUND(?sourceRecord))
+    }
+    UNION {
+      BIND(?sharedKind AS ?detailKind)
+      BIND(?sharedRole AS ?detailRole)
+      BIND(?sharedLabel AS ?detailLabel)
+      BIND(?sharedValue AS ?detailValue)
+      BIND(?sharedSort AS ?detailSortOrder)
+    }
+  }
+  UNION {
+    VALUES (?actionId ?actionLabel ?actionDescription ?uiPlacement) {
+      ("RecordValidationReview" "Record validation review" "Record operator review of validation evidence without overwriting canonical validation evidence." "summary")
+      ("RecordValidationReview" "Record validation review" "Record operator review of validation evidence without overwriting canonical validation evidence." "trust")
+    }
+    {
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("requiredParameter" "incidentUri" "incidentUri" "incidentUri" 300)
+        ("requiredParameter" "validationEvidenceUri" "validationEvidenceUri" "validationEvidenceUri" 301)
+        ("requiredParameter" "reviewedStatus" "reviewedStatus" "reviewedStatus" 302)
+        ("requiredParameter" "reviewerId" "reviewerId" "reviewerId" 303)
+        ("requiredParameter" "reviewedAt" "reviewedAt" "reviewedAt" 304)
+        ("requiredParameter" "reviewSummary" "reviewSummary" "reviewSummary" 305)
+        ("requiredParameter" "supportingEvidenceUri" "supportingEvidenceUri?" "supportingEvidenceUri?" 306)
+        ("precondition" "validation-stage" "Incident is in validation or blocked by validation evidence" "Incident is in validation or blocked by validation evidence" 500)
+        ("precondition" "review-status-vocabulary" "Reviewed status uses controlled validation vocabulary" "Reviewed status uses controlled validation vocabulary" 501)
+        ("precondition" "conflicting-evidence" "Conflicting evidence is surfaced before submission" "Conflicting evidence is surfaced before submission" 502)
+      }
+    }
+    UNION {
+      BIND("targetObject" AS ?detailKind)
+      BIND("ValidationEvidence" AS ?detailRole)
+      BIND(COALESCE(?validationStatus, "Validation evidence") AS ?detailLabel)
+      BIND(STR(?validationEvidence) AS ?detailValue)
+      BIND(100 AS ?detailSortOrder)
+      FILTER(BOUND(?validationEvidence))
+    }
+    UNION {
+      BIND("targetObject" AS ?detailKind)
+      BIND("InfrastructureIncident" AS ?detailRole)
+      BIND(?incidentId AS ?detailLabel)
+      BIND(STR(?incident) AS ?detailValue)
+      BIND(101 AS ?detailSortOrder)
+    }
+    UNION {
+      BIND("targetObject" AS ?detailKind)
+      BIND("RestoreReadinessFinding" AS ?detailRole)
+      BIND(COALESCE(?restoreReadinessSummary, "Restore readiness finding") AS ?detailLabel)
+      BIND(STR(?restoreReadiness) AS ?detailValue)
+      BIND(102 AS ?detailSortOrder)
+      FILTER(BOUND(?restoreReadiness))
+    }
+    UNION {
+      BIND("disabledReason" AS ?detailKind)
+      BIND("missing-validation-evidence" AS ?detailRole)
+      BIND("Validation evidence URI is missing" AS ?detailLabel)
+      BIND("Validation evidence URI is missing" AS ?detailValue)
+      BIND(910 AS ?detailSortOrder)
+      FILTER(!BOUND(?validationEvidence))
+    }
+    UNION {
+      BIND(?sharedKind AS ?detailKind)
+      BIND(?sharedRole AS ?detailRole)
+      BIND(?sharedLabel AS ?detailLabel)
+      BIND(?sharedValue AS ?detailValue)
+      BIND(?sharedSort AS ?detailSortOrder)
+    }
+  }
+  UNION {
+    VALUES (?actionId ?actionLabel ?actionDescription ?uiPlacement) {
+      ("RequestReasoningRefresh" "Request reasoning refresh" "Request an internal reasoning refresh for the selected incident or asset scope while preserving current approved graph state." "summary")
+    }
+    {
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("requiredParameter" "scopeType" "scopeType" "scopeType" 300)
+        ("requiredParameter" "scopeUri" "scopeUri" "scopeUri" 301)
+        ("requiredParameter" "requestedBy" "requestedBy" "requestedBy" 302)
+        ("requiredParameter" "requestReason" "requestReason" "requestReason" 303)
+        ("requiredParameter" "ruleSetId" "ruleSetId?" "ruleSetId?" 304)
+        ("requiredParameter" "canonicalGraphRelease" "canonicalGraphRelease?" "canonicalGraphRelease?" 305)
+        ("precondition" "canonical-graph" "Canonical graph exists and conforms" "Canonical graph exists and conforms" 500)
+        ("precondition" "approved-rule-set" "Reasoning rule set is approved" "Reasoning rule set is approved" 501)
+        ("precondition" "no-refresh-running" "No refresh is already running for the same scope" "No refresh is already running for the same scope" 502)
+        ("precondition" "controlled-scope" "Scope is controlled and not a browser-supplied graph URI" "Scope is controlled and not a browser-supplied graph URI" 503)
+        ("provenanceRequirement" "reasoning-activity" "ReasoningActivity provenance for any candidate output" "ReasoningActivity provenance for any candidate output" 703)
+        ("disabledReason" "internal-runner-required" "Internal action runner is required before refresh requests can be accepted from the UI" "Internal action runner is required before refresh requests can be accepted from the UI" 910)
+      }
+    }
+    UNION {
+      BIND("targetObject" AS ?detailKind)
+      BIND("InfrastructureIncident" AS ?detailRole)
+      BIND(?incidentId AS ?detailLabel)
+      BIND(STR(?incident) AS ?detailValue)
+      BIND(100 AS ?detailSortOrder)
+    }
+    UNION {
+      BIND("targetObject" AS ?detailKind)
+      BIND("InfrastructureAsset" AS ?detailRole)
+      BIND(?assetId AS ?detailLabel)
+      BIND(STR(?asset) AS ?detailValue)
+      BIND(101 AS ?detailSortOrder)
+    }
+    UNION {
+      BIND(?sharedKind AS ?detailKind)
+      BIND(?sharedRole AS ?detailRole)
+      BIND(?sharedLabel AS ?detailLabel)
+      BIND(?sharedValue AS ?detailValue)
+      BIND(?sharedSort AS ?detailSortOrder)
+    }
+  }
+
+  FILTER(STRSTARTS(STR(?graph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?graph), "urn:dcai:graph:canonical:"))
+  FILTER(?incidentId = COALESCE(?incidentIdParam, ?incidentId))
+}
+ORDER BY ?incidentId ?actionId ?uiPlacement ?detailSortOrder ?detailRole ?detailValue

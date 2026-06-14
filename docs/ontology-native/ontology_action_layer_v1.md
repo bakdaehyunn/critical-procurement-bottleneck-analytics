@@ -217,7 +217,7 @@ V1 UI should show action affordances without claiming writeback is available.
 | Selected finding Summary | Show primary operator action placeholders: acknowledge blocker, assign evidence review, request validation review. UI remains disabled until a governed request path exists. |
 | Trust tab | Place evidence review assignment and validation review actions beside the evidence they affect. |
 | Dependencies tab | Read-only in v1. Do not allow relationship edits from the operator view. |
-| Admin/lifecycle view | Place reasoning finding approval/rejection, reasoning refresh request, and promotion batch approval here. This view does not exist yet and should be a separate future goal. |
+| Admin/lifecycle view | Read-only promotion batch, reasoning refresh, and reasoning approval queues are now visible on the dashboard from approved semantic query IDs. Execution remains disabled and still requires a future governed request surface. |
 
 Action buttons must display one of three states:
 
@@ -276,16 +276,33 @@ approved.
 
 ## Action Status Read Model
 
-Before enabling execution, add read-only query IDs for action state:
+The read-only action status slice is implemented through approved semantic
+query IDs. These expose selected-finding action availability and internal action
+audit state without enabling browser execution or graph mutation:
 
 | Query | Purpose |
 | --- | --- |
-| `semanticAvailableActionsByFinding` | Return action labels, enabled/disabled state, disabled reason, and required parameters for a selected finding. |
-| `semanticActionHistoryByTarget` | Return action audit events for an incident, finding, evidence record, or promotion batch. |
-| `semanticPendingReasoningApprovals` | Return candidate reasoning findings awaiting approve/reject decisions. |
-| `semanticPromotionBatchReviewList` | Return graph lifecycle batches awaiting approval. |
+| `semanticAvailableActionsByFinding` | Return disabled action affordances, target objects, required parameters, preconditions, provenance requirements, and disabled reasons derived from selected incident, source-record, reasoning, trust, and evidence graph facts. |
+| `semanticPromotionReviewQueue` | Return read-only promotion batch review state derived from managed source, canonical, and provenance graph lifecycle facts. |
+| `semanticReasoningReviewQueue` | Return read-only reasoning refresh and reasoning approval review state derived from canonical, reasoning-audit, and reasoning graph facts. |
+| `semanticActionAuditHistoryByRelease` | Return action audit executions for a managed `urn:dcai:graph:action-audit:*` release. |
+| `semanticActionAuditHistoryByIncident` | Return action audit executions linked to a selected incident through controlled target object links. |
+| `semanticActionAuditHistoryByTarget` | Return action audit executions linked to an incident, finding, evidence record, source record, or other target object URI. |
 
-These are read models. They do not execute actions.
+The availability response contract emits row-level action metadata and graph
+detail facts. The React selected finding view groups those rows into disabled
+action cards instead of constructing action affordance metadata from frontend
+defaults. The action-audit response contract includes action execution, action
+request, validation report, action type, target object, idempotency key, actor,
+timestamps, provenance links, and optional review/assignment fields. The React
+selected finding view displays this as read-only audit history under the
+disabled governed action affordances.
+
+The promotion and reasoning review queue contracts include the governed action
+id, disabled status, target graph/object, managed graph URIs, release/run id,
+graph-backed counts, review status, evidence summary, and disabled reason. The
+React dashboard displays these as internal read-only queues. They do not execute
+actions, approve findings, request refreshes, or mutate graph state.
 
 ## Verification Requirements For Implementation
 

@@ -37,7 +37,13 @@ dcai-query:manifest
     dcai-query:semanticIncidentEvidence,
     dcai-query:semanticIncidentTimeline,
     dcai-query:semanticDependencyImpactByAsset,
-    dcai-query:semanticBlastRadiusByAsset .
+    dcai-query:semanticBlastRadiusByAsset,
+    dcai-query:semanticPromotionReviewQueue,
+    dcai-query:semanticReasoningReviewQueue,
+    dcai-query:semanticAvailableActionsByFinding,
+    dcai-query:semanticActionAuditHistoryByRelease,
+    dcai-query:semanticActionAuditHistoryByIncident,
+    dcai-query:semanticActionAuditHistoryByTarget .
 
 dcai-query:sourceToCanonicalPromotion
   rdf:type dcai-query:QueryEntry ;
@@ -269,4 +275,52 @@ dcai-query:semanticBlastRadiusByAsset
   dcai-query:queryPath "queries/read-model/semantic_blast_radius_by_asset.select.rq" ;
   dcai-query:queryMode "SELECT" ;
   dcai-query:graphScope "fixture or promoted canonical graph, reasoning graph" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticPromotionReviewQueue
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic promotion batch review queue read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_promotion_review_queue.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "fixture or promoted source, canonical, and provenance graph lifecycle state" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticReasoningReviewQueue
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic reasoning refresh and approval review queue read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_reasoning_review_queue.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "promoted canonical graph, reasoning-audit graph, reasoning graph" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticAvailableActionsByFinding
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic available ontology actions by selected finding read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_available_actions_by_finding.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "fixture or promoted canonical graph, reasoning graph" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticActionAuditHistoryByRelease
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic action audit history by release read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_action_audit_history_by_release.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "managed action-audit graph" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticActionAuditHistoryByIncident
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic action audit history by incident read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_action_audit_history_by_incident.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "managed action-audit graph, promoted canonical graph" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticActionAuditHistoryByTarget
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic action audit history by target object read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_action_audit_history_by_target.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "managed action-audit graph" ;
   dcai-query:implementationStatus "phase16-approved" .

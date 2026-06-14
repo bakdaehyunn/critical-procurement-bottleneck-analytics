@@ -159,6 +159,9 @@ components:
         - $ref: "#/components/schemas/IncidentTimelineResponse"
         - $ref: "#/components/schemas/DependencyImpactResponse"
         - $ref: "#/components/schemas/BlastRadiusResponse"
+        - $ref: "#/components/schemas/OntologyReviewQueueResponse"
+        - $ref: "#/components/schemas/ActionAvailabilityResponse"
+        - $ref: "#/components/schemas/ActionAuditHistoryResponse"
       discriminator:
         propertyName: resultType
         mapping:
@@ -181,6 +184,9 @@ components:
           incident-timeline: "#/components/schemas/IncidentTimelineResponse"
           dependency-impact: "#/components/schemas/DependencyImpactResponse"
           blast-radius: "#/components/schemas/BlastRadiusResponse"
+          ontology-review-queue: "#/components/schemas/OntologyReviewQueueResponse"
+          action-availability: "#/components/schemas/ActionAvailabilityResponse"
+          action-audit-history: "#/components/schemas/ActionAuditHistoryResponse"
     QueryResultEnvelopeBase:
       type: object
       required:
@@ -214,6 +220,9 @@ components:
             - incident-timeline
             - dependency-impact
             - blast-radius
+            - ontology-review-queue
+            - action-availability
+            - action-audit-history
         recordCount:
           type: integer
           minimum: 0
@@ -1108,6 +1117,258 @@ components:
         findingUri:
           type: string
         findingSummary:
+          type: string
+      additionalProperties: false
+    ActionAvailabilityResponse:
+      allOf:
+        - $ref: "#/components/schemas/QueryResultEnvelopeBase"
+        - type: object
+          properties:
+            resultType:
+              type: string
+              enum:
+                - action-availability
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/ActionAvailabilityRecord"
+    ActionAvailabilityRecord:
+      type: object
+      required:
+        - graphUri
+        - incidentUri
+        - incidentId
+        - assetUri
+        - assetId
+        - sourceRecordUri
+        - actionId
+        - actionLabel
+        - actionDescription
+        - actionStatus
+        - uiPlacement
+        - detailKind
+        - detailRole
+        - detailLabel
+        - detailValue
+        - detailSortOrder
+      properties:
+        graphUri:
+          type: string
+        incidentUri:
+          type: string
+        incidentId:
+          type: string
+        assetUri:
+          type: string
+        assetId:
+          type: string
+        sourceRecordUri:
+          type: string
+        actionId:
+          type: string
+        actionLabel:
+          type: string
+        actionDescription:
+          type: string
+        actionStatus:
+          type: string
+          enum:
+            - DISABLED
+        uiPlacement:
+          type: string
+          enum:
+            - summary
+            - trust
+        detailKind:
+          type: string
+          enum:
+            - targetObject
+            - requiredParameter
+            - precondition
+            - provenanceRequirement
+            - disabledReason
+        detailRole:
+          type: string
+        detailLabel:
+          type: string
+        detailValue:
+          type: string
+        detailSortOrder:
+          type: integer
+      additionalProperties: false
+    OntologyReviewQueueResponse:
+      allOf:
+        - $ref: "#/components/schemas/QueryResultEnvelopeBase"
+        - type: object
+          properties:
+            resultType:
+              type: string
+              enum:
+                - ontology-review-queue
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/OntologyReviewQueueRecord"
+    OntologyReviewQueueRecord:
+      type: object
+      required:
+        - graphUri
+        - queueId
+        - queueKind
+        - reviewActionId
+        - reviewActionLabel
+        - reviewStatus
+        - targetUri
+        - targetType
+        - targetLabel
+        - releaseId
+        - evidenceSummary
+        - actionStatus
+        - disabledReason
+        - incidentCount
+        - assetCount
+        - sourceRecordCount
+        - activityCount
+        - generatedFactCount
+        - prioritySortOrder
+      properties:
+        graphUri:
+          type: string
+        queueId:
+          type: string
+        queueKind:
+          type: string
+          enum:
+            - promotion-batch
+            - reasoning-refresh
+            - reasoning-approval
+        reviewActionId:
+          type: string
+        reviewActionLabel:
+          type: string
+        reviewStatus:
+          type: string
+        targetUri:
+          type: string
+        targetType:
+          type: string
+        targetLabel:
+          type: string
+        releaseId:
+          type: string
+        sourceGraphUri:
+          type: string
+        canonicalGraphUri:
+          type: string
+        provenanceGraphUri:
+          type: string
+        reasoningAuditGraphUri:
+          type: string
+        reasoningGraphUri:
+          type: string
+        evidenceSummary:
+          type: string
+        actionStatus:
+          type: string
+          enum:
+            - DISABLED
+        disabledReason:
+          type: string
+        incidentCount:
+          type: integer
+        assetCount:
+          type: integer
+        sourceRecordCount:
+          type: integer
+        activityCount:
+          type: integer
+        generatedFactCount:
+          type: integer
+        prioritySortOrder:
+          type: integer
+      additionalProperties: false
+    ActionAuditHistoryResponse:
+      allOf:
+        - $ref: "#/components/schemas/QueryResultEnvelopeBase"
+        - type: object
+          properties:
+            resultType:
+              type: string
+              enum:
+                - action-audit-history
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/ActionAuditHistoryRecord"
+    ActionAuditHistoryRecord:
+      type: object
+      required:
+        - graphUri
+        - actionAuditReleaseId
+        - executionUri
+        - executionId
+        - requestUri
+        - requestId
+        - validationReportUri
+        - actionTypeUri
+        - actionTypeId
+        - idempotencyKey
+        - actorId
+        - actionReason
+        - actionStatus
+        - requestedAt
+        - executedAt
+        - validationStatus
+      properties:
+        graphUri:
+          type: string
+        actionAuditReleaseId:
+          type: string
+        executionUri:
+          type: string
+        executionId:
+          type: string
+        requestUri:
+          type: string
+        requestId:
+          type: string
+        validationReportUri:
+          type: string
+        actionTypeUri:
+          type: string
+        actionTypeId:
+          type: string
+        actionTypeLabel:
+          type: string
+        idempotencyKey:
+          type: string
+        actorId:
+          type: string
+        actionReason:
+          type: string
+        actionStatus:
+          type: string
+        requestedAt:
+          type: string
+        executedAt:
+          type: string
+        targetObjectUri:
+          type: string
+        validationStatus:
+          type: string
+        validationSummary:
+          type: string
+        sourceRecordUri:
+          type: string
+        assignedTeam:
+          type: string
+        assigneeId:
+          type: string
+        reviewedStatus:
+          type: string
+        reviewSummary:
+          type: string
+        supportingEvidenceUri:
           type: string
       additionalProperties: false
     ReasoningValidationRequest:

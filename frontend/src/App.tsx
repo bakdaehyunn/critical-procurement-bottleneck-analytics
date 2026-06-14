@@ -27,7 +27,9 @@ import {
   type FollowUpItem,
   type InfrastructureDependency,
   type OntologyActionAffordance,
+  type OntologyActionAuditHistoryItem,
   type OntologyActionPlacement,
+  type OntologyReviewQueueItem,
   type RequestDetail,
   type RequestSemanticContext,
   fetchDashboardData,
@@ -203,6 +205,9 @@ function FollowUpQueuePage() {
       <SectionLabel label="Graph Insight" />
       <QueueIntelligence rows={followUps} selectedRow={selectedFollowUp} summary={queueSummary} />
 
+      <SectionLabel label="Internal Review Queues" />
+      <OntologyReviewQueuePanel rows={dashboard?.ontologyReviewQueue ?? []} loading={loading} />
+
       <SectionLabel label="Semantic Findings" />
       <section id="semantic-findings" className="queue-scope-bar" aria-label="Semantic finding scopes">
         <div>
@@ -375,6 +380,73 @@ function QueueIntelligence({ rows, selectedRow, summary }: {
       </div>
     </section>
   )
+}
+
+function OntologyReviewQueuePanel({ rows, loading }: {
+  rows: OntologyReviewQueueItem[]
+  loading: boolean
+}) {
+  const visibleRows = rows.slice(0, 6)
+  if (loading) {
+    return <section className="ontology-review-queue loading-state">Loading lifecycle review state</section>
+  }
+  if (!visibleRows.length) {
+    return <section className="ontology-review-queue empty-state">No lifecycle or reasoning review state is available from approved semantic queries</section>
+  }
+  return (
+    <section className="ontology-review-queue" aria-label="Internal ontology lifecycle and reasoning review queues">
+      {visibleRows.map((row) => (
+        <article className={`ontology-review-card ${reviewQueueTone(row)}`} key={row.queue_id}>
+          <div className="ontology-review-card-header">
+            <div>
+              <span>{formatReviewQueueKind(row.queue_kind)}</span>
+              <strong>{row.review_action_label}</strong>
+            </div>
+            <button type="button" disabled title={row.disabled_reason}>
+              {formatStage(row.action_status)}
+            </button>
+          </div>
+          <p>{row.evidence_summary}</p>
+          <div className="ontology-review-facts">
+            <SummaryMetric label="Status" value={formatStage(row.review_status)} tone={reviewStatusTone(row.review_status)} />
+            <SummaryMetric label="Release" value={row.release_id} detail={row.target_type} />
+            <SummaryMetric label="Incidents" value={String(row.incident_count)} />
+            <SummaryMetric label="Activities" value={String(row.activity_count)} detail={`${row.generated_fact_count} generated facts`} />
+          </div>
+          <div className="ontology-review-graphs">
+            <ActionHistoryLink label="Target" uri={row.target_uri} />
+            <ActionHistoryLink label="Canonical" uri={row.canonical_graph_uri} />
+            <ActionHistoryLink label="Provenance" uri={row.provenance_graph_uri} />
+            <ActionHistoryLink label="Reasoning audit" uri={row.reasoning_audit_graph_uri} />
+            <ActionHistoryLink label="Reasoning" uri={row.reasoning_graph_uri} />
+          </div>
+          <div className="ontology-review-disabled">
+            <span>Disabled reason</span>
+            <strong>{row.disabled_reason}</strong>
+          </div>
+        </article>
+      ))}
+    </section>
+  )
+}
+
+function formatReviewQueueKind(queueKind: string) {
+  if (queueKind === 'promotion-batch') return 'Promotion batch review'
+  if (queueKind === 'reasoning-refresh') return 'Reasoning refresh review'
+  if (queueKind === 'reasoning-approval') return 'Reasoning approval review'
+  return formatStage(queueKind)
+}
+
+function reviewQueueTone(row: OntologyReviewQueueItem) {
+  if (row.review_status.startsWith('PENDING')) return 'warning'
+  if (row.review_status.includes('APPROVED') || row.review_status === 'REFRESHED') return 'ok'
+  return ''
+}
+
+function reviewStatusTone(status: string): 'ok' | 'warning' | 'danger' | undefined {
+  if (status.startsWith('PENDING')) return 'warning'
+  if (status.includes('APPROVED') || status === 'REFRESHED') return 'ok'
+  return undefined
 }
 
 function buildSelectedFollowUpIntelligence(row: FollowUpItem): QueueIntelligenceItem[] {
@@ -896,6 +968,7 @@ function OntologyActionPanel({ detail, placement }: {
           <OntologyActionCard action={action} key={`${placement}-${action.action_id}`} />
         ))}
       </div>
+      <OntologyActionAuditHistoryPanel history={detail.action_audit_history} />
     </section>
   )
 }
@@ -966,6 +1039,84 @@ function ActionDetailGroup({ title, tone, children }: {
       <ul>{children}</ul>
     </div>
   )
+}
+
+function OntologyActionAuditHistoryPanel({ history }: { history: OntologyActionAuditHistoryItem[] }) {
+  const groupedHistory = uniqueActionAuditHistory(history)
+  return (
+    <div className="ontology-action-audit-history" aria-label="Ontology action audit history">
+      <div className="ontology-action-history-header">
+        <GitBranch size={16} />
+        <div>
+          <span>Action audit history</span>
+          <strong>{groupedHistory.length ? `${groupedHistory.length} audited execution${groupedHistory.length === 1 ? '' : 's'}` : 'No audited executions for this finding'}</strong>
+        </div>
+      </div>
+      {groupedHistory.length ? (
+        <div className="ontology-action-history-list">
+          {groupedHistory.map((item) => (
+            <article className="ontology-action-history-card" key={item.execution_uri}>
+              <div className="ontology-action-history-card-header">
+                <div>
+                  <span>{item.action_audit_release_id}</span>
+                  <strong>{item.action_type_label ?? item.action_type_id}</strong>
+                </div>
+                <span className={item.validation_status === 'CONFORMS' ? 'history-status ok' : 'history-status warning'}>
+                  {formatStage(item.action_status)} · {formatStage(item.validation_status)}
+                </span>
+              </div>
+              <p>{item.action_reason}</p>
+              <div className="ontology-action-history-facts">
+                <SummaryMetric label="Actor" value={item.actor_id} detail={item.executed_at} />
+                <SummaryMetric label="Idempotency" value={item.idempotency_key} detail={item.request_id} />
+                <SummaryMetric label="Validation" value={formatStage(item.validation_status)} detail={item.validation_summary ?? 'No validation summary'} tone={item.validation_status === 'CONFORMS' ? 'ok' : 'warning'} />
+                <SummaryMetric label="Graph" value={uriTail(item.graph_uri)} detail={item.action_audit_release_id} />
+              </div>
+              <div className="ontology-action-history-links">
+                <ActionHistoryLink label="Execution" uri={item.execution_uri} />
+                <ActionHistoryLink label="Request" uri={item.request_uri} />
+                <ActionHistoryLink label="Target" uri={item.target_object_uri} />
+                <ActionHistoryLink label="Source" uri={item.source_record_uri} />
+                <ActionHistoryLink label="Validation report" uri={item.validation_report_uri} />
+                <ActionHistoryLink label="Supporting evidence" uri={item.supporting_evidence_uri} />
+              </div>
+              {item.assigned_team || item.assignee_id || item.reviewed_status || item.review_summary ? (
+                <div className="ontology-action-review-note">
+                  <span>{[item.assigned_team, item.assignee_id, item.reviewed_status].filter(Boolean).join(' · ')}</span>
+                  {item.review_summary ? <strong>{item.review_summary}</strong> : null}
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state compact-empty">No internal action audit records are linked to this selected incident yet.</div>
+      )}
+    </div>
+  )
+}
+
+function ActionHistoryLink({ label, uri }: { label: string; uri: string | null }) {
+  if (!uri) {
+    return null
+  }
+  return (
+    <div>
+      <span>{label}</span>
+      <code>{uri}</code>
+    </div>
+  )
+}
+
+function uniqueActionAuditHistory(history: OntologyActionAuditHistoryItem[]): OntologyActionAuditHistoryItem[] {
+  const byExecution = new Map<string, OntologyActionAuditHistoryItem>()
+  history.forEach((item) => {
+    const existing = byExecution.get(item.execution_uri)
+    if (!existing || (!existing.target_object_uri && item.target_object_uri)) {
+      byExecution.set(item.execution_uri, item)
+    }
+  })
+  return Array.from(byExecution.values()).sort((left, right) => right.executed_at.localeCompare(left.executed_at))
 }
 
 function SemanticExplanationCanvas({ detail, semanticContext, topologyDependencies }: {
@@ -1610,6 +1761,10 @@ function formatStage(value: string) {
     .split(/[_-]+/)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
+}
+
+function uriTail(value: string) {
+  return value.split(/[#:]/).filter(Boolean).pop() ?? value
 }
 
 function trustStatusLabel(status: string) {

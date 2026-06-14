@@ -31,6 +31,14 @@ class QueryResultShaper(
             "semanticIncidentTimeline" -> shapeIncidentTimeline(report, definition)
             "semanticDependencyImpactByAsset" -> shapeDependencyImpact(report, definition)
             "semanticBlastRadiusByAsset" -> shapeBlastRadius(report, definition)
+            "semanticPromotionReviewQueue",
+            "semanticReasoningReviewQueue",
+            -> shapeOntologyReviewQueue(report, definition)
+            "semanticAvailableActionsByFinding" -> shapeActionAvailability(report, definition)
+            "semanticActionAuditHistoryByRelease",
+            "semanticActionAuditHistoryByIncident",
+            "semanticActionAuditHistoryByTarget",
+            -> shapeActionAuditHistory(report, definition)
             else -> error("No result envelope contract for query id: ${report.queryId}")
         }
     }
@@ -573,6 +581,113 @@ class QueryResultShaper(
                     incidentId = row.optional("incidentId"),
                     findingUri = row.optional("finding"),
                     findingSummary = row.optional("findingSummary"),
+                )
+            },
+            provenance = provenance(definition),
+        )
+    }
+
+    private fun shapeOntologyReviewQueue(
+        report: QueryExecutionReport,
+        definition: ApprovedQueryDefinition,
+    ): OntologyReviewQueueEnvelope {
+        return OntologyReviewQueueEnvelope(
+            queryId = report.queryId,
+            records = report.rows.map { row ->
+                OntologyReviewQueueRecord(
+                    graphUri = row.required("graph"),
+                    queueId = row.required("queueId"),
+                    queueKind = row.required("queueKind"),
+                    reviewActionId = row.required("reviewActionId"),
+                    reviewActionLabel = row.required("reviewActionLabel"),
+                    reviewStatus = row.required("reviewStatus"),
+                    targetUri = row.required("targetUri"),
+                    targetType = row.required("targetType"),
+                    targetLabel = row.required("targetLabel"),
+                    releaseId = row.required("releaseId"),
+                    sourceGraphUri = row.optional("sourceGraph"),
+                    canonicalGraphUri = row.optional("canonicalGraph"),
+                    provenanceGraphUri = row.optional("provenanceGraph"),
+                    reasoningAuditGraphUri = row.optional("reasoningAuditGraph"),
+                    reasoningGraphUri = row.optional("reasoningGraph"),
+                    evidenceSummary = row.required("evidenceSummary"),
+                    actionStatus = row.required("actionStatus"),
+                    disabledReason = row.required("disabledReason"),
+                    incidentCount = row.requiredInt("incidentCount"),
+                    assetCount = row.requiredInt("assetCount"),
+                    sourceRecordCount = row.requiredInt("sourceRecordCount"),
+                    activityCount = row.requiredInt("activityCount"),
+                    generatedFactCount = row.requiredInt("generatedFactCount"),
+                    prioritySortOrder = row.requiredInt("prioritySortOrder"),
+                )
+            },
+            provenance = provenance(definition),
+        )
+    }
+
+    private fun shapeActionAuditHistory(
+        report: QueryExecutionReport,
+        definition: ApprovedQueryDefinition,
+    ): ActionAuditHistoryEnvelope {
+        return ActionAuditHistoryEnvelope(
+            queryId = report.queryId,
+            records = report.rows.map { row ->
+                ActionAuditHistoryRecord(
+                    graphUri = row.required("graph"),
+                    actionAuditReleaseId = row.required("actionAuditReleaseId"),
+                    executionUri = row.required("execution"),
+                    executionId = row.required("executionId"),
+                    requestUri = row.required("request"),
+                    requestId = row.required("requestId"),
+                    validationReportUri = row.required("validationReport"),
+                    actionTypeUri = row.required("actionType"),
+                    actionTypeId = row.required("actionTypeId"),
+                    actionTypeLabel = row.optional("actionTypeLabel"),
+                    idempotencyKey = row.required("idempotencyKey"),
+                    actorId = row.required("actorId"),
+                    actionReason = row.required("actionReason"),
+                    actionStatus = row.required("actionStatus"),
+                    requestedAt = row.required("requestedAt"),
+                    executedAt = row.required("executedAt"),
+                    targetObjectUri = row.optional("targetObject"),
+                    validationStatus = row.required("validationStatus"),
+                    validationSummary = row.optional("validationSummary"),
+                    sourceRecordUri = row.optional("sourceRecord"),
+                    assignedTeam = row.optional("assignedTeam"),
+                    assigneeId = row.optional("assigneeId"),
+                    reviewedStatus = row.optional("reviewedStatus"),
+                    reviewSummary = row.optional("reviewSummary"),
+                    supportingEvidenceUri = row.optional("supportingEvidence"),
+                )
+            },
+            provenance = provenance(definition),
+        )
+    }
+
+    private fun shapeActionAvailability(
+        report: QueryExecutionReport,
+        definition: ApprovedQueryDefinition,
+    ): ActionAvailabilityEnvelope {
+        return ActionAvailabilityEnvelope(
+            queryId = report.queryId,
+            records = report.rows.map { row ->
+                ActionAvailabilityRecord(
+                    graphUri = row.required("graph"),
+                    incidentUri = row.required("incident"),
+                    incidentId = row.required("incidentId"),
+                    assetUri = row.required("asset"),
+                    assetId = row.required("assetId"),
+                    sourceRecordUri = row.required("sourceRecord"),
+                    actionId = row.required("actionId"),
+                    actionLabel = row.required("actionLabel"),
+                    actionDescription = row.required("actionDescription"),
+                    actionStatus = row.required("actionStatus"),
+                    uiPlacement = row.required("uiPlacement"),
+                    detailKind = row.required("detailKind"),
+                    detailRole = row.required("detailRole"),
+                    detailLabel = row.required("detailLabel"),
+                    detailValue = row.required("detailValue"),
+                    detailSortOrder = row.requiredInt("detailSortOrder"),
                 )
             },
             provenance = provenance(definition),

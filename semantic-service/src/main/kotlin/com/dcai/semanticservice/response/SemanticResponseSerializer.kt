@@ -1,6 +1,8 @@
 package com.dcai.semanticservice.response
 
 import com.dcai.semanticservice.query.AssetDelaySummaryEnvelope
+import com.dcai.semanticservice.query.ActionAuditHistoryEnvelope
+import com.dcai.semanticservice.query.ActionAvailabilityEnvelope
 import com.dcai.semanticservice.query.BlastRadiusEnvelope
 import com.dcai.semanticservice.query.DashboardOverviewEnvelope
 import com.dcai.semanticservice.query.DependencyImpactEnvelope
@@ -12,6 +14,7 @@ import com.dcai.semanticservice.query.ImpactSummaryEnvelope
 import com.dcai.semanticservice.query.IncidentEvidenceEnvelope
 import com.dcai.semanticservice.query.IncidentTimelineEnvelope
 import com.dcai.semanticservice.query.NamedGraphInventoryEnvelope
+import com.dcai.semanticservice.query.OntologyReviewQueueEnvelope
 import com.dcai.semanticservice.query.ProvenanceSourceRecordsEnvelope
 import com.dcai.semanticservice.query.QueryResultEnvelope
 import com.dcai.semanticservice.query.QueryResultEnvelopeProvenance
@@ -377,6 +380,83 @@ class SemanticResponseSerializer {
                     record.incidentId?.let { put("incidentId", it) }
                     record.findingUri?.let { put("findingUri", it) }
                     record.findingSummary?.let { put("findingSummary", it) }
+                }
+            }
+            is OntologyReviewQueueEnvelope -> envelope.records.map { record ->
+                buildMap {
+                    put("graphUri", record.graphUri)
+                    put("queueId", record.queueId)
+                    put("queueKind", record.queueKind)
+                    put("reviewActionId", record.reviewActionId)
+                    put("reviewActionLabel", record.reviewActionLabel)
+                    put("reviewStatus", record.reviewStatus)
+                    put("targetUri", record.targetUri)
+                    put("targetType", record.targetType)
+                    put("targetLabel", record.targetLabel)
+                    put("releaseId", record.releaseId)
+                    record.sourceGraphUri?.let { put("sourceGraphUri", it) }
+                    record.canonicalGraphUri?.let { put("canonicalGraphUri", it) }
+                    record.provenanceGraphUri?.let { put("provenanceGraphUri", it) }
+                    record.reasoningAuditGraphUri?.let { put("reasoningAuditGraphUri", it) }
+                    record.reasoningGraphUri?.let { put("reasoningGraphUri", it) }
+                    put("evidenceSummary", record.evidenceSummary)
+                    put("actionStatus", record.actionStatus)
+                    put("disabledReason", record.disabledReason)
+                    put("incidentCount", record.incidentCount)
+                    put("assetCount", record.assetCount)
+                    put("sourceRecordCount", record.sourceRecordCount)
+                    put("activityCount", record.activityCount)
+                    put("generatedFactCount", record.generatedFactCount)
+                    put("prioritySortOrder", record.prioritySortOrder)
+                }
+            }
+            is ActionAvailabilityEnvelope -> envelope.records.map { record ->
+                mapOf(
+                    "graphUri" to record.graphUri,
+                    "incidentUri" to record.incidentUri,
+                    "incidentId" to record.incidentId,
+                    "assetUri" to record.assetUri,
+                    "assetId" to record.assetId,
+                    "sourceRecordUri" to record.sourceRecordUri,
+                    "actionId" to record.actionId,
+                    "actionLabel" to record.actionLabel,
+                    "actionDescription" to record.actionDescription,
+                    "actionStatus" to record.actionStatus,
+                    "uiPlacement" to record.uiPlacement,
+                    "detailKind" to record.detailKind,
+                    "detailRole" to record.detailRole,
+                    "detailLabel" to record.detailLabel,
+                    "detailValue" to record.detailValue,
+                    "detailSortOrder" to record.detailSortOrder,
+                )
+            }
+            is ActionAuditHistoryEnvelope -> envelope.records.map { record ->
+                buildMap {
+                    put("graphUri", record.graphUri)
+                    put("actionAuditReleaseId", record.actionAuditReleaseId)
+                    put("executionUri", record.executionUri)
+                    put("executionId", record.executionId)
+                    put("requestUri", record.requestUri)
+                    put("requestId", record.requestId)
+                    put("validationReportUri", record.validationReportUri)
+                    put("actionTypeUri", record.actionTypeUri)
+                    put("actionTypeId", record.actionTypeId)
+                    record.actionTypeLabel?.let { put("actionTypeLabel", it) }
+                    put("idempotencyKey", record.idempotencyKey)
+                    put("actorId", record.actorId)
+                    put("actionReason", record.actionReason)
+                    put("actionStatus", record.actionStatus)
+                    put("requestedAt", record.requestedAt)
+                    put("executedAt", record.executedAt)
+                    record.targetObjectUri?.let { put("targetObjectUri", it) }
+                    put("validationStatus", record.validationStatus)
+                    record.validationSummary?.let { put("validationSummary", it) }
+                    record.sourceRecordUri?.let { put("sourceRecordUri", it) }
+                    record.assignedTeam?.let { put("assignedTeam", it) }
+                    record.assigneeId?.let { put("assigneeId", it) }
+                    record.reviewedStatus?.let { put("reviewedStatus", it) }
+                    record.reviewSummary?.let { put("reviewSummary", it) }
+                    record.supportingEvidenceUri?.let { put("supportingEvidenceUri", it) }
                 }
             }
         }

@@ -2,6 +2,10 @@ package com.dcai.semanticservice.response
 
 import com.dcai.semanticservice.query.AssetDelaySummaryEnvelope
 import com.dcai.semanticservice.query.AssetDelaySummaryRecord
+import com.dcai.semanticservice.query.ActionAuditHistoryEnvelope
+import com.dcai.semanticservice.query.ActionAuditHistoryRecord
+import com.dcai.semanticservice.query.ActionAvailabilityEnvelope
+import com.dcai.semanticservice.query.ActionAvailabilityRecord
 import com.dcai.semanticservice.query.DashboardOverviewEnvelope
 import com.dcai.semanticservice.query.DashboardOverviewRecord
 import com.dcai.semanticservice.query.FilterMetadataEnvelope
@@ -20,6 +24,8 @@ import com.dcai.semanticservice.query.IncidentTimelineEnvelope
 import com.dcai.semanticservice.query.IncidentTimelineRecord
 import com.dcai.semanticservice.query.NamedGraphInventoryEnvelope
 import com.dcai.semanticservice.query.NamedGraphInventoryRecord
+import com.dcai.semanticservice.query.OntologyReviewQueueEnvelope
+import com.dcai.semanticservice.query.OntologyReviewQueueRecord
 import com.dcai.semanticservice.query.ProvenanceSourceRecord
 import com.dcai.semanticservice.query.ProvenanceSourceRecordsEnvelope
 import com.dcai.semanticservice.query.QueryResultEnvelopeProvenance
@@ -128,6 +134,183 @@ class SemanticResponseSerializerTest {
                     "sourceSystemUri" to "urn:dcai:fixture:valid:minimal-incident:facility-ops",
                     "payloadHash" to "sha256:phase3-minimal-incident",
                     "activityUri" to "urn:dcai:fixture:valid:minimal-incident:import-activity-0001",
+                ),
+            ),
+            payload["records"],
+        )
+    }
+
+    @Test
+    fun serializesActionAuditHistoryEnvelopeWithoutNullOptionalFields() {
+        val payload = serializer.serialize(
+            ActionAuditHistoryEnvelope(
+                queryId = "semanticActionAuditHistoryByIncident",
+                records = listOf(
+                    ActionAuditHistoryRecord(
+                        graphUri = "urn:dcai:graph:action-audit:local-action-audit-v1",
+                        actionAuditReleaseId = "local-action-audit-v1",
+                        executionUri = "urn:dcai:ontology-action-execution:ack-restore-001",
+                        executionId = "ack-restore-001",
+                        requestUri = "urn:dcai:ontology-action-request:ack-restore-001",
+                        requestId = "REQ-ACTION-001",
+                        validationReportUri = "urn:dcai:action-validation-report:ack-restore-001",
+                        actionTypeUri = "urn:dcai:ontology-action-type:AcknowledgeRestoreBlocker",
+                        actionTypeId = "AcknowledgeRestoreBlocker",
+                        idempotencyKey = "ack-restore-001",
+                        actorId = "operator-001",
+                        actionReason = "Reviewed restore blocker before shift handoff.",
+                        actionStatus = "AUDITED",
+                        requestedAt = "2026-06-14T10:15:30Z",
+                        executedAt = "2026-06-14T10:15:30Z",
+                        targetObjectUri = "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+                        validationStatus = "CONFORMS",
+                    ),
+                ),
+                provenance = provenance("semanticActionAuditHistoryByIncident"),
+            ),
+        )
+
+        assertEquals("action-audit-history", payload["resultType"])
+        assertEquals(
+            listOf(
+                mapOf(
+                    "graphUri" to "urn:dcai:graph:action-audit:local-action-audit-v1",
+                    "actionAuditReleaseId" to "local-action-audit-v1",
+                    "executionUri" to "urn:dcai:ontology-action-execution:ack-restore-001",
+                    "executionId" to "ack-restore-001",
+                    "requestUri" to "urn:dcai:ontology-action-request:ack-restore-001",
+                    "requestId" to "REQ-ACTION-001",
+                    "validationReportUri" to "urn:dcai:action-validation-report:ack-restore-001",
+                    "actionTypeUri" to "urn:dcai:ontology-action-type:AcknowledgeRestoreBlocker",
+                    "actionTypeId" to "AcknowledgeRestoreBlocker",
+                    "idempotencyKey" to "ack-restore-001",
+                    "actorId" to "operator-001",
+                    "actionReason" to "Reviewed restore blocker before shift handoff.",
+                    "actionStatus" to "AUDITED",
+                    "requestedAt" to "2026-06-14T10:15:30Z",
+                    "executedAt" to "2026-06-14T10:15:30Z",
+                    "targetObjectUri" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+                    "validationStatus" to "CONFORMS",
+                ),
+            ),
+            payload["records"],
+        )
+    }
+
+    @Test
+    fun serializesActionAvailabilityEnvelope() {
+        val payload = serializer.serialize(
+            ActionAvailabilityEnvelope(
+                queryId = "semanticAvailableActionsByFinding",
+                records = listOf(
+                    ActionAvailabilityRecord(
+                        graphUri = "urn:dcai:graph:fixture:canonical:reasoning-output",
+                        incidentUri = "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+                        incidentId = "INC-0001",
+                        assetUri = "urn:dcai:fixture:valid:reasoning-output:asset-a",
+                        assetId = "ASSET-A",
+                        sourceRecordUri = "urn:dcai:fixture:valid:reasoning-output:source-record-0001",
+                        actionId = "AcknowledgeRestoreBlocker",
+                        actionLabel = "Acknowledge restore blocker",
+                        actionDescription = "Record that an operator reviewed the restore-readiness blocker.",
+                        actionStatus = "DISABLED",
+                        uiPlacement = "summary",
+                        detailKind = "targetObject",
+                        detailRole = "RestoreReadinessFinding",
+                        detailLabel = "Restore is not ready.",
+                        detailValue = "urn:dcai:fixture:valid:reasoning-output:restore-readiness-0001",
+                        detailSortOrder = 100,
+                    ),
+                ),
+                provenance = provenance("semanticAvailableActionsByFinding"),
+            ),
+        )
+
+        assertEquals("action-availability", payload["resultType"])
+        assertEquals(
+            listOf(
+                mapOf(
+                    "graphUri" to "urn:dcai:graph:fixture:canonical:reasoning-output",
+                    "incidentUri" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+                    "incidentId" to "INC-0001",
+                    "assetUri" to "urn:dcai:fixture:valid:reasoning-output:asset-a",
+                    "assetId" to "ASSET-A",
+                    "sourceRecordUri" to "urn:dcai:fixture:valid:reasoning-output:source-record-0001",
+                    "actionId" to "AcknowledgeRestoreBlocker",
+                    "actionLabel" to "Acknowledge restore blocker",
+                    "actionDescription" to "Record that an operator reviewed the restore-readiness blocker.",
+                    "actionStatus" to "DISABLED",
+                    "uiPlacement" to "summary",
+                    "detailKind" to "targetObject",
+                    "detailRole" to "RestoreReadinessFinding",
+                    "detailLabel" to "Restore is not ready.",
+                    "detailValue" to "urn:dcai:fixture:valid:reasoning-output:restore-readiness-0001",
+                    "detailSortOrder" to 100,
+                ),
+            ),
+            payload["records"],
+        )
+    }
+
+    @Test
+    fun serializesOntologyReviewQueueEnvelopeWithoutNullOptionalFields() {
+        val payload = serializer.serialize(
+            OntologyReviewQueueEnvelope(
+                queryId = "semanticReasoningReviewQueue",
+                records = listOf(
+                    OntologyReviewQueueRecord(
+                        graphUri = "urn:dcai:graph:reasoning-audit:local-controlled-reasoning-v1",
+                        queueId = "reasoning-approval:local-controlled-reasoning-v1:RestoreReadinessFinding",
+                        queueKind = "reasoning-approval",
+                        reviewActionId = "ApproveReasoningFinding",
+                        reviewActionLabel = "Review reasoning finding approval",
+                        reviewStatus = "PENDING_APPROVAL_REVIEW",
+                        targetUri = "urn:dcai:reasoning:restore-readiness:INC-0001",
+                        targetType = "RestoreReadinessFinding",
+                        targetLabel = "Restore is not ready.",
+                        releaseId = "local-controlled-reasoning-v1",
+                        canonicalGraphUri = "urn:dcai:graph:canonical:local-controlled-source-v1",
+                        reasoningAuditGraphUri = "urn:dcai:graph:reasoning-audit:local-controlled-reasoning-v1",
+                        evidenceSummary = "Reasoning-audit graph contains candidate findings.",
+                        actionStatus = "DISABLED",
+                        disabledReason = "Reasoning finding approval remains internal-only.",
+                        incidentCount = 1,
+                        assetCount = 1,
+                        sourceRecordCount = 2,
+                        activityCount = 1,
+                        generatedFactCount = 1,
+                        prioritySortOrder = 110,
+                    ),
+                ),
+                provenance = provenance("semanticReasoningReviewQueue"),
+            ),
+        )
+
+        assertEquals("ontology-review-queue", payload["resultType"])
+        assertEquals(
+            listOf(
+                mapOf(
+                    "graphUri" to "urn:dcai:graph:reasoning-audit:local-controlled-reasoning-v1",
+                    "queueId" to "reasoning-approval:local-controlled-reasoning-v1:RestoreReadinessFinding",
+                    "queueKind" to "reasoning-approval",
+                    "reviewActionId" to "ApproveReasoningFinding",
+                    "reviewActionLabel" to "Review reasoning finding approval",
+                    "reviewStatus" to "PENDING_APPROVAL_REVIEW",
+                    "targetUri" to "urn:dcai:reasoning:restore-readiness:INC-0001",
+                    "targetType" to "RestoreReadinessFinding",
+                    "targetLabel" to "Restore is not ready.",
+                    "releaseId" to "local-controlled-reasoning-v1",
+                    "canonicalGraphUri" to "urn:dcai:graph:canonical:local-controlled-source-v1",
+                    "reasoningAuditGraphUri" to "urn:dcai:graph:reasoning-audit:local-controlled-reasoning-v1",
+                    "evidenceSummary" to "Reasoning-audit graph contains candidate findings.",
+                    "actionStatus" to "DISABLED",
+                    "disabledReason" to "Reasoning finding approval remains internal-only.",
+                    "incidentCount" to 1,
+                    "assetCount" to 1,
+                    "sourceRecordCount" to 2,
+                    "activityCount" to 1,
+                    "generatedFactCount" to 1,
+                    "prioritySortOrder" to 110,
                 ),
             ),
             payload["records"],

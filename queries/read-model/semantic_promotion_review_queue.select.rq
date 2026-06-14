@@ -1,0 +1,92 @@
+PREFIX dcai: <urn:dcai:ontology:>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT
+  ?graph
+  ?queueId
+  ?queueKind
+  ?reviewActionId
+  ?reviewActionLabel
+  ?reviewStatus
+  ?targetUri
+  ?targetType
+  ?targetLabel
+  ?releaseId
+  ?sourceGraph
+  ?canonicalGraph
+  ?provenanceGraph
+  ?reasoningAuditGraph
+  ?reasoningGraph
+  ?evidenceSummary
+  ?actionStatus
+  ?disabledReason
+  (COUNT(DISTINCT ?incident) AS ?incidentCount)
+  (COUNT(DISTINCT ?asset) AS ?assetCount)
+  (COUNT(DISTINCT ?sourceRecord) AS ?sourceRecordCount)
+  (COUNT(DISTINCT ?promotionActivity) AS ?activityCount)
+  (COUNT(DISTINCT ?generatedFact) AS ?generatedFactCount)
+  ?prioritySortOrder
+WHERE {
+  GRAPH ?canonicalGraph {
+    ?incident rdf:type dcai:InfrastructureIncident ;
+      dcai:hasIdentifier ?incidentId ;
+      dcai:affectsAsset ?asset ;
+      prov:wasDerivedFrom ?sourceRecord .
+  }
+  FILTER(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:"))
+
+  BIND(IF(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:"), STRAFTER(STR(?canonicalGraph), "urn:dcai:graph:canonical:"), STRAFTER(STR(?canonicalGraph), "urn:dcai:graph:fixture:canonical:")) AS ?releaseId)
+  BIND(IF(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:"), IRI(CONCAT("urn:dcai:graph:source:", ?releaseId)), IRI(CONCAT("urn:dcai:graph:fixture:source:", ?releaseId))) AS ?sourceGraph)
+  BIND(IF(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:"), IRI(CONCAT("urn:dcai:graph:provenance:", ?releaseId)), IRI(CONCAT("urn:dcai:graph:fixture:canonical:", ?releaseId))) AS ?provenanceGraph)
+
+  OPTIONAL {
+    GRAPH ?provenanceGraph {
+      ?promotionActivity rdf:type dcai:PromotionActivity ;
+        dcai:hasIdentifier ?releaseId .
+      OPTIONAL { ?promotionActivity prov:generated ?generatedFact . }
+    }
+  }
+  OPTIONAL {
+    GRAPH ?sourceGraph {
+      ?sourceRecord rdf:type dcai:SourceRecord .
+    }
+  }
+
+  BIND(?canonicalGraph AS ?graph)
+  BIND(CONCAT("promotion-batch:", ?releaseId) AS ?queueId)
+  BIND("promotion-batch" AS ?queueKind)
+  BIND("ApprovePromotionBatch" AS ?reviewActionId)
+  BIND("Review promotion batch" AS ?reviewActionLabel)
+  BIND("READ_ONLY_REVIEW" AS ?reviewStatus)
+  BIND(STR(?canonicalGraph) AS ?targetUri)
+  BIND("CanonicalGraphRelease" AS ?targetType)
+  BIND(?releaseId AS ?targetLabel)
+  BIND("" AS ?reasoningAuditGraph)
+  BIND("" AS ?reasoningGraph)
+  BIND("Canonical/source/provenance graph batch is available for lifecycle review." AS ?evidenceSummary)
+  BIND("DISABLED" AS ?actionStatus)
+  BIND("Approval remains internal-only; no browser write endpoint, actor policy, or promotion-decision transaction is exposed." AS ?disabledReason)
+  BIND(200 AS ?prioritySortOrder)
+}
+GROUP BY
+  ?graph
+  ?queueId
+  ?queueKind
+  ?reviewActionId
+  ?reviewActionLabel
+  ?reviewStatus
+  ?targetUri
+  ?targetType
+  ?targetLabel
+  ?releaseId
+  ?sourceGraph
+  ?canonicalGraph
+  ?provenanceGraph
+  ?reasoningAuditGraph
+  ?reasoningGraph
+  ?evidenceSummary
+  ?actionStatus
+  ?disabledReason
+  ?prioritySortOrder
+ORDER BY ?prioritySortOrder ?releaseId

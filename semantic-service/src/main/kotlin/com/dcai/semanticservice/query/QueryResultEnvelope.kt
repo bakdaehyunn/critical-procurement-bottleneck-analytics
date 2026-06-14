@@ -39,6 +39,9 @@ enum class QueryResultType(
     INCIDENT_TIMELINE("incident-timeline"),
     DEPENDENCY_IMPACT("dependency-impact"),
     BLAST_RADIUS("blast-radius"),
+    ONTOLOGY_REVIEW_QUEUE("ontology-review-queue"),
+    ACTION_AVAILABILITY("action-availability"),
+    ACTION_AUDIT_HISTORY("action-audit-history"),
 }
 
 data class NamedGraphInventoryEnvelope(
@@ -545,4 +548,105 @@ data class BlastRadiusRecord(
     val incidentId: String? = null,
     val findingUri: String? = null,
     val findingSummary: String? = null,
+)
+
+data class OntologyReviewQueueEnvelope(
+    override val queryId: String,
+    val records: List<OntologyReviewQueueRecord>,
+    override val provenance: QueryResultEnvelopeProvenance,
+) : QueryResultEnvelope {
+    override val resultType: QueryResultType = QueryResultType.ONTOLOGY_REVIEW_QUEUE
+    override val recordCount: Int = records.size
+}
+
+data class OntologyReviewQueueRecord(
+    val graphUri: String,
+    val queueId: String,
+    val queueKind: String,
+    val reviewActionId: String,
+    val reviewActionLabel: String,
+    val reviewStatus: String,
+    val targetUri: String,
+    val targetType: String,
+    val targetLabel: String,
+    val releaseId: String,
+    val sourceGraphUri: String? = null,
+    val canonicalGraphUri: String? = null,
+    val provenanceGraphUri: String? = null,
+    val reasoningAuditGraphUri: String? = null,
+    val reasoningGraphUri: String? = null,
+    val evidenceSummary: String,
+    val actionStatus: String,
+    val disabledReason: String,
+    val incidentCount: Int,
+    val assetCount: Int,
+    val sourceRecordCount: Int,
+    val activityCount: Int,
+    val generatedFactCount: Int,
+    val prioritySortOrder: Int,
+)
+
+data class ActionAuditHistoryEnvelope(
+    override val queryId: String,
+    val records: List<ActionAuditHistoryRecord>,
+    override val provenance: QueryResultEnvelopeProvenance,
+) : QueryResultEnvelope {
+    override val resultType: QueryResultType = QueryResultType.ACTION_AUDIT_HISTORY
+    override val recordCount: Int = records.size
+}
+
+data class ActionAuditHistoryRecord(
+    val graphUri: String,
+    val actionAuditReleaseId: String,
+    val executionUri: String,
+    val executionId: String,
+    val requestUri: String,
+    val requestId: String,
+    val validationReportUri: String,
+    val actionTypeUri: String,
+    val actionTypeId: String,
+    val actionTypeLabel: String? = null,
+    val idempotencyKey: String,
+    val actorId: String,
+    val actionReason: String,
+    val actionStatus: String,
+    val requestedAt: String,
+    val executedAt: String,
+    val targetObjectUri: String? = null,
+    val validationStatus: String,
+    val validationSummary: String? = null,
+    val sourceRecordUri: String? = null,
+    val assignedTeam: String? = null,
+    val assigneeId: String? = null,
+    val reviewedStatus: String? = null,
+    val reviewSummary: String? = null,
+    val supportingEvidenceUri: String? = null,
+)
+
+data class ActionAvailabilityEnvelope(
+    override val queryId: String,
+    val records: List<ActionAvailabilityRecord>,
+    override val provenance: QueryResultEnvelopeProvenance,
+) : QueryResultEnvelope {
+    override val resultType: QueryResultType = QueryResultType.ACTION_AVAILABILITY
+    override val recordCount: Int = records.size
+}
+
+data class ActionAvailabilityRecord(
+    val graphUri: String,
+    val incidentUri: String,
+    val incidentId: String,
+    val assetUri: String,
+    val assetId: String,
+    val sourceRecordUri: String,
+    val actionId: String,
+    val actionLabel: String,
+    val actionDescription: String,
+    val actionStatus: String,
+    val uiPlacement: String,
+    val detailKind: String,
+    val detailRole: String,
+    val detailLabel: String,
+    val detailValue: String,
+    val detailSortOrder: Int,
 )

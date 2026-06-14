@@ -28,6 +28,12 @@ class QueryResultShaperTest {
             "semanticIncidentTimeline" to definition("semanticIncidentTimeline", "fixture canonical graph"),
             "semanticDependencyImpactByAsset" to definition("semanticDependencyImpactByAsset", "fixture canonical graph"),
             "semanticBlastRadiusByAsset" to definition("semanticBlastRadiusByAsset", "fixture canonical graph"),
+            "semanticPromotionReviewQueue" to definition("semanticPromotionReviewQueue", "fixture or promoted graph lifecycle state"),
+            "semanticReasoningReviewQueue" to definition("semanticReasoningReviewQueue", "reasoning review state"),
+            "semanticAvailableActionsByFinding" to definition("semanticAvailableActionsByFinding", "fixture canonical graph"),
+            "semanticActionAuditHistoryByRelease" to definition("semanticActionAuditHistoryByRelease", "managed action-audit graph"),
+            "semanticActionAuditHistoryByIncident" to definition("semanticActionAuditHistoryByIncident", "managed action-audit graph"),
+            "semanticActionAuditHistoryByTarget" to definition("semanticActionAuditHistoryByTarget", "managed action-audit graph"),
         ),
     )
     private val shaper = QueryResultShaper(manifest)
@@ -605,6 +611,68 @@ class QueryResultShaperTest {
         }
     }
 
+    @Test
+    fun shapesActionAuditHistoryRows() {
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticActionAuditHistoryByIncident",
+                mode = QueryMode.SELECT,
+                rows = listOf(actionAuditHistoryRow()),
+            ),
+        )
+
+        val typed = assertIs<ActionAuditHistoryEnvelope>(envelope)
+        val record = typed.records.single()
+        assertEquals(QueryResultType.ACTION_AUDIT_HISTORY, typed.resultType)
+        assertEquals("local-action-audit-v1", record.actionAuditReleaseId)
+        assertEquals("AcknowledgeRestoreBlocker", record.actionTypeId)
+        assertEquals("operator-001", record.actorId)
+        assertEquals("CONFORMS", record.validationStatus)
+        assertEquals("urn:dcai:fixture:valid:reasoning-output:incident-0001", record.targetObjectUri)
+        assertEquals("managed action-audit graph", typed.provenance.graphScope)
+    }
+
+    @Test
+    fun shapesActionAvailabilityRows() {
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticAvailableActionsByFinding",
+                mode = QueryMode.SELECT,
+                rows = listOf(actionAvailabilityRow()),
+            ),
+        )
+
+        val typed = assertIs<ActionAvailabilityEnvelope>(envelope)
+        val record = typed.records.single()
+        assertEquals(QueryResultType.ACTION_AVAILABILITY, typed.resultType)
+        assertEquals("INC-0001", record.incidentId)
+        assertEquals("AcknowledgeRestoreBlocker", record.actionId)
+        assertEquals("RestoreReadinessFinding", record.detailRole)
+        assertEquals("targetObject", record.detailKind)
+        assertEquals(100, record.detailSortOrder)
+    }
+
+    @Test
+    fun shapesOntologyReviewQueueRows() {
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticReasoningReviewQueue",
+                mode = QueryMode.SELECT,
+                rows = listOf(ontologyReviewQueueRow()),
+            ),
+        )
+
+        val typed = assertIs<OntologyReviewQueueEnvelope>(envelope)
+        val record = typed.records.single()
+        assertEquals(QueryResultType.ONTOLOGY_REVIEW_QUEUE, typed.resultType)
+        assertEquals("reasoning-approval", record.queueKind)
+        assertEquals("ApproveReasoningFinding", record.reviewActionId)
+        assertEquals("PENDING_APPROVAL_REVIEW", record.reviewStatus)
+        assertEquals("ReasoningActivity", record.targetType)
+        assertEquals(3, record.generatedFactCount)
+        assertEquals("reasoning review state", typed.provenance.graphScope)
+    }
+
     private fun followUpQueueRow(): Map<String, String> {
         return mapOf(
             "graph" to "urn:dcai:graph:fixture:canonical:minimal-incident",
@@ -681,6 +749,83 @@ class QueryResultShaperTest {
             "dependencyPath" to "urn:dcai:fixture:valid:dependency-path:power-path-a",
             "pathId" to "PATH-POWER-A",
             "sourceRecord" to "urn:dcai:fixture:valid:dependency-path:SRC-TOPO",
+        )
+    }
+
+    private fun actionAuditHistoryRow(): Map<String, String> {
+        return mapOf(
+            "graph" to "urn:dcai:graph:action-audit:local-action-audit-v1",
+            "actionAuditReleaseId" to "local-action-audit-v1",
+            "execution" to "urn:dcai:ontology-action-execution:ack-restore-001",
+            "executionId" to "ack-restore-001",
+            "request" to "urn:dcai:ontology-action-request:ack-restore-001",
+            "requestId" to "REQ-ACTION-001",
+            "validationReport" to "urn:dcai:action-validation-report:ack-restore-001",
+            "actionType" to "urn:dcai:ontology-action-type:AcknowledgeRestoreBlocker",
+            "actionTypeId" to "AcknowledgeRestoreBlocker",
+            "actionTypeLabel" to "AcknowledgeRestoreBlocker",
+            "idempotencyKey" to "ack-restore-001",
+            "actorId" to "operator-001",
+            "actionReason" to "Reviewed restore blocker before shift handoff.",
+            "actionStatus" to "AUDITED",
+            "requestedAt" to "2026-06-14T10:15:30Z",
+            "executedAt" to "2026-06-14T10:15:30Z",
+            "targetObject" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+            "validationStatus" to "CONFORMS",
+            "validationSummary" to "Ontology action request passed local precondition and provenance validation.",
+            "sourceRecord" to "urn:dcai:fixture:valid:reasoning-output:source-record-0001",
+            "assignedTeam" to "DC_FACILITY_OPS",
+            "assigneeId" to "engineer-017",
+            "reviewedStatus" to "ACKNOWLEDGED",
+            "reviewSummary" to "Blocker reviewed.",
+            "supportingEvidence" to "urn:dcai:fixture:valid:reasoning-output:evidence-0001",
+        )
+    }
+
+    private fun actionAvailabilityRow(): Map<String, String> {
+        return mapOf(
+            "graph" to "urn:dcai:graph:fixture:canonical:reasoning-output",
+            "incident" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+            "incidentId" to "INC-0001",
+            "asset" to "urn:dcai:fixture:valid:reasoning-output:asset-a",
+            "assetId" to "ASSET-A",
+            "sourceRecord" to "urn:dcai:fixture:valid:reasoning-output:source-record-0001",
+            "actionId" to "AcknowledgeRestoreBlocker",
+            "actionLabel" to "Acknowledge restore blocker",
+            "actionDescription" to "Record that an operator reviewed the restore-readiness blocker without changing canonical or reasoning graph state.",
+            "actionStatus" to "DISABLED",
+            "uiPlacement" to "summary",
+            "detailKind" to "targetObject",
+            "detailRole" to "RestoreReadinessFinding",
+            "detailLabel" to "Restore is not ready.",
+            "detailValue" to "urn:dcai:fixture:valid:reasoning-output:restore-readiness-0001",
+            "detailSortOrder" to "100",
+        )
+    }
+
+    private fun ontologyReviewQueueRow(): Map<String, String> {
+        return mapOf(
+            "graph" to "urn:dcai:graph:reasoning-audit:local-controlled-reasoning-v1",
+            "queueId" to "reasoning-approval:local-controlled-reasoning-v1:ReasoningActivity",
+            "queueKind" to "reasoning-approval",
+            "reviewActionId" to "ApproveReasoningFinding",
+            "reviewActionLabel" to "Review reasoning finding approval",
+            "reviewStatus" to "PENDING_APPROVAL_REVIEW",
+            "targetUri" to "urn:dcai:reasoning-activity:local-controlled-reasoning-v1",
+            "targetType" to "ReasoningActivity",
+            "targetLabel" to "local-controlled-reasoning-v1",
+            "releaseId" to "local-controlled-reasoning-v1",
+            "canonicalGraph" to "urn:dcai:graph:canonical:local-controlled-source-v1",
+            "reasoningAuditGraph" to "urn:dcai:graph:reasoning-audit:local-controlled-reasoning-v1",
+            "evidenceSummary" to "Reasoning-audit graph contains candidate findings with ReasoningActivity provenance.",
+            "actionStatus" to "DISABLED",
+            "disabledReason" to "Reasoning finding approval remains internal-only.",
+            "incidentCount" to "2",
+            "assetCount" to "2",
+            "sourceRecordCount" to "4",
+            "activityCount" to "1",
+            "generatedFactCount" to "3",
+            "prioritySortOrder" to "110",
         )
     }
 

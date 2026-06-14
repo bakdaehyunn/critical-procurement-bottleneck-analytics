@@ -42,6 +42,9 @@ Supported Phase 18 response result types:
 - `incident-timeline`
 - `dependency-impact`
 - `blast-radius`
+- `ontology-review-queue`
+- `action-availability`
+- `action-audit-history`
 
 Versioning rules:
 
@@ -351,6 +354,76 @@ Blast radius record:
 - `incidentId`: optional incident identifier
 - `findingUri`: optional blast-radius finding IRI
 - `findingSummary`: optional blast-radius finding summary
+
+Action availability record:
+
+- `graphUri`: canonical graph IRI used to derive the selected finding
+- `incidentUri`: selected incident IRI
+- `incidentId`: selected incident identifier
+- `assetUri`: selected incident asset IRI
+- `assetId`: selected incident asset identifier
+- `sourceRecordUri`: selected incident source record IRI
+- `actionId`: controlled ontology action identifier
+- `actionLabel`: action label
+- `actionDescription`: read-only action description
+- `actionStatus`: disabled action status for browser display
+- `uiPlacement`: selected finding UI placement such as `summary` or `trust`
+- `detailKind`: row category for target objects, required parameters,
+  preconditions, provenance requirements, or disabled reasons
+- `detailRole`: semantic role for the detail row
+- `detailLabel`: human-readable detail label
+- `detailValue`: target object IRI or scalar detail value
+- `detailSortOrder`: stable ordering within the action detail category
+
+Ontology review queue record:
+
+- `graphUri`: graph IRI where the review item was observed
+- `queueId`: stable review queue item identifier
+- `queueKind`: `promotion-batch`, `reasoning-refresh`, or
+  `reasoning-approval`
+- `reviewActionId`: governed action contract associated with the queue item
+- `reviewActionLabel`: display label for the internal review action
+- `reviewStatus`: read-only lifecycle state
+- `targetUri`: primary graph, activity, or finding URI under review
+- `targetType`: target ontology or graph object type
+- `targetLabel`: release id, finding summary, or target label
+- `releaseId`: source promotion release id or reasoning run id
+- `sourceGraphUri`, `canonicalGraphUri`, `provenanceGraphUri`,
+  `reasoningAuditGraphUri`, `reasoningGraphUri`: optional managed graph URIs
+- `evidenceSummary`: graph-backed evidence summary for why the item appears
+- `actionStatus`: always `DISABLED` in this read-only slice
+- `disabledReason`: reason browser action execution is unavailable
+- `incidentCount`, `assetCount`, `sourceRecordCount`, `activityCount`,
+  `generatedFactCount`: graph-backed review counts
+- `prioritySortOrder`: stable ordering for internal review queues
+
+Action audit history record:
+
+- `graphUri`: managed action-audit named graph IRI
+- `actionAuditReleaseId`: release suffix for the action-audit graph
+- `executionUri`: ontology action execution IRI
+- `executionId`: execution identifier
+- `requestUri`: ontology action request IRI
+- `requestId`: request identifier
+- `validationReportUri`: action validation report IRI
+- `actionTypeUri`: controlled action type IRI
+- `actionTypeId`: controlled action type identifier
+- `actionTypeLabel`: optional action type label
+- `idempotencyKey`: deterministic idempotency key
+- `actorId`: internal actor identifier recorded by the audit runner
+- `actionReason`: operator or process reason
+- `actionStatus`: action audit status
+- `requestedAt`: request timestamp
+- `executedAt`: audit execution timestamp
+- `targetObjectUri`: optional target object IRI
+- `validationStatus`: action validation status
+- `validationSummary`: optional validation summary
+- `sourceRecordUri`: optional source record provenance IRI
+- `assignedTeam`: optional assigned team
+- `assigneeId`: optional assignee identifier
+- `reviewedStatus`: optional review status
+- `reviewSummary`: optional review summary
+- `supportingEvidenceUri`: optional supporting evidence IRI
 
 Error DTO:
 

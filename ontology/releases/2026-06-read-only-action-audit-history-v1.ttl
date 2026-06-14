@@ -1,0 +1,29 @@
+@prefix dcai-release: <urn:dcai:release:> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+dcai-release:2026-06-read-only-action-audit-history-v1
+  rdf:type owl:Ontology ;
+  dcterms:title "Read-only ontology action availability, audit history, and lifecycle review v1 release" ;
+  dcterms:description "Read-only action availability, internal lifecycle review queue, and action-audit history release for ontology findings. It adds approved semantic query IDs for graph-backed action availability by selected finding, promotion batch review state, reasoning refresh/approval review state, and action-audit history by release, incident, and target object; typed semantic-service envelopes and serialization; private endpoint allowlist coverage; frontend selected-finding action availability, action audit history, and dashboard lifecycle review queue visibility; focused tests; and docs. This release does not expose public endpoints, add authentication, enable browser action execution, mutate canonical/reasoning/provenance/operations/source graphs, add real external connectors, implement AI governance, commit, or push." ;
+  dcterms:created "2026-06-14"^^xsd:date ;
+  dcterms:requires dcai-release:2026-06-internal-ontology-action-audit-runner-v1 ;
+  dcterms:hasPart
+    <../../queries/manifest.ttl>,
+    <../../queries/read-model/semantic_available_actions_by_finding.select.rq>,
+    <../../queries/read-model/semantic_promotion_review_queue.select.rq>,
+    <../../queries/read-model/semantic_reasoning_review_queue.select.rq>,
+    <../../queries/read-model/semantic_action_audit_history_by_release.select.rq>,
+    <../../queries/read-model/semantic_action_audit_history_by_incident.select.rq>,
+    <../../queries/read-model/semantic_action_audit_history_by_target.select.rq>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/query/QueryResultEnvelope.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/query/QueryResultShaper.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/response/SemanticResponseSerializer.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/api/PrivateSemanticQueryEndpoint.kt>,
+    <../../frontend/src/api.ts>,
+    <../../frontend/src/App.tsx>,
+    <../../frontend/src/App.css>,
+    <../../docs/ontology-native/ontology_action_layer_v1.md>,
+    <../../README.md> .

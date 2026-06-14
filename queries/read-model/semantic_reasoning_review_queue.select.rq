@@ -1,0 +1,135 @@
+PREFIX dcai: <urn:dcai:ontology:>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT
+  ?graph
+  ?queueId
+  ?queueKind
+  ?reviewActionId
+  ?reviewActionLabel
+  ?reviewStatus
+  ?targetUri
+  ?targetType
+  ?targetLabel
+  ?releaseId
+  ?sourceGraph
+  ?canonicalGraph
+  ?provenanceGraph
+  ?reasoningAuditGraph
+  ?reasoningGraph
+  ?evidenceSummary
+  ?actionStatus
+  ?disabledReason
+  (COUNT(DISTINCT ?incident) AS ?incidentCount)
+  (COUNT(DISTINCT ?asset) AS ?assetCount)
+  (COUNT(DISTINCT ?sourceRecord) AS ?sourceRecordCount)
+  (COUNT(DISTINCT ?activity) AS ?activityCount)
+  (COUNT(DISTINCT ?finding) AS ?generatedFactCount)
+  ?prioritySortOrder
+WHERE {
+  {
+    GRAPH ?canonicalGraph {
+      ?incident rdf:type dcai:InfrastructureIncident ;
+        dcai:hasIdentifier ?incidentId ;
+        dcai:affectsAsset ?asset ;
+        prov:wasDerivedFrom ?sourceRecord .
+    }
+    FILTER(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:"))
+    BIND(IF(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:"), STRAFTER(STR(?canonicalGraph), "urn:dcai:graph:canonical:"), STRAFTER(STR(?canonicalGraph), "urn:dcai:graph:fixture:canonical:")) AS ?releaseId)
+    BIND(IF(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:"), IRI(CONCAT("urn:dcai:graph:source:", ?releaseId)), IRI(CONCAT("urn:dcai:graph:fixture:source:", ?releaseId))) AS ?sourceGraph)
+    BIND(IF(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:"), IRI(CONCAT("urn:dcai:graph:provenance:", ?releaseId)), IRI(CONCAT("urn:dcai:graph:fixture:canonical:", ?releaseId))) AS ?provenanceGraph)
+
+    OPTIONAL {
+      GRAPH ?candidateReasoningGraph {
+        ?activity rdf:type dcai:ReasoningActivity ;
+          prov:used ?incident ;
+          prov:generated ?finding .
+        ?finding prov:wasGeneratedBy ?activity .
+      }
+      FILTER(STRSTARTS(STR(?candidateReasoningGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?candidateReasoningGraph), "urn:dcai:graph:reasoning:"))
+    }
+
+    BIND(?canonicalGraph AS ?graph)
+    BIND(CONCAT("reasoning-refresh:", ?releaseId) AS ?queueId)
+    BIND("reasoning-refresh" AS ?queueKind)
+    BIND("RequestReasoningRefresh" AS ?reviewActionId)
+    BIND("Review reasoning refresh need" AS ?reviewActionLabel)
+    BIND(IF(BOUND(?activity), "REFRESHED", "PENDING_REFRESH_REVIEW") AS ?reviewStatus)
+    BIND(STR(?canonicalGraph) AS ?targetUri)
+    BIND("CanonicalGraphRelease" AS ?targetType)
+    BIND(?releaseId AS ?targetLabel)
+    BIND("" AS ?reasoningAuditGraph)
+    BIND(COALESCE(STR(?candidateReasoningGraph), "") AS ?reasoningGraph)
+    BIND(IF(BOUND(?activity), "Reasoning output is linked to canonical incidents by prov:used/prov:generated.", "Canonical graph has no linked reasoning activity visible to this approved read model.") AS ?evidenceSummary)
+    BIND("DISABLED" AS ?actionStatus)
+    BIND("Reasoning refresh requests remain internal-only; no browser write endpoint, actor policy, or scheduler transaction is exposed." AS ?disabledReason)
+    BIND(IF(BOUND(?activity), 420, 100) AS ?prioritySortOrder)
+  }
+  UNION
+  {
+    GRAPH ?reasoningAuditGraph {
+      ?activity rdf:type dcai:ReasoningActivity ;
+        dcai:hasIdentifier ?releaseId ;
+        prov:generated ?finding .
+      ?finding rdf:type ?findingClass ;
+        prov:wasGeneratedBy ?activity ;
+        dcai:hasFindingSummary ?findingSummary .
+      OPTIONAL { ?finding prov:wasDerivedFrom ?incident . }
+    }
+    FILTER(STRSTARTS(STR(?reasoningAuditGraph), "urn:dcai:graph:reasoning-audit:") || STRSTARTS(STR(?reasoningAuditGraph), "urn:dcai:graph:fixture:canonical:"))
+    FILTER(?findingClass IN (dcai:DependencyImpactFinding, dcai:BlastRadiusFinding, dcai:RecoveryBlocker, dcai:RestoreReadinessFinding, dcai:TrustFinding))
+
+    OPTIONAL {
+      GRAPH ?canonicalGraph {
+        ?incident rdf:type dcai:InfrastructureIncident ;
+          dcai:affectsAsset ?asset ;
+          prov:wasDerivedFrom ?sourceRecord .
+      }
+      FILTER(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:"))
+    }
+    OPTIONAL {
+      GRAPH ?reasoningGraph {
+        ?finding prov:wasGeneratedBy ?activity .
+      }
+      FILTER(STRSTARTS(STR(?reasoningGraph), "urn:dcai:graph:reasoning:") || STRSTARTS(STR(?reasoningGraph), "urn:dcai:graph:fixture:canonical:"))
+    }
+
+    BIND(?reasoningAuditGraph AS ?graph)
+    BIND(CONCAT("reasoning-approval:", ?releaseId, ":", STRAFTER(STR(?findingClass), "urn:dcai:ontology:")) AS ?queueId)
+    BIND("reasoning-approval" AS ?queueKind)
+    BIND("ApproveReasoningFinding" AS ?reviewActionId)
+    BIND("Review reasoning finding approval" AS ?reviewActionLabel)
+    BIND(IF(BOUND(?reasoningGraph), "APPROVED_GRAPH_PRESENT", "PENDING_APPROVAL_REVIEW") AS ?reviewStatus)
+    BIND(STR(?finding) AS ?targetUri)
+    BIND(STRAFTER(STR(?findingClass), "urn:dcai:ontology:") AS ?targetType)
+    BIND(?findingSummary AS ?targetLabel)
+    BIND("" AS ?sourceGraph)
+    BIND("" AS ?provenanceGraph)
+    BIND("Reasoning-audit graph contains candidate findings with ReasoningActivity provenance." AS ?evidenceSummary)
+    BIND("DISABLED" AS ?actionStatus)
+    BIND("Reasoning finding approval remains internal-only; no browser promotion transaction or authorization policy is exposed." AS ?disabledReason)
+    BIND(IF(BOUND(?reasoningGraph), 430, 110) AS ?prioritySortOrder)
+  }
+}
+GROUP BY
+  ?graph
+  ?queueId
+  ?queueKind
+  ?reviewActionId
+  ?reviewActionLabel
+  ?reviewStatus
+  ?targetUri
+  ?targetType
+  ?targetLabel
+  ?releaseId
+  ?sourceGraph
+  ?canonicalGraph
+  ?provenanceGraph
+  ?reasoningAuditGraph
+  ?reasoningGraph
+  ?evidenceSummary
+  ?actionStatus
+  ?disabledReason
+  ?prioritySortOrder
+ORDER BY ?prioritySortOrder ?queueKind ?releaseId ?targetType

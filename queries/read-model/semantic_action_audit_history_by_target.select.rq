@@ -1,0 +1,68 @@
+PREFIX dcai: <urn:dcai:ontology:>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT
+  ?graph
+  ?actionAuditReleaseId
+  ?execution
+  ?executionId
+  ?request
+  ?requestId
+  ?validationReport
+  ?actionType
+  ?actionTypeId
+  ?actionTypeLabel
+  ?idempotencyKey
+  ?actorId
+  ?actionReason
+  ?actionStatus
+  ?requestedAt
+  ?executedAt
+  ?targetObject
+  ?validationStatus
+  ?validationSummary
+  ?sourceRecord
+  ?assignedTeam
+  ?assigneeId
+  ?reviewedStatus
+  ?reviewSummary
+  ?supportingEvidence
+WHERE {
+  GRAPH ?graph {
+    ?execution rdf:type dcai:OntologyActionExecution ;
+      dcai:hasIdentifier ?executionId ;
+      dcai:hasIdempotencyKey ?idempotencyKey ;
+      dcai:hasActionType ?actionType ;
+      dcai:hasActorId ?actorId ;
+      dcai:hasActionReason ?actionReason ;
+      dcai:hasActionStatus ?actionStatus ;
+      dcai:hasTargetObject ?targetObject ;
+      prov:used ?request ;
+      prov:generated ?validationReport ;
+      prov:generatedAtTime ?executedAt .
+
+    ?request rdf:type dcai:OntologyActionRequest ;
+      dcai:hasIdentifier ?requestId ;
+      prov:generatedAtTime ?requestedAt .
+
+    ?actionType dcai:hasIdentifier ?actionTypeId .
+
+    ?validationReport rdf:type dcai:ActionValidationReport ;
+      dcai:hasActionValidationStatus ?validationStatus .
+
+    OPTIONAL { ?actionType rdfs:label ?actionTypeLabel . }
+    OPTIONAL { ?validationReport dcai:hasFindingSummary ?validationSummary . }
+    OPTIONAL { ?execution prov:wasDerivedFrom ?sourceRecord . }
+    OPTIONAL { ?execution dcai:hasAssignedTeam ?assignedTeam . }
+    OPTIONAL { ?execution dcai:hasAssigneeId ?assigneeId . }
+    OPTIONAL { ?execution dcai:hasReviewedStatus ?reviewedStatus . }
+    OPTIONAL { ?execution dcai:hasReviewSummary ?reviewSummary . }
+    OPTIONAL { ?execution dcai:hasSupportingEvidence ?supportingEvidence . }
+  }
+  FILTER(STRSTARTS(STR(?graph), "urn:dcai:graph:action-audit:"))
+  BIND(STRAFTER(STR(?graph), "urn:dcai:graph:action-audit:") AS ?actionAuditReleaseId)
+  FILTER(STR(?targetObject) = COALESCE(?targetObjectUriParam, STR(?targetObject)))
+}
+ORDER BY DESC(?executedAt) ?execution ?targetObject

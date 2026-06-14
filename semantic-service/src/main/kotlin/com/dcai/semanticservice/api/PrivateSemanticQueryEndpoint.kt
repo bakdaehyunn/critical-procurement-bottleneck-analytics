@@ -193,6 +193,12 @@ class PrivateSemanticQueryEndpoint(
             "semanticIncidentTimeline",
             "semanticDependencyImpactByAsset",
             "semanticBlastRadiusByAsset",
+            "semanticPromotionReviewQueue",
+            "semanticReasoningReviewQueue",
+            "semanticAvailableActionsByFinding",
+            "semanticActionAuditHistoryByRelease",
+            "semanticActionAuditHistoryByIncident",
+            "semanticActionAuditHistoryByTarget",
         )
     }
 }
