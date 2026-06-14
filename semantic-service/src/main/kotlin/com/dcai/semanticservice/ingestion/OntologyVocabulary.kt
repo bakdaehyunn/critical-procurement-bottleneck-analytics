@@ -25,6 +25,10 @@ internal object Dcai {
     val ImportActivity = resource("ImportActivity")
     val PromotionActivity = resource("PromotionActivity")
     val ReasoningActivity = resource("ReasoningActivity")
+    val OntologyActionType = resource("OntologyActionType")
+    val OntologyActionRequest = resource("OntologyActionRequest")
+    val OntologyActionExecution = resource("OntologyActionExecution")
+    val ActionValidationReport = resource("ActionValidationReport")
 
     val Facility = resource("Facility")
     val DataHall = resource("DataHall")
@@ -152,6 +156,17 @@ internal object Dcai {
     val hasFindingSummary = property("hasFindingSummary")
     val hasEvidenceSeverity = property("hasEvidenceSeverity")
     val createdAt = property("createdAt")
+    val hasActionType = property("hasActionType")
+    val hasActionStatus = property("hasActionStatus")
+    val hasActionReason = property("hasActionReason")
+    val hasActorId = property("hasActorId")
+    val hasAssigneeId = property("hasAssigneeId")
+    val hasIdempotencyKey = property("hasIdempotencyKey")
+    val hasTargetObject = property("hasTargetObject")
+    val hasActionValidationStatus = property("hasActionValidationStatus")
+    val hasReviewedStatus = property("hasReviewedStatus")
+    val hasReviewSummary = property("hasReviewSummary")
+    val hasSupportingEvidence = property("hasSupportingEvidence")
 
     private fun resource(localName: String) = ResourceFactory.createResource("$NAMESPACE$localName")
 

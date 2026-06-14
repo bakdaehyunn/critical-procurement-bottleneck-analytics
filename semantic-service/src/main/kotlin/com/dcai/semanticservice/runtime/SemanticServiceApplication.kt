@@ -2,6 +2,19 @@ package com.dcai.semanticservice.runtime
 
 import com.dcai.semanticservice.api.PrivateSemanticQueryEndpointServer
 import com.dcai.semanticservice.api.PrivateSemanticQueryEndpointServerConfig
+import com.dcai.semanticservice.actions.OntologyActionAuditInspectionPlan
+import com.dcai.semanticservice.actions.OntologyActionAuditInspectionResult
+import com.dcai.semanticservice.actions.OntologyActionAuditInspector
+import com.dcai.semanticservice.actions.OntologyActionAuditPlan
+import com.dcai.semanticservice.actions.OntologyActionAuditResult
+import com.dcai.semanticservice.actions.OntologyActionAuditService
+import com.dcai.semanticservice.actions.OntologyActionGraphUris
+import com.dcai.semanticservice.actions.OntologyActionPreconditionValidator
+import com.dcai.semanticservice.actions.OntologyActionRequest
+import com.dcai.semanticservice.actions.OntologyActionRequestLoader
+import com.dcai.semanticservice.actions.OntologyActionRdfMapper
+import com.dcai.semanticservice.actions.OntologyActionSubmitter
+import com.dcai.semanticservice.actions.OntologyActionValidationGate
 import com.dcai.semanticservice.connectors.RecordedConnectorSimulationReport
 import com.dcai.semanticservice.connectors.RecordedSourceScenarioGenerationReport
 import com.dcai.semanticservice.connectors.RecordedSourceScenarioGenerationRequest
@@ -120,7 +133,13 @@ object SemanticServiceApplication {
         } else {
             null
         }
-        val graphStore: NamedGraphStore? = if (options.promoteSource || options.refreshReasoning || options.inspectGraphLifecycle) {
+        val graphStore: NamedGraphStore? = if (
+            options.promoteSource ||
+            options.refreshReasoning ||
+            options.inspectGraphLifecycle ||
+            options.submitOntologyAction ||
+            options.inspectActionAudit
+        ) {
             FusekiNamedGraphWriter(FusekiGraphStoreConfig.fromEnvironment())
         } else {
             null
@@ -178,6 +197,40 @@ object SemanticServiceApplication {
         val lifecycleInspector = lifecycleInspectionPlan?.let {
             GraphLifecycleInspector(requireNotNull(graphStore))
         }
+        val ontologyActionRequest = if (options.submitOntologyAction) {
+            loadOntologyActionRequest(
+                repoRoot = repoRoot,
+                actionRequestFile = options.actionRequestFile,
+            )
+        } else {
+            null
+        }
+        val ontologyActionAuditPlan = ontologyActionRequest?.let { request ->
+            OntologyActionAuditPlan(
+                request = request,
+                graphs = OntologyActionGraphUris.forRelease(
+                    sourceReleaseId = options.actionInputReleaseId ?: options.sourceReleaseId,
+                    reasoningRunId = options.actionReasoningRunId ?: options.reasoningRunId,
+                    actionAuditReleaseId = options.actionAuditReleaseId,
+                ),
+            )
+        }
+        val ontologyActionSubmitter = ontologyActionAuditPlan?.let {
+            OntologyActionAuditService(
+                mapper = OntologyActionRdfMapper(),
+                preconditionValidator = OntologyActionPreconditionValidator(),
+                validationGate = OntologyActionValidationGate(repoRoot),
+                graphStore = requireNotNull(graphStore),
+            )
+        }
+        val actionAuditInspectionPlan = if (options.inspectActionAudit) {
+            OntologyActionAuditInspectionPlan(options.inspectActionAuditReleaseId ?: options.actionAuditReleaseId)
+        } else {
+            null
+        }
+        val actionAuditInspector = actionAuditInspectionPlan?.let {
+            OntologyActionAuditInspector(requireNotNull(graphStore))
+        }
         val report = run(
             repoRoot = repoRoot,
             graphClient = graphClient,
@@ -193,6 +246,10 @@ object SemanticServiceApplication {
             lifecycleInspectionPlan = lifecycleInspectionPlan,
             recordedConnectorReport = sourceExtractInput?.recordedConnectorReport,
             generatedScenarioReport = generatedScenarioReport,
+            ontologyActionSubmitter = ontologyActionSubmitter,
+            ontologyActionAuditPlan = ontologyActionAuditPlan,
+            actionAuditInspector = actionAuditInspector,
+            actionAuditInspectionPlan = actionAuditInspectionPlan,
         )
 
         println("DCAI Semantic Service")
@@ -208,6 +265,8 @@ object SemanticServiceApplication {
         println("reasoningRefreshEnabled=${report.reasoningRefreshEnabled}")
         println("graphLifecycleInspectionEnabled=${report.graphLifecycleInspectionEnabled}")
         println("sourceScenarioGenerationEnabled=${report.sourceScenarioGenerationEnabled}")
+        println("ontologyActionAuditEnabled=${report.ontologyActionAuditEnabled}")
+        println("actionAuditInspectionEnabled=${report.actionAuditInspectionEnabled}")
         report.graphConnectionCheck?.let { check ->
             println("graphReachable=${check.reachable}")
             println("graphDatasetUrl=${check.datasetUrl}")
@@ -286,6 +345,26 @@ object SemanticServiceApplication {
                 println("lifecycleTrustFindings=${graph.trustFindingCount}")
             }
         }
+        report.ontologyActionAuditResult?.let { result ->
+            println("ontologyActionAuditSucceeded=${result.audited}")
+            println("ontologyActionAuditGraph=${result.actionAuditGraphUri}")
+            println("ontologyActionAuditWrittenGraphs=${result.writtenGraphUris.size}")
+            println("ontologyActionAuditIdempotentReplay=${result.idempotentReplay}")
+        }
+        report.actionAuditInspectionResult?.let { result ->
+            println("actionAuditInspectionSucceeded=${result.inspected}")
+            println("actionAuditRelease=${result.actionAuditReleaseId}")
+            println("actionAuditGraph=${result.actionAuditGraphUri}")
+            println("actionAuditGraphExists=${result.exists}")
+            println("actionAuditExecutions=${result.executionCount}")
+            println("actionAuditRequests=${result.requestCount}")
+            println("actionAuditValidationReports=${result.validationReportCount}")
+            println("actionAuditIdempotencyKeys=${result.idempotencyKeyCount}")
+            result.latestGeneratedAt?.let { println("actionAuditLatestGeneratedAt=$it") }
+            result.actionTypeCounts.toSortedMap().forEach { (actionType, count) ->
+                println("actionAuditTypeCount.$actionType=$count")
+            }
+        }
 
         if (!report.isReady) {
             report.contractValidation.errors.forEach { error -> println("error=$error") }
@@ -296,6 +375,8 @@ object SemanticServiceApplication {
             report.sourcePromotionResult?.errors?.forEach { error -> println("error=$error") }
             report.reasoningPromotionResult?.errors?.forEach { error -> println("error=$error") }
             report.lifecycleInspectionResult?.errors?.forEach { error -> println("error=$error") }
+            report.ontologyActionAuditResult?.errors?.forEach { error -> println("error=$error") }
+            report.actionAuditInspectionResult?.errors?.forEach { error -> println("error=$error") }
             exitProcess(1)
         }
     }
@@ -316,6 +397,10 @@ object SemanticServiceApplication {
         lifecycleInspectionPlan: GraphLifecycleInspectionPlan? = null,
         recordedConnectorReport: RecordedConnectorSimulationReport? = null,
         generatedScenarioReport: RecordedSourceScenarioGenerationReport? = null,
+        ontologyActionSubmitter: OntologyActionSubmitter? = null,
+        ontologyActionAuditPlan: OntologyActionAuditPlan? = null,
+        actionAuditInspector: OntologyActionAuditInspector? = null,
+        actionAuditInspectionPlan: OntologyActionAuditInspectionPlan? = null,
     ): SemanticServiceRuntimeReport {
         val validation = StaticContractValidator().validate(repoRoot)
         val graphConnectionCheck = graphClient?.checkConnectivity()
@@ -346,6 +431,14 @@ object SemanticServiceApplication {
             requireNotNull(lifecycleInspector) { "lifecycleInspector is required when lifecycleInspectionPlan is provided" }
                 .inspect(plan)
         }
+        val ontologyActionAuditResult = ontologyActionAuditPlan?.let { plan ->
+            requireNotNull(ontologyActionSubmitter) { "ontologyActionSubmitter is required when ontologyActionAuditPlan is provided" }
+                .submit(plan)
+        }
+        val actionAuditInspectionResult = actionAuditInspectionPlan?.let { plan ->
+            requireNotNull(actionAuditInspector) { "actionAuditInspector is required when actionAuditInspectionPlan is provided" }
+                .inspect(plan)
+        }
         return SemanticServiceRuntimeReport(
             repoRoot = repoRoot,
             contractValidation = validation,
@@ -358,6 +451,8 @@ object SemanticServiceApplication {
             lifecycleInspectionResult = lifecycleInspectionResult,
             recordedConnectorReport = recordedConnectorReport,
             generatedScenarioReport = generatedScenarioReport,
+            ontologyActionAuditResult = ontologyActionAuditResult,
+            actionAuditInspectionResult = actionAuditInspectionResult,
         )
     }
 
@@ -383,6 +478,15 @@ object SemanticServiceApplication {
             "--source-extract-file and --source-extract-directory must resolve under fixtures/source-extracts"
         }
         return sourceExtractPath
+    }
+
+    fun resolveControlledActionRequestPath(repoRoot: Path, actionRequestPathArgument: String): Path {
+        val actionRequestRoot = repoRoot.resolve("fixtures/action-requests").toAbsolutePath().normalize()
+        val actionRequestPath = repoRoot.resolve(actionRequestPathArgument).toAbsolutePath().normalize()
+        require(actionRequestPath.startsWith(actionRequestRoot)) {
+            "--action-request-file must resolve under fixtures/action-requests"
+        }
+        return actionRequestPath
     }
 
     fun defaultGeneratedSourceScenarioDirectory(
@@ -437,6 +541,15 @@ object SemanticServiceApplication {
             sourceExtractDirectory = null,
         ).batch
     }
+
+    fun loadOntologyActionRequest(
+        repoRoot: Path,
+        actionRequestFile: String?,
+    ): OntologyActionRequest {
+        val path = actionRequestFile
+            ?: error("--action-request-file is required when --submit-ontology-action is set")
+        return OntologyActionRequestLoader().load(resolveControlledActionRequestPath(repoRoot, path))
+    }
 }
 
 data class SourceExtractInput(
@@ -473,6 +586,8 @@ data class SemanticServiceRuntimeReport(
     val lifecycleInspectionResult: GraphLifecycleInspectionResult? = null,
     val recordedConnectorReport: RecordedConnectorSimulationReport? = null,
     val generatedScenarioReport: RecordedSourceScenarioGenerationReport? = null,
+    val ontologyActionAuditResult: OntologyActionAuditResult? = null,
+    val actionAuditInspectionResult: OntologyActionAuditInspectionResult? = null,
 ) {
     val mode: String = "contract-validation-runtime"
     val isReady: Boolean = contractValidation.isValid &&
@@ -480,9 +595,13 @@ data class SemanticServiceRuntimeReport(
         (fixtureLoadSummary == null || fixtureLoadSummary.succeeded) &&
         (sourcePromotionResult == null || sourcePromotionResult.promoted) &&
         (reasoningPromotionResult == null || reasoningPromotionResult.promoted) &&
-        (lifecycleInspectionResult == null || lifecycleInspectionResult.inspected)
+        (lifecycleInspectionResult == null || lifecycleInspectionResult.inspected) &&
+        (ontologyActionAuditResult == null || ontologyActionAuditResult.audited) &&
+        (actionAuditInspectionResult == null || actionAuditInspectionResult.inspected)
     val status: String = if (isReady) "ready" else "blocked"
-    val graphExecutionEnabled: Boolean = sourcePromotionResult != null || reasoningPromotionResult != null
+    val graphExecutionEnabled: Boolean = sourcePromotionResult != null ||
+        reasoningPromotionResult != null ||
+        ontologyActionAuditResult != null
     val httpEndpointsEnabled: Boolean = false
     val fixtureLoadingEnabled: Boolean = fixtureLoadSummary != null
     val queryExecutionEnabled: Boolean = queryExecutionReport != null
@@ -490,6 +609,8 @@ data class SemanticServiceRuntimeReport(
     val reasoningRefreshEnabled: Boolean = reasoningPromotionResult != null
     val graphLifecycleInspectionEnabled: Boolean = lifecycleInspectionResult != null
     val sourceScenarioGenerationEnabled: Boolean = generatedScenarioReport != null
+    val ontologyActionAuditEnabled: Boolean = ontologyActionAuditResult != null
+    val actionAuditInspectionEnabled: Boolean = actionAuditInspectionResult != null
 }
 
 data class SemanticServiceRuntimeOptions(
@@ -511,6 +632,13 @@ data class SemanticServiceRuntimeOptions(
     val inspectGraphLifecycle: Boolean = false,
     val inspectReleaseId: String? = null,
     val inspectReasoningRunId: String? = null,
+    val submitOntologyAction: Boolean = false,
+    val actionRequestFile: String? = null,
+    val actionInputReleaseId: String? = null,
+    val actionReasoningRunId: String? = null,
+    val actionAuditReleaseId: String = "local-action-audit-v1",
+    val inspectActionAudit: Boolean = false,
+    val inspectActionAuditReleaseId: String? = null,
     val servePrivateQueryEndpoint: Boolean = false,
     val privateEndpointHost: String = "127.0.0.1",
     val privateEndpointPort: Int = 18080,
@@ -535,6 +663,13 @@ data class SemanticServiceRuntimeOptions(
             var inspectGraphLifecycle = false
             var inspectReleaseId: String? = null
             var inspectReasoningRunId: String? = null
+            var submitOntologyAction = false
+            var actionRequestFile: String? = null
+            var actionInputReleaseId: String? = null
+            var actionReasoningRunId: String? = null
+            var actionAuditReleaseId = "local-action-audit-v1"
+            var inspectActionAudit = false
+            var inspectActionAuditReleaseId: String? = null
             var servePrivateQueryEndpoint = false
             var privateEndpointHost = "127.0.0.1"
             var privateEndpointPort = 18080
@@ -547,6 +682,8 @@ data class SemanticServiceRuntimeOptions(
                     arg == "--generate-source-scenarios" -> generateSourceScenarios = true
                     arg == "--refresh-reasoning" -> refreshReasoning = true
                     arg == "--inspect-graph-lifecycle" -> inspectGraphLifecycle = true
+                    arg == "--submit-ontology-action" -> submitOntologyAction = true
+                    arg == "--inspect-action-audit" -> inspectActionAudit = true
                     arg == "--serve-private-query-endpoint" -> servePrivateQueryEndpoint = true
                     arg.startsWith("--source-extract-file=") -> {
                         sourceExtractFile = arg.substringAfter("=")
@@ -581,6 +718,28 @@ data class SemanticServiceRuntimeOptions(
                     arg.startsWith("--inspect-reasoning-run-id=") -> {
                         inspectReasoningRunId = arg.substringAfter("=")
                         require(inspectReasoningRunId.isNotBlank()) { "--inspect-reasoning-run-id requires a value" }
+                    }
+                    arg.startsWith("--action-request-file=") -> {
+                        actionRequestFile = arg.substringAfter("=")
+                        require(actionRequestFile.isNotBlank()) { "--action-request-file requires a value" }
+                    }
+                    arg.startsWith("--action-input-release-id=") -> {
+                        actionInputReleaseId = arg.substringAfter("=")
+                        require(actionInputReleaseId.isNotBlank()) { "--action-input-release-id requires a value" }
+                    }
+                    arg.startsWith("--action-reasoning-run-id=") -> {
+                        actionReasoningRunId = arg.substringAfter("=")
+                        require(actionReasoningRunId.isNotBlank()) { "--action-reasoning-run-id requires a value" }
+                    }
+                    arg.startsWith("--action-audit-release-id=") -> {
+                        actionAuditReleaseId = arg.substringAfter("=")
+                        require(actionAuditReleaseId.isNotBlank()) { "--action-audit-release-id requires a value" }
+                    }
+                    arg.startsWith("--inspect-action-audit-release-id=") -> {
+                        inspectActionAuditReleaseId = arg.substringAfter("=")
+                        require(inspectActionAuditReleaseId.isNotBlank()) {
+                            "--inspect-action-audit-release-id requires a value"
+                        }
                     }
                     arg.startsWith("--reasoning-input-release-id=") -> {
                         reasoningInputReleaseId = arg.substringAfter("=")
@@ -626,6 +785,13 @@ data class SemanticServiceRuntimeOptions(
                 inspectGraphLifecycle = inspectGraphLifecycle,
                 inspectReleaseId = inspectReleaseId,
                 inspectReasoningRunId = inspectReasoningRunId,
+                submitOntologyAction = submitOntologyAction,
+                actionRequestFile = actionRequestFile,
+                actionInputReleaseId = actionInputReleaseId,
+                actionReasoningRunId = actionReasoningRunId,
+                actionAuditReleaseId = actionAuditReleaseId,
+                inspectActionAudit = inspectActionAudit,
+                inspectActionAuditReleaseId = inspectActionAuditReleaseId,
                 servePrivateQueryEndpoint = servePrivateQueryEndpoint,
                 privateEndpointHost = privateEndpointHost,
                 privateEndpointPort = privateEndpointPort,

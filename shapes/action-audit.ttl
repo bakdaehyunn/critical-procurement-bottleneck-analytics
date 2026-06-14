@@ -1,0 +1,93 @@
+@prefix dcai: <urn:dcai:ontology:> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+dcai:OntologyActionRequestShape
+  a sh:NodeShape ;
+  sh:targetClass dcai:OntologyActionRequest ;
+  sh:property [
+    sh:path dcai:hasIdentifier ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasIdempotencyKey ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasActionType ;
+    sh:minCount 1 ;
+    sh:class dcai:OntologyActionType
+  ] ;
+  sh:property [
+    sh:path dcai:hasTargetObject ;
+    sh:minCount 1
+  ] ;
+  sh:property [
+    sh:path prov:generatedAtTime ;
+    sh:minCount 1 ;
+    sh:datatype xsd:dateTime
+  ] .
+
+dcai:OntologyActionExecutionShape
+  a sh:NodeShape ;
+  sh:targetClass dcai:OntologyActionExecution ;
+  sh:property [
+    sh:path dcai:hasIdempotencyKey ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasActionType ;
+    sh:minCount 1 ;
+    sh:class dcai:OntologyActionType
+  ] ;
+  sh:property [
+    sh:path dcai:hasActorId ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasActionReason ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasActionStatus ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasTargetObject ;
+    sh:minCount 1
+  ] ;
+  sh:property [
+    sh:path prov:used ;
+    sh:minCount 1
+  ] ;
+  sh:property [
+    sh:path prov:generated ;
+    sh:minCount 1
+  ] ;
+  sh:property [
+    sh:path prov:generatedAtTime ;
+    sh:minCount 1 ;
+    sh:datatype xsd:dateTime
+  ] .
+
+dcai:ActionValidationReportShape
+  a sh:NodeShape ;
+  sh:targetClass dcai:ActionValidationReport ;
+  sh:property [
+    sh:path dcai:hasActionValidationStatus ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path prov:wasGeneratedBy ;
+    sh:minCount 1 ;
+    sh:class dcai:OntologyActionExecution
+  ] .
+

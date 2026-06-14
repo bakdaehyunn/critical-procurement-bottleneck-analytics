@@ -1,0 +1,33 @@
+@prefix dcai-release: <urn:dcai:release:> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+dcai-release:2026-06-internal-ontology-action-audit-runner-v1
+  rdf:type owl:Ontology ;
+  dcterms:title "Internal ontology action audit runner v1 release" ;
+  dcterms:description "Internal CLI/runtime release for audit-only governed ontology actions. It adds Kotlin DTOs, controlled local action request loading, precondition validation over managed canonical/provenance/reasoning graph facts, RDF action-audit/provenance records, SHACL/provenance gates, managed action-audit graph writes, idempotent reruns, rollback-safe action-audit writes, action audit inspection, focused tests, fixtures, and docs. This release does not expose public endpoints, add authentication, redesign UI, mutate canonical/reasoning/operations graphs from operator actions, add real external connectors, implement AI governance, commit, or push." ;
+  dcterms:created "2026-06-13"^^xsd:date ;
+  dcterms:requires dcai-release:2026-06-read-only-ontology-action-affordance-v1 ;
+  dcterms:hasPart
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/actions/OntologyActionRequest.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/actions/OntologyActionRequestLoader.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/actions/OntologyActionRdfMapper.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/actions/OntologyActionValidationGate.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/actions/OntologyActionAuditService.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/actions/OntologyActionAuditInspector.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/runtime/SemanticServiceApplication.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/graph/FusekiNamedGraphWriter.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/ingestion/OntologyVocabulary.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/actions/OntologyActionAuditServiceTest.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/actions/OntologyActionRequestLoaderTest.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/runtime/SemanticServiceApplicationTest.kt>,
+    <../../fixtures/action-requests/README.md>,
+    <../../fixtures/action-requests/acknowledge-restore-blocker.properties>,
+    <../../ontology/modules/operations.ttl>,
+    <../../shapes/action-audit.ttl>,
+    <../../semantic-service/README.md>,
+    <../../docs/ontology-native/ontology_action_layer_v1.md>,
+    <../../README.md> .
+

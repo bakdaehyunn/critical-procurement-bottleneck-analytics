@@ -1,6 +1,7 @@
 @prefix dcai: <urn:dcai:ontology:> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
@@ -22,6 +23,13 @@ dcai:RestoreReadinessFinding rdf:type owl:Class ;
   rdfs:subClassOf dcai:DerivedFact .
 dcai:BlastRadiusFinding rdf:type owl:Class ;
   rdfs:subClassOf dcai:DerivedFact .
+dcai:OntologyActionType rdf:type owl:Class .
+dcai:OntologyActionRequest rdf:type owl:Class ;
+  rdfs:subClassOf prov:Entity .
+dcai:OntologyActionExecution rdf:type owl:Class ;
+  rdfs:subClassOf prov:Activity .
+dcai:ActionValidationReport rdf:type owl:Class ;
+  rdfs:subClassOf prov:Entity .
 
 dcai:queueItemForIncident rdf:type owl:ObjectProperty ;
   rdfs:domain dcai:FollowUpQueueItem ;
@@ -95,3 +103,33 @@ dcai:hasEngineerAssignmentDelayHours rdf:type owl:DatatypeProperty ;
 dcai:hasFindingSummary rdf:type owl:DatatypeProperty ;
   rdfs:domain dcai:DerivedFact ;
   rdfs:range xsd:string .
+dcai:hasActionType rdf:type owl:ObjectProperty ;
+  rdfs:domain dcai:OntologyActionExecution ;
+  rdfs:range dcai:OntologyActionType .
+dcai:hasActionStatus rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:OntologyActionExecution ;
+  rdfs:range xsd:string .
+dcai:hasActionReason rdf:type owl:DatatypeProperty ;
+  rdfs:range xsd:string .
+dcai:hasActorId rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:OntologyActionExecution ;
+  rdfs:range xsd:string .
+dcai:hasAssigneeId rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:OntologyActionExecution ;
+  rdfs:range xsd:string .
+dcai:hasIdempotencyKey rdf:type owl:DatatypeProperty ;
+  rdfs:range xsd:string .
+dcai:hasTargetObject rdf:type owl:ObjectProperty ;
+  rdfs:range owl:Thing .
+dcai:hasActionValidationStatus rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:ActionValidationReport ;
+  rdfs:range xsd:string .
+dcai:hasReviewedStatus rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:OntologyActionExecution ;
+  rdfs:range xsd:string .
+dcai:hasReviewSummary rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:OntologyActionExecution ;
+  rdfs:range xsd:string .
+dcai:hasSupportingEvidence rdf:type owl:ObjectProperty ;
+  rdfs:domain dcai:OntologyActionExecution ;
+  rdfs:range dcai:EvidenceRecord .

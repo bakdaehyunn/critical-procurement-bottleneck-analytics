@@ -214,7 +214,7 @@ V1 UI should show action affordances without claiming writeback is available.
 | --- | --- |
 | Dashboard operational focus strip | Filter-only actions such as restore blocked, trust review, redundancy lost, capacity at risk, validation stage. These are not ontology write actions. |
 | Findings table | Keep as object-set view. Rows should show recommended next action and disabled/action-needed state, not execute writes directly. |
-| Selected finding Summary | Show primary operator action placeholders: acknowledge blocker, assign evidence review, request validation review. Disabled until action runtime exists. |
+| Selected finding Summary | Show primary operator action placeholders: acknowledge blocker, assign evidence review, request validation review. UI remains disabled until a governed request path exists. |
 | Trust tab | Place evidence review assignment and validation review actions beside the evidence they affect. |
 | Dependencies tab | Read-only in v1. Do not allow relationship edits from the operator view. |
 | Admin/lifecycle view | Place reasoning finding approval/rejection, reasoning refresh request, and promotion batch approval here. This view does not exist yet and should be a separate future goal. |
@@ -227,7 +227,7 @@ Action buttons must display one of three states:
 
 ## Runtime Boundary Strategy
 
-The next executable step should be an internal action runner, not a public API.
+The first executable step is an internal action runner, not a public API.
 
 Preferred v1 runtime sequence:
 
@@ -253,6 +253,26 @@ Future HTTP or UI execution must wait for:
 - conflict detection
 - replay and rollback tests
 - source-system writeback policy
+
+## Internal Action Audit Runner v1
+
+The internal action audit runner implements audit-only execution for:
+
+- `AcknowledgeRestoreBlocker`
+- `AssignEvidenceReview`
+- `RecordValidationReview`
+
+It accepts controlled local `.properties` action request fixtures, validates
+parameters and graph preconditions against managed canonical, provenance, and
+reasoning graphs, maps valid requests into RDF action-audit/provenance records,
+validates the audit graph with SHACL, and writes only to
+`urn:dcai:graph:action-audit:*` through `NamedGraphStore`.
+
+The runner does not mutate canonical, reasoning, or operations graphs. It does
+not expose HTTP write endpoints, add authentication, perform source-system
+writeback, implement AI governance, or enable browser execution. The React
+affordances remain read-only/disabled until a future governed request surface is
+approved.
 
 ## Action Status Read Model
 
@@ -287,9 +307,9 @@ Any future implementation goal must verify:
 
 ## Explicit Non-goals
 
-This v1 design does not:
+This v1 design and current implementation do not:
 
-- implement action execution code
+- implement public or browser-executable action execution
 - expose public or private write endpoints
 - add authentication or authorization
 - mutate real production data
@@ -306,13 +326,9 @@ This v1 design does not:
 
 ## Implementation Note
 
-Read-only action affordance v1 is implemented in the local working tree after
-this design was written. The selected finding Summary and Trust views now render
-disabled governed-action cards for restore blocker acknowledgement, evidence
-review assignment, validation review, and reasoning refresh request. Each card
-shows target ontology objects, required parameters, preconditions, provenance
-requirements, and disabled reasons.
-
-The implementation remains read-only. It does not execute actions, expose write
-endpoints, add authentication, mutate production data, implement AI governance,
-or allow browser-supplied SPARQL/SPARQL Update.
+Read-only action affordance v1 is implemented in the selected finding Summary
+and Trust views. Internal action audit runner v1 adds CLI-only audit writes for
+three controlled action contracts. The UI remains read-only and disabled; the
+runner remains internal-only and does not expose write endpoints, add
+authentication, mutate canonical/reasoning/operations graphs, implement AI
+governance, or allow browser-supplied SPARQL/SPARQL Update.

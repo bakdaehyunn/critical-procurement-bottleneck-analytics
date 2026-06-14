@@ -6,6 +6,13 @@ import com.dcai.semanticservice.fixtures.FixtureGraphTarget
 import com.dcai.semanticservice.fixtures.FixtureLoadResult
 import com.dcai.semanticservice.fixtures.FixtureLoadSummary
 import com.dcai.semanticservice.fixtures.FixtureValidationReport
+import com.dcai.semanticservice.actions.OntologyActionAuditInspectionPlan
+import com.dcai.semanticservice.actions.OntologyActionAuditInspectionResult
+import com.dcai.semanticservice.actions.OntologyActionAuditInspector
+import com.dcai.semanticservice.actions.OntologyActionAuditPlan
+import com.dcai.semanticservice.actions.OntologyActionAuditResult
+import com.dcai.semanticservice.actions.OntologyActionSubmitter
+import com.dcai.semanticservice.actions.OntologyActionValidationReport
 import com.dcai.semanticservice.graph.GraphConnectionCheck
 import com.dcai.semanticservice.graph.ReadOnlyGraphClient
 import com.dcai.semanticservice.ingestion.FileSourceExtractLoader
@@ -321,6 +328,62 @@ class SemanticServiceApplicationTest {
     }
 
     @Test
+    fun canRunInternalOntologyActionAuditBoundary() {
+        val report = SemanticServiceApplication.run(
+            ontologyActionSubmitter = StaticOntologyActionSubmitter(
+                OntologyActionAuditResult(
+                    audited = true,
+                    validation = OntologyActionValidationReport(conforms = true, tripleCount = 24),
+                    actionAuditGraphUri = "urn:dcai:graph:action-audit:local-action-audit-v1",
+                    writtenGraphUris = listOf("urn:dcai:graph:action-audit:local-action-audit-v1"),
+                ),
+            ),
+            ontologyActionAuditPlan = OntologyActionAuditPlan(
+                request = SemanticServiceApplication.loadOntologyActionRequest(
+                    repoRoot = SemanticServiceApplication.locateRepoRoot(),
+                    actionRequestFile = "fixtures/action-requests/acknowledge-restore-blocker.properties",
+                ),
+                graphs = com.dcai.semanticservice.actions.OntologyActionGraphUris.forRelease(
+                    sourceReleaseId = "local-controlled-source-v1",
+                    reasoningRunId = "local-controlled-reasoning-v1",
+                    actionAuditReleaseId = "local-action-audit-v1",
+                ),
+            ),
+        )
+
+        assertTrue(report.isReady, report.ontologyActionAuditResult?.errors.orEmpty().joinToString(separator = "\n"))
+        assertTrue(report.graphExecutionEnabled)
+        assertTrue(report.ontologyActionAuditEnabled)
+        assertEquals(1, report.ontologyActionAuditResult?.writtenGraphUris?.size)
+        assertFalse(report.httpEndpointsEnabled)
+    }
+
+    @Test
+    fun canRunInternalActionAuditInspectionBoundary() {
+        val result = OntologyActionAuditInspectionResult(
+            actionAuditReleaseId = "local-action-audit-v1",
+            actionAuditGraphUri = "urn:dcai:graph:action-audit:local-action-audit-v1",
+            exists = true,
+            tripleCount = 12,
+            executionCount = 1,
+            requestCount = 1,
+            validationReportCount = 1,
+            actionTypeCounts = mapOf("AcknowledgeRestoreBlocker" to 1),
+            idempotencyKeyCount = 1,
+            latestGeneratedAt = "2026-06-09T02:00:00Z",
+        )
+        val report = SemanticServiceApplication.run(
+            actionAuditInspector = StaticActionAuditInspector(result),
+            actionAuditInspectionPlan = OntologyActionAuditInspectionPlan("local-action-audit-v1"),
+        )
+
+        assertTrue(report.isReady, report.actionAuditInspectionResult?.errors.orEmpty().joinToString(separator = "\n"))
+        assertTrue(report.actionAuditInspectionEnabled)
+        assertEquals(1, report.actionAuditInspectionResult?.executionCount)
+        assertFalse(report.httpEndpointsEnabled)
+    }
+
+    @Test
     fun rejectsBlankQueryIdArgument() {
         assertFailsWith<IllegalArgumentException> {
             SemanticServiceRuntimeOptions.fromArgs(arrayOf("--run-query="))
@@ -368,6 +431,13 @@ class SemanticServiceApplicationTest {
                 "--inspect-graph-lifecycle",
                 "--inspect-release-id=release-a",
                 "--inspect-reasoning-run-id=reasoning-a",
+                "--submit-ontology-action",
+                "--action-request-file=fixtures/action-requests/acknowledge-restore-blocker.properties",
+                "--action-input-release-id=release-a",
+                "--action-reasoning-run-id=reasoning-a",
+                "--action-audit-release-id=action-a",
+                "--inspect-action-audit",
+                "--inspect-action-audit-release-id=action-a",
             ),
         )
 
@@ -385,6 +455,13 @@ class SemanticServiceApplicationTest {
         assertTrue(options.inspectGraphLifecycle)
         assertEquals("release-a", options.inspectReleaseId)
         assertEquals("reasoning-a", options.inspectReasoningRunId)
+        assertTrue(options.submitOntologyAction)
+        assertEquals("fixtures/action-requests/acknowledge-restore-blocker.properties", options.actionRequestFile)
+        assertEquals("release-a", options.actionInputReleaseId)
+        assertEquals("reasoning-a", options.actionReasoningRunId)
+        assertEquals("action-a", options.actionAuditReleaseId)
+        assertTrue(options.inspectActionAudit)
+        assertEquals("action-a", options.inspectActionAuditReleaseId)
     }
 
     @Test
@@ -514,6 +591,18 @@ class SemanticServiceApplicationTest {
         private val result: ReasoningPromotionResult,
     ) : ReasoningRefresher {
         override fun run(plan: ReasoningPromotionPlan): ReasoningPromotionResult = result
+    }
+
+    private class StaticOntologyActionSubmitter(
+        private val result: OntologyActionAuditResult,
+    ) : OntologyActionSubmitter {
+        override fun submit(plan: OntologyActionAuditPlan): OntologyActionAuditResult = result
+    }
+
+    private class StaticActionAuditInspector(
+        private val result: OntologyActionAuditInspectionResult,
+    ) : OntologyActionAuditInspector(InMemoryNamedGraphStore()) {
+        override fun inspect(plan: OntologyActionAuditInspectionPlan): OntologyActionAuditInspectionResult = result
     }
 
     private object FailingIfCalledReasoningRefresher : ReasoningRefresher {

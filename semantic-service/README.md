@@ -327,6 +327,51 @@ local deterministic simulation and internal runtime hardening slice; it does
 not expose new endpoints, add auth, redesign UI, or connect to real external
 systems.
 
+Internal ontology action audit runner v1 adds audit-only execution for the
+first controlled operator action contracts:
+
+- `AcknowledgeRestoreBlocker`
+- `AssignEvidenceReview`
+- `RecordValidationReview`
+
+The runner accepts controlled local `.properties` action request fixtures under
+`fixtures/action-requests/`, validates required parameters and preconditions
+against managed canonical/provenance/reasoning graph facts, maps accepted
+requests into RDF `dcai:OntologyActionRequest`,
+`dcai:OntologyActionExecution`, and `dcai:ActionValidationReport` records,
+validates the action-audit graph with SHACL/provenance gates, and writes only to
+managed `urn:dcai:graph:action-audit:*` graph URIs. Idempotency keys prevent
+deterministic reruns from duplicating action executions, and failed writes
+restore the previous action-audit graph snapshot.
+
+Submit a controlled local action audit after source promotion and reasoning
+refresh:
+
+```bash
+docker run --rm \
+  -v "$PWD":/workspace \
+  -w /workspace/semantic-service \
+  -e DCAI_FUSEKI_DATASET_URL=http://host.docker.internal:3030/infrastructure \
+  gradle:8.10.2-jdk17 \
+  gradle --no-daemon run --args="--repo-root=/workspace --submit-ontology-action --action-request-file=fixtures/action-requests/acknowledge-restore-blocker.properties --action-input-release-id=local-controlled-source-v1 --action-reasoning-run-id=local-controlled-reasoning-v1 --action-audit-release-id=local-action-audit-v1"
+```
+
+Inspect action audit history:
+
+```bash
+docker run --rm \
+  -v "$PWD":/workspace \
+  -w /workspace/semantic-service \
+  -e DCAI_FUSEKI_DATASET_URL=http://host.docker.internal:3030/infrastructure \
+  gradle:8.10.2-jdk17 \
+  gradle --no-daemon run --args="--repo-root=/workspace --inspect-action-audit --inspect-action-audit-release-id=local-action-audit-v1"
+```
+
+This is internal CLI/runtime functionality only. It does not expose public or
+private write endpoints, add authentication, mutate canonical/reasoning/
+operations graphs from operator actions, perform source-system writeback,
+implement AI governance, or change frontend read models.
+
 Post-Phase-20 semantic queue read-model implementation adds
 `semanticFollowUpQueueList` as the first product read model. It returns
 canonical graph incident, asset, zone, stage, and source-record provenance

@@ -127,6 +127,7 @@ class FusekiNamedGraphWriter(
             "urn:dcai:graph:provenance:",
             "urn:dcai:graph:reasoning-audit:",
             "urn:dcai:graph:reasoning:",
+            "urn:dcai:graph:action-audit:",
         )
     }
 }
