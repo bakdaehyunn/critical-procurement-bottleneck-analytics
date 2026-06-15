@@ -216,23 +216,52 @@ The React frontend is built as a semantic operations workbench:
 - Internal ontology action layer for governed operator actions such as restore
   blocker acknowledgement, evidence review assignment, validation review,
   reasoning finding approval/rejection, reasoning refresh request, and promotion
-  batch approval. The current executable slice is CLI-only action-audit writes
-  for restore blocker acknowledgement, evidence review assignment, and
-  validation review; it does not expose public write endpoints.
-- Read-only action affordances in selected finding Summary and Trust views.
+  batch approval. The current executable slice supports internal audit-only
+  requests for restore blocker acknowledgement, evidence review assignment, and
+  validation review; it does not expose public write endpoints or mutate
+  canonical/reasoning/operations graphs.
+- Controlled action affordances in selected finding Summary and Trust views.
   These are backed by the approved `semanticAvailableActionsByFinding` read
   model and show action labels, target ontology objects, required parameters,
-  preconditions, provenance requirements, and disabled reasons without
-  executing writes.
-- Read-only action-audit history in the selected finding action panel, backed by
-  approved semantic query IDs for managed action-audit graph releases, incident
-  targets, and target object URIs. It shows action status, actor, action type,
-  validation result, provenance links, idempotency key, and graph lifecycle
-  context without enabling browser execution.
+  preconditions, provenance requirements, and disabled reasons. Supported
+  audit-only actions can be submitted through the private loopback endpoint as
+  managed action-audit graph requests.
+- Action notifications and action-audit history in the selected finding action
+  panel, backed by approved semantic query IDs for managed action-audit graph
+  releases, incident targets, and target object URIs. They show pending local
+  notifications, action status, actor, action type, validation result,
+  provenance links, idempotency key, and graph lifecycle context without
+  external system writeback.
+- Internal ontology action lifecycle review in the selected finding action
+  panel. Queued local actions can move through controlled `QUEUED`,
+  `IN_REVIEW`, `APPROVED`, `REJECTED`, and `CLOSED` states through the private
+  loopback transition endpoint. Transition history is read back through
+  approved semantic query IDs and remains confined to the managed action-audit
+  graph; it does not mutate canonical, reasoning, operations, production, or
+  external source-system state.
+- Simulated operations dispatch visibility for approved local ontology actions.
+  When a local action reaches `APPROVED`, the managed action-audit graph records
+  internal `NOC_QUEUE`, `WORK_ORDER_QUEUE`, and `VALIDATION_REVIEW_QUEUE`
+  dispatch facts with provenance. These are displayed in the selected finding
+  action panel and are not external notifications or source-system writeback.
 - Read-only internal lifecycle review queues on the dashboard, backed by
   `semanticPromotionReviewQueue` and `semanticReasoningReviewQueue`. They show
   promotion batch, reasoning refresh, and reasoning approval state from managed
   graph facts while keeping all actions disabled.
+- Dynamic ontology playback in the selected finding Summary view, backed by
+  managed action-audit playback facts and approved query IDs for event
+  timeline, graph state changes, reasoning/trust changes, and action lifecycle
+  changes. It shows how source-system exports promote into canonical graph
+  facts, reasoning deltas, blast-radius changes, and local action state over
+  deterministic replay steps without exposing raw SPARQL or public writes.
+- AI governance proposal review in the selected finding action panel.
+  Controlled local AI proposal fixtures are validated with provenance, SHACL,
+  confidence, risk, and model/prompt metadata gates, then written only to
+  managed ai-audit graphs. Pending proposals can be approved or rejected through
+  the private internal review endpoint. Rejections write only ai-audit review
+  facts; approved action recommendations create governed local action-audit
+  requests and still do not mutate canonical, reasoning, operations,
+  production, or external source-system state.
 
 Run the frontend build:
 

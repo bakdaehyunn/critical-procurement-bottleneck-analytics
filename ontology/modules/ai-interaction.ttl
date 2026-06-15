@@ -1,6 +1,7 @@
 @prefix dcai: <urn:dcai:ontology:> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
@@ -24,6 +25,12 @@ dcai:AIApprovalDecision rdf:type owl:Class ;
   rdfs:subClassOf dcai:OperationalEvent .
 dcai:AIGuardrailViolation rdf:type owl:Class ;
   rdfs:subClassOf dcai:EvidenceArtifact .
+dcai:AIProposalBatch rdf:type owl:Class ;
+  rdfs:subClassOf prov:Activity .
+dcai:AIProposal rdf:type owl:Class ;
+  rdfs:subClassOf dcai:EvidenceArtifact .
+dcai:AIProposalValidationReport rdf:type owl:Class ;
+  rdfs:subClassOf dcai:EvidenceArtifact .
 
 dcai:generatedQuery rdf:type owl:DatatypeProperty ;
   rdfs:domain dcai:GeneratedSparql ;
@@ -40,3 +47,42 @@ dcai:blockedByGuardrail rdf:type owl:ObjectProperty ;
 dcai:validatedAgainstShape rdf:type owl:DatatypeProperty ;
   rdfs:domain dcai:ProposedTripleSet ;
   rdfs:range xsd:anyURI .
+dcai:hasProposalType rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:AIProposal ;
+  rdfs:range xsd:string .
+dcai:hasProposalStatus rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:AIProposal ;
+  rdfs:range xsd:string .
+dcai:hasProposalSummary rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:AIProposal ;
+  rdfs:range xsd:string .
+dcai:hasProposalRationale rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:AIProposal ;
+  rdfs:range xsd:string .
+dcai:hasConfidenceScore rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:AIProposal ;
+  rdfs:range xsd:decimal .
+dcai:hasRiskLevel rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:AIProposal ;
+  rdfs:range xsd:string .
+dcai:hasModelId rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:AIProposal ;
+  rdfs:range xsd:string .
+dcai:hasPromptId rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:AIProposal ;
+  rdfs:range xsd:string .
+dcai:hasPromptHash rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:AIProposal ;
+  rdfs:range xsd:string .
+dcai:hasAIGovernanceReviewStatus rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:AIProposal ;
+  rdfs:range xsd:string .
+dcai:hasAIGovernanceDisabledReason rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:AIProposal ;
+  rdfs:range xsd:string .
+dcai:hasAIValidationStatus rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:AIProposalValidationReport ;
+  rdfs:range xsd:string .
+dcai:hasAIValidationSummary rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:AIProposalValidationReport ;
+  rdfs:range xsd:string .

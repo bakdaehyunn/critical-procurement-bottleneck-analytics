@@ -1,5 +1,19 @@
 package com.dcai.semanticservice.api
 
+import com.dcai.semanticservice.actions.OntologyActionAuditPlan
+import com.dcai.semanticservice.actions.OntologyActionAuditResult
+import com.dcai.semanticservice.actions.OntologyActionLifecycleState
+import com.dcai.semanticservice.actions.OntologyActionSubmitter
+import com.dcai.semanticservice.actions.OntologyActionTransitionPlan
+import com.dcai.semanticservice.actions.OntologyActionTransitionResult
+import com.dcai.semanticservice.actions.OntologyActionTransitionSubmitter
+import com.dcai.semanticservice.actions.OntologyActionType
+import com.dcai.semanticservice.actions.OntologyActionValidationReport
+import com.dcai.semanticservice.governance.AiGovernanceReviewDecision
+import com.dcai.semanticservice.governance.AiGovernanceReviewPlan
+import com.dcai.semanticservice.governance.AiGovernanceReviewResult
+import com.dcai.semanticservice.governance.AiGovernanceReviewSubmitter
+import com.dcai.semanticservice.governance.AiGovernanceValidationReport
 import com.dcai.semanticservice.query.ApprovedQueryDefinition
 import com.dcai.semanticservice.query.ApprovedQueryManifest
 import com.dcai.semanticservice.query.QueryExecutionReport
@@ -433,6 +447,205 @@ class PrivateSemanticQueryEndpointTest {
         )
     }
 
+    @Test
+    fun privateOntologyActionEndpointSubmitsControlledActionRequest() {
+        val submitter = CapturingOntologyActionSubmitter(
+            OntologyActionAuditResult(
+                audited = true,
+                validation = OntologyActionValidationReport(conforms = true, tripleCount = 22),
+                actionAuditGraphUri = "urn:dcai:graph:action-audit:local-action-audit-v1",
+                writtenGraphUris = listOf("urn:dcai:graph:action-audit:local-action-audit-v1"),
+            ),
+        )
+        val endpoint = PrivateOntologyActionEndpoint(submitter, CapturingOntologyActionTransitionSubmitter(successfulTransitionResult()))
+
+        val response = endpoint.handle(
+            post(
+                path = PrivateOntologyActionEndpoint.ACTION_REQUEST_PATH,
+                body = validActionRequestBody(),
+            ),
+        )
+
+        assertEquals(200, response.statusCode)
+        assertEquals("ontology-action-request", response.payload["resultType"])
+        assertEquals("QUEUED", response.payload["notificationStatus"])
+        assertEquals("QUEUED", response.payload["currentState"])
+        assertEquals(false, response.payload["externalSystemMutation"])
+        assertEquals("AcknowledgeRestoreBlocker", submitter.lastPlan!!.request.actionType.id)
+        assertEquals("urn:dcai:graph:canonical:local-controlled-source-v1", submitter.lastPlan!!.graphs.canonicalGraphUri)
+        assertEquals("urn:dcai:graph:action-audit:local-action-audit-v1", submitter.lastPlan!!.graphs.actionAuditGraphUri)
+    }
+
+    @Test
+    fun privateOntologyActionEndpointRejectsRawSparqlPayloads() {
+        val endpoint = PrivateOntologyActionEndpoint(
+            CapturingOntologyActionSubmitter(
+                OntologyActionAuditResult(
+                    audited = true,
+                    validation = OntologyActionValidationReport(conforms = true),
+                    actionAuditGraphUri = "urn:dcai:graph:action-audit:local-action-audit-v1",
+                ),
+            ),
+            CapturingOntologyActionTransitionSubmitter(successfulTransitionResult()),
+        )
+
+        val response = endpoint.handle(
+            post(
+                path = PrivateOntologyActionEndpoint.ACTION_REQUEST_PATH,
+                body = """{"query":"SELECT * WHERE { ?s ?p ?o }"}""",
+            ),
+        )
+
+        assertEquals(400, response.statusCode)
+        assertErrorCode("contract-validation-failed", response)
+        assertTrue(response.jsonBody().contains("does not accept raw SPARQL"))
+    }
+
+    @Test
+    fun privateOntologyActionEndpointReturnsValidationErrorWithoutAudit() {
+        val endpoint = PrivateOntologyActionEndpoint(
+            CapturingOntologyActionSubmitter(
+                OntologyActionAuditResult(
+                    audited = false,
+                    validation = OntologyActionValidationReport(
+                        conforms = false,
+                        errors = listOf("Incident target is missing from canonical graph"),
+                    ),
+                    actionAuditGraphUri = "urn:dcai:graph:action-audit:local-action-audit-v1",
+                    errors = listOf("Incident target is missing from canonical graph"),
+                ),
+            ),
+            CapturingOntologyActionTransitionSubmitter(successfulTransitionResult()),
+        )
+
+        val response = endpoint.handle(
+            post(
+                path = PrivateOntologyActionEndpoint.ACTION_REQUEST_PATH,
+                body = validActionRequestBody(),
+            ),
+        )
+
+        assertEquals(400, response.statusCode)
+        assertErrorCode("contract-validation-failed", response)
+        assertTrue(response.jsonBody().contains("was not audited"))
+    }
+
+    @Test
+    fun privateOntologyActionEndpointSubmitsControlledActionTransition() {
+        val submitter = CapturingOntologyActionTransitionSubmitter(successfulTransitionResult())
+        val endpoint = PrivateOntologyActionEndpoint(
+            CapturingOntologyActionSubmitter(successfulActionAuditResult()),
+            submitter,
+        )
+
+        val response = endpoint.handle(
+            post(
+                path = PrivateOntologyActionEndpoint.ACTION_TRANSITION_PATH,
+                body = validActionTransitionBody(),
+            ),
+        )
+
+        assertEquals(200, response.statusCode)
+        assertEquals("ontology-action-transition", response.payload["resultType"])
+        assertEquals("IN_REVIEW", response.payload["currentState"])
+        assertEquals(false, response.payload["externalSystemMutation"])
+        assertEquals("urn:dcai:ontology-action-execution:local-action-audit-v1%3Aacknowledge%3AINC-001", submitter.lastPlan!!.request.targetExecutionUri)
+        assertEquals(OntologyActionLifecycleState.IN_REVIEW, submitter.lastPlan!!.request.toState)
+        assertEquals("urn:dcai:graph:action-audit:local-action-audit-v1", submitter.lastPlan!!.graphs.actionAuditGraphUri)
+    }
+
+    @Test
+    fun privateOntologyActionEndpointReturnsValidationErrorWithoutTransitionWrite() {
+        val endpoint = PrivateOntologyActionEndpoint(
+            CapturingOntologyActionSubmitter(successfulActionAuditResult()),
+            CapturingOntologyActionTransitionSubmitter(
+                OntologyActionTransitionResult(
+                    transitioned = false,
+                    validation = OntologyActionValidationReport(
+                        conforms = false,
+                        errors = listOf("Invalid ontology action lifecycle transition: QUEUED -> CLOSED"),
+                    ),
+                    actionAuditGraphUri = "urn:dcai:graph:action-audit:local-action-audit-v1",
+                    currentState = OntologyActionLifecycleState.QUEUED,
+                    errors = listOf("Invalid ontology action lifecycle transition: QUEUED -> CLOSED"),
+                ),
+            ),
+        )
+
+        val response = endpoint.handle(
+            post(
+                path = PrivateOntologyActionEndpoint.ACTION_TRANSITION_PATH,
+                body = validActionTransitionBody().replace("\"toState\":\"IN_REVIEW\"", "\"toState\":\"CLOSED\""),
+            ),
+        )
+
+        assertEquals(400, response.statusCode)
+        assertErrorCode("contract-validation-failed", response)
+        assertTrue(response.jsonBody().contains("was not written"))
+    }
+
+    @Test
+    fun privateAiGovernanceEndpointSubmitsControlledProposalReview() {
+        val submitter = CapturingAiGovernanceReviewSubmitter(
+            AiGovernanceReviewResult(
+                reviewed = true,
+                decision = AiGovernanceReviewDecision.APPROVE,
+                validation = AiGovernanceValidationReport(conforms = true, tripleCount = 42),
+                aiAuditGraphUri = "urn:dcai:graph:ai-audit:local-ai-governance-v1",
+                actionAuditGraphUri = "urn:dcai:graph:action-audit:local-action-audit-v1",
+                writtenGraphUris = listOf(
+                    "urn:dcai:graph:ai-audit:local-ai-governance-v1",
+                    "urn:dcai:graph:action-audit:local-action-audit-v1",
+                ),
+                actionRequestCreated = true,
+                actionRequestId = "AI-REV-LOCAL-001:action-request",
+                actionId = "AcknowledgeRestoreBlocker",
+            ),
+        )
+        val endpoint = PrivateAiGovernanceEndpoint(submitter)
+
+        val response = endpoint.handle(
+            post(
+                path = PrivateAiGovernanceEndpoint.AI_PROPOSAL_REVIEW_PATH,
+                body = validAiProposalReviewBody(),
+            ),
+        )
+
+        assertEquals(200, response.statusCode)
+        assertEquals("ai-proposal-review", response.payload["resultType"])
+        assertEquals(true, response.payload["actionRequestCreated"])
+        assertEquals(false, response.payload["externalSystemMutation"])
+        assertEquals("urn:dcai:graph:ai-audit:local-ai-governance-v1", submitter.lastPlan!!.graphs.aiAuditGraphUri)
+        assertEquals("urn:dcai:graph:action-audit:local-action-audit-v1", submitter.lastPlan!!.graphs.actionAuditGraphUri)
+        assertEquals(AiGovernanceReviewDecision.APPROVE, submitter.lastPlan!!.request.decision)
+        assertEquals(OntologyActionType.ACKNOWLEDGE_RESTORE_BLOCKER, submitter.lastPlan!!.request.actionType)
+    }
+
+    @Test
+    fun privateAiGovernanceEndpointRejectsRawSparqlPayloads() {
+        val endpoint = PrivateAiGovernanceEndpoint(
+            CapturingAiGovernanceReviewSubmitter(
+                AiGovernanceReviewResult(
+                    reviewed = true,
+                    decision = AiGovernanceReviewDecision.REJECT,
+                    validation = AiGovernanceValidationReport(conforms = true),
+                    aiAuditGraphUri = "urn:dcai:graph:ai-audit:local-ai-governance-v1",
+                ),
+            ),
+        )
+
+        val response = endpoint.handle(
+            post(
+                path = PrivateAiGovernanceEndpoint.AI_PROPOSAL_REVIEW_PATH,
+                body = """{"query":"SELECT * WHERE { ?s ?p ?o }"}""",
+            ),
+        )
+
+        assertEquals(400, response.statusCode)
+        assertErrorCode("contract-validation-failed", response)
+        assertTrue(response.jsonBody().contains("does not accept raw SPARQL"))
+    }
+
     private fun endpointWith(report: QueryExecutionReport): PrivateSemanticQueryEndpoint {
         return PrivateSemanticQueryEndpoint(
             queryExecutor = StaticQueryExecutor(report),
@@ -473,6 +686,113 @@ class PrivateSemanticQueryEndpointTest {
         assertEquals(expected, error["code"])
     }
 
+    private fun validActionRequestBody(): String {
+        return """
+            {
+              "requestId":"ACT-REQ-ACK-001",
+              "actionId":"AcknowledgeRestoreBlocker",
+              "idempotencyKey":"local-action-audit-v1:AcknowledgeRestoreBlocker:INC-001",
+              "actorId":"operator-local-reviewer",
+              "requestedAt":"2026-06-14T10:15:30Z",
+              "incidentUri":"urn:dcai:incident:INC-001",
+              "actionReason":"Operator reviewed restore blocker.",
+              "sourceRecordUri":"urn:dcai:source-record:system:SRC-INC-001",
+              "restoreReadinessFindingUri":"urn:dcai:reasoning:restore-readiness:INC-001",
+              "sourceReleaseId":"local-controlled-source-v1",
+              "reasoningRunId":"local-controlled-reasoning-v1",
+              "actionAuditReleaseId":"local-action-audit-v1"
+            }
+        """.trimIndent()
+    }
+
+    private fun validActionTransitionBody(): String {
+        return """
+            {
+              "transitionId":"ACT-TRN-REVIEW-001",
+              "idempotencyKey":"local-action-audit-v1:transition:review-start:INC-001",
+              "actorId":"operator-local-reviewer",
+              "requestedAt":"2026-06-14T10:20:30Z",
+              "targetExecutionUri":"urn:dcai:ontology-action-execution:local-action-audit-v1%3Aacknowledge%3AINC-001",
+              "toState":"IN_REVIEW",
+              "transitionReason":"Local reviewer started internal action review.",
+              "sourceReleaseId":"local-controlled-source-v1",
+              "reasoningRunId":"local-controlled-reasoning-v1",
+              "actionAuditReleaseId":"local-action-audit-v1"
+            }
+        """.trimIndent()
+    }
+
+    private fun validAiProposalReviewBody(): String {
+        return """
+            {
+              "reviewId":"AI-REV-LOCAL-001",
+              "idempotencyKey":"local-ai-review-v1:approve:AI-PROP-LOCAL-001",
+              "actorId":"operator-local-reviewer",
+              "reviewedAt":"2026-06-09T03:00:00Z",
+              "proposalUri":"urn:dcai:ai-proposal:local-ai-governance-v1%3Aaction-recommendation%3AINC-001",
+              "decision":"APPROVE",
+              "reviewReason":"Human reviewer accepted the AI recommendation.",
+              "actionId":"AcknowledgeRestoreBlocker",
+              "sourceReleaseId":"local-controlled-source-v1",
+              "reasoningRunId":"local-controlled-reasoning-v1",
+              "aiAuditReleaseId":"local-ai-governance-v1",
+              "actionAuditReleaseId":"local-action-audit-v1"
+            }
+        """.trimIndent()
+    }
+
+    private fun successfulActionAuditResult(): OntologyActionAuditResult {
+        return OntologyActionAuditResult(
+            audited = true,
+            validation = OntologyActionValidationReport(conforms = true, tripleCount = 22),
+            actionAuditGraphUri = "urn:dcai:graph:action-audit:local-action-audit-v1",
+            writtenGraphUris = listOf("urn:dcai:graph:action-audit:local-action-audit-v1"),
+        )
+    }
+
+    private fun successfulTransitionResult(): OntologyActionTransitionResult {
+        return OntologyActionTransitionResult(
+            transitioned = true,
+            validation = OntologyActionValidationReport(conforms = true, tripleCount = 30),
+            actionAuditGraphUri = "urn:dcai:graph:action-audit:local-action-audit-v1",
+            currentState = OntologyActionLifecycleState.IN_REVIEW,
+            writtenGraphUris = listOf("urn:dcai:graph:action-audit:local-action-audit-v1"),
+        )
+    }
+
+    private class CapturingOntologyActionSubmitter(
+        private val result: OntologyActionAuditResult,
+    ) : OntologyActionSubmitter {
+        var lastPlan: OntologyActionAuditPlan? = null
+
+        override fun submit(plan: OntologyActionAuditPlan): OntologyActionAuditResult {
+            lastPlan = plan
+            return result
+        }
+    }
+
+    private class CapturingOntologyActionTransitionSubmitter(
+        private val result: OntologyActionTransitionResult,
+    ) : OntologyActionTransitionSubmitter {
+        var lastPlan: OntologyActionTransitionPlan? = null
+
+        override fun submit(plan: OntologyActionTransitionPlan): OntologyActionTransitionResult {
+            lastPlan = plan
+            return result
+        }
+    }
+
+    private class CapturingAiGovernanceReviewSubmitter(
+        private val result: AiGovernanceReviewResult,
+    ) : AiGovernanceReviewSubmitter {
+        var lastPlan: AiGovernanceReviewPlan? = null
+
+        override fun submit(plan: AiGovernanceReviewPlan): AiGovernanceReviewResult {
+            lastPlan = plan
+            return result
+        }
+    }
+
     private fun actionAuditHistoryRow(): Map<String, String> {
         return mapOf(
             "graph" to "urn:dcai:graph:action-audit:local-action-audit-v1",
@@ -487,7 +807,7 @@ class PrivateSemanticQueryEndpointTest {
             "idempotencyKey" to "ack-restore-001",
             "actorId" to "operator-001",
             "actionReason" to "Reviewed restore blocker before shift handoff.",
-            "actionStatus" to "AUDITED",
+            "actionStatus" to "QUEUED",
             "requestedAt" to "2026-06-14T10:15:30Z",
             "executedAt" to "2026-06-14T10:15:30Z",
             "targetObject" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",

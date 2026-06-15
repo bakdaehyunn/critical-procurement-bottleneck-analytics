@@ -13,6 +13,21 @@ enum class OntologyActionType(val id: String) {
     }
 }
 
+enum class OntologyActionLifecycleState(val id: String) {
+    REQUESTED("REQUESTED"),
+    VALIDATED("VALIDATED"),
+    QUEUED("QUEUED"),
+    IN_REVIEW("IN_REVIEW"),
+    APPROVED("APPROVED"),
+    REJECTED("REJECTED"),
+    CLOSED("CLOSED"),
+    ;
+
+    companion object {
+        fun fromId(id: String): OntologyActionLifecycleState? = entries.firstOrNull { it.id == id }
+    }
+}
+
 data class OntologyActionRequest(
     val requestId: String,
     val actionType: OntologyActionType,
@@ -98,6 +113,29 @@ data class OntologyActionAuditPlan(
     val graphs: OntologyActionGraphUris,
 )
 
+data class OntologyActionTransitionRequest(
+    val transitionId: String,
+    val idempotencyKey: String,
+    val actorId: String,
+    val requestedAt: Instant,
+    val targetExecutionUri: String,
+    val toState: OntologyActionLifecycleState,
+    val transitionReason: String,
+) {
+    init {
+        require(transitionId.isNotBlank()) { "transitionId must not be blank" }
+        require(idempotencyKey.isNotBlank()) { "idempotencyKey must not be blank" }
+        require(actorId.isNotBlank()) { "actorId must not be blank" }
+        require(targetExecutionUri.isNotBlank()) { "targetExecutionUri must not be blank" }
+        require(transitionReason.isNotBlank()) { "transitionReason must not be blank" }
+    }
+}
+
+data class OntologyActionTransitionPlan(
+    val request: OntologyActionTransitionRequest,
+    val graphs: OntologyActionGraphUris,
+)
+
 data class OntologyActionValidationReport(
     val conforms: Boolean,
     val tripleCount: Int = 0,
@@ -115,3 +153,14 @@ data class OntologyActionAuditResult(
     val errors: List<String> = emptyList(),
 )
 
+data class OntologyActionTransitionResult(
+    val transitioned: Boolean,
+    val validation: OntologyActionValidationReport,
+    val actionAuditGraphUri: String,
+    val currentState: OntologyActionLifecycleState? = null,
+    val writtenGraphUris: List<String> = emptyList(),
+    val idempotentReplay: Boolean = false,
+    val rollbackAttempted: Boolean = false,
+    val rollbackSucceeded: Boolean = false,
+    val errors: List<String> = emptyList(),
+)

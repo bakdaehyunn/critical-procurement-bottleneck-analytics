@@ -1,4 +1,8 @@
 const SEMANTIC_API_BASE_URL = import.meta.env.VITE_SEMANTIC_API_BASE_URL ?? 'http://127.0.0.1:18080'
+const SEMANTIC_SOURCE_RELEASE_ID = import.meta.env.VITE_SEMANTIC_SOURCE_RELEASE_ID ?? 'local-controlled-source-v1'
+const SEMANTIC_REASONING_RUN_ID = import.meta.env.VITE_SEMANTIC_REASONING_RUN_ID ?? 'local-controlled-reasoning-v1'
+const SEMANTIC_ACTION_AUDIT_RELEASE_ID = import.meta.env.VITE_SEMANTIC_ACTION_AUDIT_RELEASE_ID ?? 'local-action-audit-v1'
+const SEMANTIC_AI_AUDIT_RELEASE_ID = import.meta.env.VITE_SEMANTIC_AI_AUDIT_RELEASE_ID ?? 'local-ai-governance-v1'
 
 export type Overview = {
   total_requests: number
@@ -247,6 +251,9 @@ export type OntologyActionAffordance = {
   label: string
   description: string
   status: 'DISABLED'
+  incident_uri: string
+  incident_id: string
+  source_record_uri: string
   ui_placement: OntologyActionPlacement[]
   target_objects: OntologyActionTarget[]
   required_parameters: string[]
@@ -281,6 +288,248 @@ export type OntologyActionAuditHistoryItem = {
   reviewed_status: string | null
   review_summary: string | null
   supporting_evidence_uri: string | null
+}
+
+export type OntologyActionNotificationItem = {
+  graph_uri: string
+  action_audit_release_id: string
+  notification_uri: string
+  notification_id: string
+  notification_status: string
+  notification_summary: string
+  execution_uri: string
+  execution_id: string
+  request_uri: string
+  request_id: string
+  action_type_uri: string
+  action_type_id: string
+  actor_id: string
+  action_reason: string
+  requested_at: string
+  generated_at: string
+  incident_uri: string
+  incident_id: string
+  target_object_uri: string | null
+  source_record_uri: string | null
+  assigned_team: string | null
+  assignee_id: string | null
+  reviewed_status: string | null
+  review_summary: string | null
+}
+
+export type OntologyActionReviewQueueItem = {
+  graph_uri: string
+  action_audit_release_id: string
+  notification_uri: string
+  notification_id: string
+  execution_uri: string
+  execution_id: string
+  request_uri: string
+  request_id: string
+  action_type_uri: string
+  action_type_id: string
+  actor_id: string
+  action_reason: string
+  current_state: OntologyActionLifecycleState
+  state_generated_at: string
+  incident_uri: string
+  incident_id: string
+  source_record_uri: string | null
+}
+
+export type OntologyActionTransitionHistoryItem = {
+  graph_uri: string
+  action_audit_release_id: string
+  transition_uri: string
+  transition_id: string
+  execution_uri: string
+  execution_id: string
+  request_uri: string
+  request_id: string
+  action_type_uri: string
+  action_type_id: string
+  actor_id: string
+  transition_reason: string
+  from_state: OntologyActionLifecycleState | null
+  to_state: OntologyActionLifecycleState
+  generated_at: string
+  incident_uri: string
+  incident_id: string
+}
+
+export type OntologyActionDispatchQueueItem = {
+  graph_uri: string
+  action_audit_release_id: string
+  dispatch_uri: string
+  dispatch_id: string
+  dispatch_channel: string
+  dispatch_status: string
+  dispatch_lifecycle_state: string
+  dispatch_summary: string
+  execution_uri: string
+  execution_id: string
+  request_uri: string
+  request_id: string
+  action_type_uri: string
+  action_type_id: string
+  transition_uri: string
+  transition_id: string
+  actor_id: string
+  generated_at: string
+  incident_uri: string
+  incident_id: string
+  source_record_uri: string | null
+}
+
+export type AiProposalItem = {
+  graph_uri: string
+  ai_audit_release_id: string
+  proposal_uri: string
+  proposal_id: string
+  proposal_type: string
+  proposal_status: string
+  review_status: string
+  disabled_reason: string
+  summary: string
+  rationale: string
+  confidence_score: number
+  risk_level: string
+  model_id: string
+  prompt_id: string
+  prompt_hash: string
+  actor_id: string
+  generated_at: string
+  batch_uri: string
+  batch_id: string
+  validation_report_uri: string
+  validation_status: string
+  validation_summary: string
+  incident_uri: string
+  incident_id: string
+  target_object_uri: string
+  source_record_uri: string
+  supporting_evidence_uri: string
+}
+
+export type DynamicPlaybackItem = {
+  graph_uri: string
+  action_audit_release_id: string
+  event_uri: string
+  event_id: string
+  scenario_id: string
+  playback_batch_id: string
+  playback_step: number
+  incident_uri: string
+  incident_id: string
+  event_kind: string
+  source_family: string
+  occurred_at: string
+  summary: string
+  source_record_uri: string
+  before_state: string
+  after_state: string
+  before_reasoning_state: string
+  after_reasoning_state: string
+  before_trust_state: string
+  after_trust_state: string
+  before_blast_radius_count: number
+  after_blast_radius_count: number
+  action_lifecycle_state: string
+  canonical_graph_uri: string | null
+  provenance_graph_uri: string | null
+  reasoning_graph_uri: string | null
+}
+
+export type OntologyActionLifecycleState = 'REQUESTED' | 'VALIDATED' | 'QUEUED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'CLOSED'
+
+export type OntologyActionSubmission = {
+  action_id: string
+  actor_id: string
+  action_reason: string
+  incident_uri: string
+  source_record_uri: string
+  restore_readiness_finding_uri?: string
+  recovery_blocker_uri?: string
+  trust_finding_uri?: string
+  validation_evidence_uri?: string
+  assigned_team?: string
+  assignee_id?: string
+  reviewed_status?: string
+  review_summary?: string
+  supporting_evidence_uri?: string
+}
+
+export type OntologyActionSubmissionResult = {
+  resultType: 'ontology-action-request'
+  audited: boolean
+  actionId: string
+  requestId: string
+  idempotencyKey: string
+  actionAuditGraphUri: string
+  writtenGraphUris: string[]
+  idempotentReplay: boolean
+  notificationStatus: string
+  canonicalGraphMutation: boolean
+  reasoningGraphMutation: boolean
+  operationsGraphMutation: boolean
+  externalSystemMutation: boolean
+}
+
+export type OntologyActionTransitionSubmission = {
+  target_execution_uri: string
+  to_state: OntologyActionLifecycleState
+  actor_id: string
+  transition_reason: string
+}
+
+export type OntologyActionTransitionResult = {
+  resultType: 'ontology-action-transition'
+  transitioned: boolean
+  transitionId: string
+  idempotencyKey: string
+  targetExecutionUri: string
+  currentState: OntologyActionLifecycleState
+  actionAuditGraphUri: string
+  writtenGraphUris: string[]
+  idempotentReplay: boolean
+  canonicalGraphMutation: boolean
+  reasoningGraphMutation: boolean
+  operationsGraphMutation: boolean
+  externalSystemMutation: boolean
+}
+
+export type AiProposalReviewDecision = 'APPROVE' | 'REJECT'
+
+export type AiProposalReviewSubmission = {
+  proposal_uri: string
+  proposal_id: string
+  decision: AiProposalReviewDecision
+  actor_id: string
+  review_reason: string
+  action_id?: string
+}
+
+export type AiProposalReviewResult = {
+  resultType: 'ai-proposal-review'
+  reviewed: boolean
+  decision: AiProposalReviewDecision
+  reviewStatus: string
+  reviewId: string
+  idempotencyKey: string
+  proposalUri: string
+  aiAuditGraphUri: string
+  actionAuditGraphUri?: string
+  writtenGraphUris: string[]
+  idempotentReplay: boolean
+  actionRequestCreated: boolean
+  actionRequestId?: string
+  actionId?: string
+  canonicalGraphMutation: boolean
+  reasoningGraphMutation: boolean
+  provenanceGraphMutation: boolean
+  sourceGraphMutation: boolean
+  operationsGraphMutation: boolean
+  externalSystemMutation: boolean
 }
 
 export type OntologyReviewQueueItem = {
@@ -385,6 +634,15 @@ export type RequestDetail = {
   provenance_trace: ProvenanceTraceItem[]
   ontology_actions: OntologyActionAffordance[]
   action_audit_history: OntologyActionAuditHistoryItem[]
+  action_notifications: OntologyActionNotificationItem[]
+  action_review_queue: OntologyActionReviewQueueItem[]
+  action_transition_history: OntologyActionTransitionHistoryItem[]
+  action_dispatch_queue: OntologyActionDispatchQueueItem[]
+  ai_proposals: AiProposalItem[]
+  dynamic_event_timeline: DynamicPlaybackItem[]
+  dynamic_state_changes: DynamicPlaybackItem[]
+  dynamic_reasoning_changes: DynamicPlaybackItem[]
+  dynamic_action_lifecycle: DynamicPlaybackItem[]
 }
 
 export type FilterOption = {
@@ -745,6 +1003,156 @@ type SemanticActionAuditHistoryRecord = {
   supportingEvidenceUri?: string
 }
 
+type SemanticActionNotificationQueueRecord = {
+  graphUri: string
+  actionAuditReleaseId: string
+  notificationUri: string
+  notificationId: string
+  notificationStatus: string
+  notificationSummary: string
+  executionUri: string
+  executionId: string
+  requestUri: string
+  requestId: string
+  actionTypeUri: string
+  actionTypeId: string
+  actorId: string
+  actionReason: string
+  requestedAt: string
+  generatedAt: string
+  incidentUri: string
+  incidentId: string
+  targetObjectUri?: string
+  sourceRecordUri?: string
+  assignedTeam?: string
+  assigneeId?: string
+  reviewedStatus?: string
+  reviewSummary?: string
+}
+
+type SemanticActionReviewQueueRecord = {
+  graphUri: string
+  actionAuditReleaseId: string
+  notificationUri: string
+  notificationId: string
+  executionUri: string
+  executionId: string
+  requestUri: string
+  requestId: string
+  actionTypeUri: string
+  actionTypeId: string
+  actorId: string
+  actionReason: string
+  currentState: OntologyActionLifecycleState
+  stateGeneratedAt: string
+  incidentUri: string
+  incidentId: string
+  sourceRecordUri?: string
+}
+
+type SemanticActionTransitionHistoryRecord = {
+  graphUri: string
+  actionAuditReleaseId: string
+  transitionUri: string
+  transitionId: string
+  executionUri: string
+  executionId: string
+  requestUri: string
+  requestId: string
+  actionTypeUri: string
+  actionTypeId: string
+  actorId: string
+  transitionReason: string
+  fromState?: OntologyActionLifecycleState
+  toState: OntologyActionLifecycleState
+  generatedAt: string
+  incidentUri: string
+  incidentId: string
+}
+
+type SemanticActionDispatchQueueRecord = {
+  graphUri: string
+  actionAuditReleaseId: string
+  dispatchUri: string
+  dispatchId: string
+  dispatchChannel: string
+  dispatchStatus: string
+  dispatchLifecycleState: string
+  dispatchSummary: string
+  executionUri: string
+  executionId: string
+  requestUri: string
+  requestId: string
+  actionTypeUri: string
+  actionTypeId: string
+  transitionUri: string
+  transitionId: string
+  actorId: string
+  generatedAt: string
+  incidentUri: string
+  incidentId: string
+  sourceRecordUri?: string
+}
+
+type SemanticAiProposalRecord = {
+  graphUri: string
+  aiAuditReleaseId: string
+  proposalUri: string
+  proposalId: string
+  proposalType: string
+  proposalStatus: string
+  reviewStatus: string
+  disabledReason: string
+  summary: string
+  rationale: string
+  confidenceScore: number
+  riskLevel: string
+  modelId: string
+  promptId: string
+  promptHash: string
+  actorId: string
+  generatedAt: string
+  batchUri: string
+  batchId: string
+  validationReportUri: string
+  validationStatus: string
+  validationSummary: string
+  incidentUri: string
+  incidentId: string
+  targetObjectUri: string
+  sourceRecordUri: string
+  supportingEvidenceUri: string
+}
+
+type SemanticDynamicPlaybackRecord = {
+  graphUri: string
+  actionAuditReleaseId: string
+  eventUri: string
+  eventId: string
+  scenarioId: string
+  playbackBatchId: string
+  playbackStep: number
+  incidentUri: string
+  incidentId: string
+  eventKind: string
+  sourceFamily: string
+  occurredAt: string
+  summary: string
+  sourceRecordUri: string
+  beforeState: string
+  afterState: string
+  beforeReasoningState: string
+  afterReasoningState: string
+  beforeTrustState: string
+  afterTrustState: string
+  beforeBlastRadiusCount: number
+  afterBlastRadiusCount: number
+  actionLifecycleState: string
+  canonicalGraphUri?: string
+  provenanceGraphUri?: string
+  reasoningGraphUri?: string
+}
+
 type SemanticOntologyReviewQueueRecord = {
   graphUri: string
   queueId: string
@@ -857,13 +1265,38 @@ export async function fetchFilterMetadata(): Promise<FilterMetadata> {
 }
 
 export async function fetchRequestDetail(infrastructureRequestId: string): Promise<RequestDetail> {
-  const [queueRecords, detailRecords, evidenceRecords, timelineRecords, actionAvailabilityRecords, actionAuditRecords] = await Promise.all([
+  const [
+    queueRecords,
+    detailRecords,
+    evidenceRecords,
+    timelineRecords,
+    actionAvailabilityRecords,
+    actionAuditRecords,
+    actionNotificationRecords,
+    actionReviewRecords,
+    actionTransitionRecords,
+    actionDispatchRecords,
+    aiProposalRecords,
+    dynamicTimelineRecords,
+    dynamicStateChangeRecords,
+    dynamicReasoningChangeRecords,
+    dynamicActionLifecycleRecords,
+  ] = await Promise.all([
     postSemanticQuery<SemanticFollowUpQueueRecord>('semanticFollowUpQueueList'),
     postSemanticQuery<SemanticFollowUpDetailRecord>('semanticFollowUpDetail', { incidentIdParam: infrastructureRequestId }),
     postSemanticQuery<SemanticIncidentEvidenceRecord>('semanticIncidentEvidence', { incidentIdParam: infrastructureRequestId }),
     postSemanticQuery<SemanticIncidentTimelineRecord>('semanticIncidentTimeline', { incidentIdParam: infrastructureRequestId }),
     postSemanticQuery<SemanticActionAvailabilityRecord>('semanticAvailableActionsByFinding', { incidentIdParam: infrastructureRequestId }),
     postSemanticQuery<SemanticActionAuditHistoryRecord>('semanticActionAuditHistoryByIncident', { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticActionNotificationQueueRecord>('semanticActionNotificationQueueByIncident', { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticActionReviewQueueRecord>('semanticActionReviewQueueByIncident', { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticActionTransitionHistoryRecord>('semanticActionTransitionHistoryByIncident', { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticActionDispatchQueueRecord>('semanticActionDispatchQueueByIncident', { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticAiProposalRecord>('semanticAiProposalDetailByIncident', { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticDynamicPlaybackRecord>('semanticDynamicEventTimelineByIncident', { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticDynamicPlaybackRecord>('semanticDynamicStateChangesByIncident', { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticDynamicPlaybackRecord>('semanticDynamicReasoningChangesByIncident', { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticDynamicPlaybackRecord>('semanticDynamicActionLifecycleByIncident', { incidentIdParam: infrastructureRequestId }),
   ])
   const request = buildFollowUps(queueRecords, detailRecords).find((row) => row.incident_id === infrastructureRequestId)
   if (!request) {
@@ -872,7 +1305,121 @@ export async function fetchRequestDetail(infrastructureRequestId: string): Promi
   const detailRecord = detailRecords.find((record) => record.incidentId === infrastructureRequestId)
   const evidence = evidenceRecords
   const timeline = timelineRecords
-  return buildRequestDetail(request, detailRecord, evidence, timeline, actionAvailabilityRecords, actionAuditRecords)
+  return buildRequestDetail(
+    request,
+    detailRecord,
+    evidence,
+    timeline,
+    actionAvailabilityRecords,
+    actionAuditRecords,
+    actionNotificationRecords,
+    actionReviewRecords,
+    actionTransitionRecords,
+    actionDispatchRecords,
+    aiProposalRecords,
+    dynamicTimelineRecords,
+    dynamicStateChangeRecords,
+    dynamicReasoningChangeRecords,
+    dynamicActionLifecycleRecords,
+  )
+}
+
+export async function submitOntologyActionRequest(
+  submission: OntologyActionSubmission,
+): Promise<OntologyActionSubmissionResult> {
+  const requestId = `ACT-REQ-${submission.action_id}-${submission.actor_id}-${new Date().toISOString().replace(/[-:.TZ]/g, '')}`
+  const idempotencyKey = `${SEMANTIC_ACTION_AUDIT_RELEASE_ID}:${submission.action_id}:${submission.incident_uri}:${requestId}`
+  const response = await fetch(`${SEMANTIC_API_BASE_URL}/semantic/internal/action-request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      requestId,
+      actionId: submission.action_id,
+      idempotencyKey,
+      actorId: submission.actor_id,
+      requestedAt: new Date().toISOString(),
+      incidentUri: submission.incident_uri,
+      actionReason: submission.action_reason,
+      sourceRecordUri: submission.source_record_uri,
+      restoreReadinessFindingUri: submission.restore_readiness_finding_uri,
+      recoveryBlockerUri: submission.recovery_blocker_uri,
+      trustFindingUri: submission.trust_finding_uri,
+      validationEvidenceUri: submission.validation_evidence_uri,
+      assignedTeam: submission.assigned_team,
+      assigneeId: submission.assignee_id,
+      reviewedStatus: submission.reviewed_status,
+      reviewSummary: submission.review_summary,
+      supportingEvidenceUri: submission.supporting_evidence_uri,
+      sourceReleaseId: SEMANTIC_SOURCE_RELEASE_ID,
+      reasoningRunId: SEMANTIC_REASONING_RUN_ID,
+      actionAuditReleaseId: SEMANTIC_ACTION_AUDIT_RELEASE_ID,
+    }),
+  })
+  if (!response.ok) {
+    const payload = await response.text()
+    throw new Error(`Ontology action request failed: ${response.status} ${response.statusText} ${payload}`)
+  }
+  return await response.json() as OntologyActionSubmissionResult
+}
+
+export async function submitOntologyActionTransition(
+  submission: OntologyActionTransitionSubmission,
+): Promise<OntologyActionTransitionResult> {
+  const transitionId = `ACT-TRN-${submission.to_state}-${submission.actor_id}-${new Date().toISOString().replace(/[-:.TZ]/g, '')}`
+  const idempotencyKey = `${SEMANTIC_ACTION_AUDIT_RELEASE_ID}:transition:${submission.to_state}:${submission.target_execution_uri}:${transitionId}`
+  const response = await fetch(`${SEMANTIC_API_BASE_URL}/semantic/internal/action-transition`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      transitionId,
+      idempotencyKey,
+      actorId: submission.actor_id,
+      requestedAt: new Date().toISOString(),
+      targetExecutionUri: submission.target_execution_uri,
+      toState: submission.to_state,
+      transitionReason: submission.transition_reason,
+      sourceReleaseId: SEMANTIC_SOURCE_RELEASE_ID,
+      reasoningRunId: SEMANTIC_REASONING_RUN_ID,
+      actionAuditReleaseId: SEMANTIC_ACTION_AUDIT_RELEASE_ID,
+    }),
+  })
+  if (!response.ok) {
+    const payload = await response.text()
+    throw new Error(`Ontology action transition failed: ${response.status} ${response.statusText} ${payload}`)
+  }
+  return await response.json() as OntologyActionTransitionResult
+}
+
+export async function submitAiProposalReview(
+  submission: AiProposalReviewSubmission,
+): Promise<AiProposalReviewResult> {
+  const reviewedAt = new Date().toISOString()
+  const timestamp = reviewedAt.replace(/[-:.TZ]/g, '')
+  const reviewId = `AI-REV-${submission.decision}-${submission.proposal_id}-${timestamp}`
+  const idempotencyKey = `${SEMANTIC_AI_AUDIT_RELEASE_ID}:review:${submission.decision}:${submission.proposal_id}:${timestamp}`
+  const response = await fetch(`${SEMANTIC_API_BASE_URL}/semantic/internal/ai-proposal-review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      reviewId,
+      idempotencyKey,
+      actorId: submission.actor_id,
+      reviewedAt,
+      proposalUri: submission.proposal_uri,
+      decision: submission.decision,
+      reviewReason: submission.review_reason,
+      actionId: submission.action_id,
+      sourceReleaseId: SEMANTIC_SOURCE_RELEASE_ID,
+      reasoningRunId: SEMANTIC_REASONING_RUN_ID,
+      aiAuditReleaseId: SEMANTIC_AI_AUDIT_RELEASE_ID,
+      actionAuditReleaseId: SEMANTIC_ACTION_AUDIT_RELEASE_ID,
+    }),
+  })
+  if (!response.ok) {
+    const payload = await response.text()
+    throw new Error(`AI proposal review failed: ${response.status} ${response.statusText} ${payload}`)
+  }
+  return await response.json() as AiProposalReviewResult
 }
 
 export async function fetchDataQualityCheck(checkResultId: string): Promise<DataQualityCheck> {
@@ -1201,6 +1748,15 @@ function buildRequestDetail(
   workflowTimeline: SemanticIncidentTimelineRecord[],
   actionAvailabilityRecords: SemanticActionAvailabilityRecord[],
   actionAuditRecords: SemanticActionAuditHistoryRecord[],
+  actionNotificationRecords: SemanticActionNotificationQueueRecord[],
+  actionReviewRecords: SemanticActionReviewQueueRecord[],
+  actionTransitionRecords: SemanticActionTransitionHistoryRecord[],
+  actionDispatchRecords: SemanticActionDispatchQueueRecord[] = [],
+  aiProposalRecords: SemanticAiProposalRecord[] = [],
+  dynamicTimelineRecords: SemanticDynamicPlaybackRecord[] = [],
+  dynamicStateChangeRecords: SemanticDynamicPlaybackRecord[] = [],
+  dynamicReasoningChangeRecords: SemanticDynamicPlaybackRecord[] = [],
+  dynamicActionLifecycleRecords: SemanticDynamicPlaybackRecord[] = [],
 ): RequestDetail {
   const evidenceIssues = uniqueTrustFindingEvidence(evidence.filter((record) => record.trustFindingUri))
   const telemetryEvidence = evidence.filter(isTelemetryEvidence)
@@ -1347,6 +1903,177 @@ function buildRequestDetail(
     provenance_trace: provenanceTrace,
     ontology_actions: mapOntologyActionAffordances(actionAvailabilityRecords),
     action_audit_history: actionAuditRecords.map(mapActionAuditHistory),
+    action_notifications: actionNotificationRecords.map(mapActionNotification),
+    action_review_queue: actionReviewRecords.map(mapActionReviewQueue),
+    action_transition_history: actionTransitionRecords.map(mapActionTransitionHistory),
+    action_dispatch_queue: actionDispatchRecords.map(mapActionDispatchQueue),
+    ai_proposals: aiProposalRecords.map(mapAiProposal),
+    dynamic_event_timeline: dynamicTimelineRecords.map(mapDynamicPlayback),
+    dynamic_state_changes: dynamicStateChangeRecords.map(mapDynamicPlayback),
+    dynamic_reasoning_changes: dynamicReasoningChangeRecords.map(mapDynamicPlayback),
+    dynamic_action_lifecycle: dynamicActionLifecycleRecords.map(mapDynamicPlayback),
+  }
+}
+
+function mapActionDispatchQueue(record: SemanticActionDispatchQueueRecord): OntologyActionDispatchQueueItem {
+  return {
+    graph_uri: record.graphUri,
+    action_audit_release_id: record.actionAuditReleaseId,
+    dispatch_uri: record.dispatchUri,
+    dispatch_id: record.dispatchId,
+    dispatch_channel: record.dispatchChannel,
+    dispatch_status: record.dispatchStatus,
+    dispatch_lifecycle_state: record.dispatchLifecycleState,
+    dispatch_summary: record.dispatchSummary,
+    execution_uri: record.executionUri,
+    execution_id: record.executionId,
+    request_uri: record.requestUri,
+    request_id: record.requestId,
+    action_type_uri: record.actionTypeUri,
+    action_type_id: record.actionTypeId,
+    transition_uri: record.transitionUri,
+    transition_id: record.transitionId,
+    actor_id: record.actorId,
+    generated_at: record.generatedAt,
+    incident_uri: record.incidentUri,
+    incident_id: record.incidentId,
+    source_record_uri: record.sourceRecordUri ?? null,
+  }
+}
+
+function mapAiProposal(record: SemanticAiProposalRecord): AiProposalItem {
+  return {
+    graph_uri: record.graphUri,
+    ai_audit_release_id: record.aiAuditReleaseId,
+    proposal_uri: record.proposalUri,
+    proposal_id: record.proposalId,
+    proposal_type: record.proposalType,
+    proposal_status: record.proposalStatus,
+    review_status: record.reviewStatus,
+    disabled_reason: record.disabledReason,
+    summary: record.summary,
+    rationale: record.rationale,
+    confidence_score: record.confidenceScore,
+    risk_level: record.riskLevel,
+    model_id: record.modelId,
+    prompt_id: record.promptId,
+    prompt_hash: record.promptHash,
+    actor_id: record.actorId,
+    generated_at: record.generatedAt,
+    batch_uri: record.batchUri,
+    batch_id: record.batchId,
+    validation_report_uri: record.validationReportUri,
+    validation_status: record.validationStatus,
+    validation_summary: record.validationSummary,
+    incident_uri: record.incidentUri,
+    incident_id: record.incidentId,
+    target_object_uri: record.targetObjectUri,
+    source_record_uri: record.sourceRecordUri,
+    supporting_evidence_uri: record.supportingEvidenceUri,
+  }
+}
+
+function mapDynamicPlayback(record: SemanticDynamicPlaybackRecord): DynamicPlaybackItem {
+  return {
+    graph_uri: record.graphUri,
+    action_audit_release_id: record.actionAuditReleaseId,
+    event_uri: record.eventUri,
+    event_id: record.eventId,
+    scenario_id: record.scenarioId,
+    playback_batch_id: record.playbackBatchId,
+    playback_step: record.playbackStep,
+    incident_uri: record.incidentUri,
+    incident_id: record.incidentId,
+    event_kind: record.eventKind,
+    source_family: record.sourceFamily,
+    occurred_at: record.occurredAt,
+    summary: record.summary,
+    source_record_uri: record.sourceRecordUri,
+    before_state: record.beforeState,
+    after_state: record.afterState,
+    before_reasoning_state: record.beforeReasoningState,
+    after_reasoning_state: record.afterReasoningState,
+    before_trust_state: record.beforeTrustState,
+    after_trust_state: record.afterTrustState,
+    before_blast_radius_count: record.beforeBlastRadiusCount,
+    after_blast_radius_count: record.afterBlastRadiusCount,
+    action_lifecycle_state: record.actionLifecycleState,
+    canonical_graph_uri: record.canonicalGraphUri ?? null,
+    provenance_graph_uri: record.provenanceGraphUri ?? null,
+    reasoning_graph_uri: record.reasoningGraphUri ?? null,
+  }
+}
+
+function mapActionReviewQueue(record: SemanticActionReviewQueueRecord): OntologyActionReviewQueueItem {
+  return {
+    graph_uri: record.graphUri,
+    action_audit_release_id: record.actionAuditReleaseId,
+    notification_uri: record.notificationUri,
+    notification_id: record.notificationId,
+    execution_uri: record.executionUri,
+    execution_id: record.executionId,
+    request_uri: record.requestUri,
+    request_id: record.requestId,
+    action_type_uri: record.actionTypeUri,
+    action_type_id: record.actionTypeId,
+    actor_id: record.actorId,
+    action_reason: record.actionReason,
+    current_state: record.currentState,
+    state_generated_at: record.stateGeneratedAt,
+    incident_uri: record.incidentUri,
+    incident_id: record.incidentId,
+    source_record_uri: record.sourceRecordUri ?? null,
+  }
+}
+
+function mapActionTransitionHistory(record: SemanticActionTransitionHistoryRecord): OntologyActionTransitionHistoryItem {
+  return {
+    graph_uri: record.graphUri,
+    action_audit_release_id: record.actionAuditReleaseId,
+    transition_uri: record.transitionUri,
+    transition_id: record.transitionId,
+    execution_uri: record.executionUri,
+    execution_id: record.executionId,
+    request_uri: record.requestUri,
+    request_id: record.requestId,
+    action_type_uri: record.actionTypeUri,
+    action_type_id: record.actionTypeId,
+    actor_id: record.actorId,
+    transition_reason: record.transitionReason,
+    from_state: record.fromState ?? null,
+    to_state: record.toState,
+    generated_at: record.generatedAt,
+    incident_uri: record.incidentUri,
+    incident_id: record.incidentId,
+  }
+}
+
+function mapActionNotification(record: SemanticActionNotificationQueueRecord): OntologyActionNotificationItem {
+  return {
+    graph_uri: record.graphUri,
+    action_audit_release_id: record.actionAuditReleaseId,
+    notification_uri: record.notificationUri,
+    notification_id: record.notificationId,
+    notification_status: record.notificationStatus,
+    notification_summary: record.notificationSummary,
+    execution_uri: record.executionUri,
+    execution_id: record.executionId,
+    request_uri: record.requestUri,
+    request_id: record.requestId,
+    action_type_uri: record.actionTypeUri,
+    action_type_id: record.actionTypeId,
+    actor_id: record.actorId,
+    action_reason: record.actionReason,
+    requested_at: record.requestedAt,
+    generated_at: record.generatedAt,
+    incident_uri: record.incidentUri,
+    incident_id: record.incidentId,
+    target_object_uri: record.targetObjectUri ?? null,
+    source_record_uri: record.sourceRecordUri ?? null,
+    assigned_team: record.assignedTeam ?? null,
+    assignee_id: record.assigneeId ?? null,
+    reviewed_status: record.reviewedStatus ?? null,
+    review_summary: record.reviewSummary ?? null,
   }
 }
 
@@ -1392,6 +2119,9 @@ function mapOntologyActionAffordances(records: SemanticActionAvailabilityRecord[
       label: record.actionLabel,
       description: record.actionDescription,
       status: 'DISABLED',
+      incident_uri: record.incidentUri,
+      incident_id: record.incidentId,
+      source_record_uri: record.sourceRecordUri,
       ui_placement: [],
       target_objects: [],
       required_parameters: [],

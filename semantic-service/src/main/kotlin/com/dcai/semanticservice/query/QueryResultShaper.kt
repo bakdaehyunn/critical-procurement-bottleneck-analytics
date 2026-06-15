@@ -39,6 +39,17 @@ class QueryResultShaper(
             "semanticActionAuditHistoryByIncident",
             "semanticActionAuditHistoryByTarget",
             -> shapeActionAuditHistory(report, definition)
+            "semanticActionNotificationQueueByIncident" -> shapeActionNotificationQueue(report, definition)
+            "semanticActionReviewQueueByIncident" -> shapeActionReviewQueue(report, definition)
+            "semanticActionTransitionHistoryByIncident" -> shapeActionTransitionHistory(report, definition)
+            "semanticActionDispatchQueueByIncident" -> shapeActionDispatchQueue(report, definition)
+            "semanticDynamicEventTimelineByIncident",
+            "semanticDynamicStateChangesByIncident",
+            "semanticDynamicReasoningChangesByIncident",
+            "semanticDynamicActionLifecycleByIncident",
+            -> shapeDynamicPlayback(report, definition)
+            "semanticAiProposalReviewQueue" -> shapeAiProposalReviewQueue(report, definition)
+            "semanticAiProposalDetailByIncident" -> shapeAiProposalDetail(report, definition)
             else -> error("No result envelope contract for query id: ${report.queryId}")
         }
     }
@@ -691,6 +702,235 @@ class QueryResultShaper(
                 )
             },
             provenance = provenance(definition),
+        )
+    }
+
+    private fun shapeActionNotificationQueue(
+        report: QueryExecutionReport,
+        definition: ApprovedQueryDefinition,
+    ): ActionNotificationQueueEnvelope {
+        return ActionNotificationQueueEnvelope(
+            queryId = report.queryId,
+            records = report.rows.map { row ->
+                ActionNotificationQueueRecord(
+                    graphUri = row.required("graph"),
+                    actionAuditReleaseId = row.required("actionAuditReleaseId"),
+                    notificationUri = row.required("notification"),
+                    notificationId = row.required("notificationId"),
+                    notificationStatus = row.required("notificationStatus"),
+                    notificationSummary = row.required("notificationSummary"),
+                    executionUri = row.required("execution"),
+                    executionId = row.required("executionId"),
+                    requestUri = row.required("request"),
+                    requestId = row.required("requestId"),
+                    actionTypeUri = row.required("actionType"),
+                    actionTypeId = row.required("actionTypeId"),
+                    actorId = row.required("actorId"),
+                    actionReason = row.required("actionReason"),
+                    requestedAt = row.required("requestedAt"),
+                    generatedAt = row.required("generatedAt"),
+                    incidentUri = row.required("incident"),
+                    incidentId = row.required("incidentId"),
+                    targetObjectUri = row.optional("targetObject"),
+                    sourceRecordUri = row.optional("sourceRecord"),
+                    assignedTeam = row.optional("assignedTeam"),
+                    assigneeId = row.optional("assigneeId"),
+                    reviewedStatus = row.optional("reviewedStatus"),
+                    reviewSummary = row.optional("reviewSummary"),
+                )
+            },
+            provenance = provenance(definition),
+        )
+    }
+
+    private fun shapeActionReviewQueue(
+        report: QueryExecutionReport,
+        definition: ApprovedQueryDefinition,
+    ): ActionReviewQueueEnvelope {
+        return ActionReviewQueueEnvelope(
+            queryId = report.queryId,
+            records = report.rows.map { row ->
+                ActionReviewQueueRecord(
+                    graphUri = row.required("graph"),
+                    actionAuditReleaseId = row.required("actionAuditReleaseId"),
+                    notificationUri = row.required("notification"),
+                    notificationId = row.required("notificationId"),
+                    executionUri = row.required("execution"),
+                    executionId = row.required("executionId"),
+                    requestUri = row.required("request"),
+                    requestId = row.required("requestId"),
+                    actionTypeUri = row.required("actionType"),
+                    actionTypeId = row.required("actionTypeId"),
+                    actorId = row.required("actorId"),
+                    actionReason = row.required("actionReason"),
+                    currentState = row.required("currentState"),
+                    stateGeneratedAt = row.required("stateGeneratedAt"),
+                    incidentUri = row.required("incident"),
+                    incidentId = row.required("incidentId"),
+                    sourceRecordUri = row.optional("sourceRecord"),
+                )
+            },
+            provenance = provenance(definition),
+        )
+    }
+
+    private fun shapeActionTransitionHistory(
+        report: QueryExecutionReport,
+        definition: ApprovedQueryDefinition,
+    ): ActionTransitionHistoryEnvelope {
+        return ActionTransitionHistoryEnvelope(
+            queryId = report.queryId,
+            records = report.rows.map { row ->
+                ActionTransitionHistoryRecord(
+                    graphUri = row.required("graph"),
+                    actionAuditReleaseId = row.required("actionAuditReleaseId"),
+                    transitionUri = row.required("transition"),
+                    transitionId = row.required("transitionId"),
+                    executionUri = row.required("execution"),
+                    executionId = row.required("executionId"),
+                    requestUri = row.required("request"),
+                    requestId = row.required("requestId"),
+                    actionTypeUri = row.required("actionType"),
+                    actionTypeId = row.required("actionTypeId"),
+                    actorId = row.required("actorId"),
+                    transitionReason = row.required("transitionReason"),
+                    fromState = row.optional("fromState"),
+                    toState = row.required("toState"),
+                    generatedAt = row.required("generatedAt"),
+                    incidentUri = row.required("incident"),
+                    incidentId = row.required("incidentId"),
+                )
+            },
+            provenance = provenance(definition),
+        )
+    }
+
+    private fun shapeActionDispatchQueue(
+        report: QueryExecutionReport,
+        definition: ApprovedQueryDefinition,
+    ): ActionDispatchQueueEnvelope {
+        return ActionDispatchQueueEnvelope(
+            queryId = report.queryId,
+            records = report.rows.map { row ->
+                ActionDispatchQueueRecord(
+                    graphUri = row.required("graph"),
+                    actionAuditReleaseId = row.required("actionAuditReleaseId"),
+                    dispatchUri = row.required("dispatch"),
+                    dispatchId = row.required("dispatchId"),
+                    dispatchChannel = row.required("dispatchChannel"),
+                    dispatchStatus = row.required("dispatchStatus"),
+                    dispatchLifecycleState = row.required("dispatchLifecycleState"),
+                    dispatchSummary = row.required("dispatchSummary"),
+                    executionUri = row.required("execution"),
+                    executionId = row.required("executionId"),
+                    requestUri = row.required("request"),
+                    requestId = row.required("requestId"),
+                    actionTypeUri = row.required("actionType"),
+                    actionTypeId = row.required("actionTypeId"),
+                    transitionUri = row.required("transition"),
+                    transitionId = row.required("transitionId"),
+                    actorId = row.required("actorId"),
+                    generatedAt = row.required("generatedAt"),
+                    incidentUri = row.required("incident"),
+                    incidentId = row.required("incidentId"),
+                    sourceRecordUri = row.optional("sourceRecord"),
+                )
+            },
+            provenance = provenance(definition),
+        )
+    }
+
+    private fun shapeDynamicPlayback(
+        report: QueryExecutionReport,
+        definition: ApprovedQueryDefinition,
+    ): DynamicPlaybackEnvelope {
+        return DynamicPlaybackEnvelope(
+            queryId = report.queryId,
+            records = report.rows.map { row ->
+                DynamicPlaybackRecord(
+                    graphUri = row.required("graph"),
+                    actionAuditReleaseId = row.required("actionAuditReleaseId"),
+                    eventUri = row.required("event"),
+                    eventId = row.required("eventId"),
+                    scenarioId = row.required("scenarioId"),
+                    playbackBatchId = row.required("playbackBatchId"),
+                    playbackStep = row.requiredInt("playbackStep"),
+                    incidentUri = row.required("incident"),
+                    incidentId = row.required("incidentId"),
+                    eventKind = row.required("eventKind"),
+                    sourceFamily = row.required("sourceFamily"),
+                    occurredAt = row.required("occurredAt"),
+                    summary = row.required("summary"),
+                    sourceRecordUri = row.required("sourceRecord"),
+                    beforeState = row.required("beforeState"),
+                    afterState = row.required("afterState"),
+                    beforeReasoningState = row.required("beforeReasoningState"),
+                    afterReasoningState = row.required("afterReasoningState"),
+                    beforeTrustState = row.required("beforeTrustState"),
+                    afterTrustState = row.required("afterTrustState"),
+                    beforeBlastRadiusCount = row.requiredInt("beforeBlastRadiusCount"),
+                    afterBlastRadiusCount = row.requiredInt("afterBlastRadiusCount"),
+                    actionLifecycleState = row.required("actionLifecycleState"),
+                    canonicalGraphUri = row.optional("canonicalGraph"),
+                    provenanceGraphUri = row.optional("provenanceGraph"),
+                    reasoningGraphUri = row.optional("reasoningGraph"),
+                )
+            },
+            provenance = provenance(definition),
+        )
+    }
+
+    private fun shapeAiProposalReviewQueue(
+        report: QueryExecutionReport,
+        definition: ApprovedQueryDefinition,
+    ): AiProposalReviewQueueEnvelope {
+        return AiProposalReviewQueueEnvelope(
+            queryId = report.queryId,
+            records = report.rows.map(::aiProposalRecord),
+            provenance = provenance(definition),
+        )
+    }
+
+    private fun shapeAiProposalDetail(
+        report: QueryExecutionReport,
+        definition: ApprovedQueryDefinition,
+    ): AiProposalDetailEnvelope {
+        return AiProposalDetailEnvelope(
+            queryId = report.queryId,
+            records = report.rows.map(::aiProposalRecord),
+            provenance = provenance(definition),
+        )
+    }
+
+    private fun aiProposalRecord(row: Map<String, String>): AiProposalRecord {
+        return AiProposalRecord(
+            graphUri = row.required("graph"),
+            aiAuditReleaseId = row.required("aiAuditReleaseId"),
+            proposalUri = row.required("proposal"),
+            proposalId = row.required("proposalId"),
+            proposalType = row.required("proposalType"),
+            proposalStatus = row.required("proposalStatus"),
+            reviewStatus = row.required("reviewStatus"),
+            disabledReason = row.required("disabledReason"),
+            summary = row.required("summary"),
+            rationale = row.required("rationale"),
+            confidenceScore = row.requiredDouble("confidenceScore"),
+            riskLevel = row.required("riskLevel"),
+            modelId = row.required("modelId"),
+            promptId = row.required("promptId"),
+            promptHash = row.required("promptHash"),
+            actorId = row.required("actorId"),
+            generatedAt = row.required("generatedAt"),
+            batchUri = row.required("batch"),
+            batchId = row.required("batchId"),
+            validationReportUri = row.required("validationReport"),
+            validationStatus = row.required("validationStatus"),
+            validationSummary = row.required("validationSummary"),
+            incidentUri = row.required("incident"),
+            incidentId = row.required("incidentId"),
+            targetObjectUri = row.required("targetObject"),
+            sourceRecordUri = row.required("sourceRecord"),
+            supportingEvidenceUri = row.required("supportingEvidence"),
         )
     }
 

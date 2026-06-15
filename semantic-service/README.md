@@ -338,11 +338,12 @@ The runner accepts controlled local `.properties` action request fixtures under
 `fixtures/action-requests/`, validates required parameters and preconditions
 against managed canonical/provenance/reasoning graph facts, maps accepted
 requests into RDF `dcai:OntologyActionRequest`,
-`dcai:OntologyActionExecution`, and `dcai:ActionValidationReport` records,
-validates the action-audit graph with SHACL/provenance gates, and writes only to
-managed `urn:dcai:graph:action-audit:*` graph URIs. Idempotency keys prevent
-deterministic reruns from duplicating action executions, and failed writes
-restore the previous action-audit graph snapshot.
+`dcai:OntologyActionExecution`, `dcai:OntologyActionNotification`, and
+`dcai:ActionValidationReport` records, validates the action-audit graph with
+SHACL/provenance gates, and writes only to managed
+`urn:dcai:graph:action-audit:*` graph URIs. Idempotency keys prevent
+deterministic reruns from duplicating action executions and notifications, and
+failed writes restore the previous action-audit graph snapshot.
 
 Submit a controlled local action audit after source promotion and reasoning
 refresh:
@@ -367,10 +368,99 @@ docker run --rm \
   gradle --no-daemon run --args="--repo-root=/workspace --inspect-action-audit --inspect-action-audit-release-id=local-action-audit-v1"
 ```
 
-This is internal CLI/runtime functionality only. It does not expose public or
-private write endpoints, add authentication, mutate canonical/reasoning/
-operations graphs from operator actions, perform source-system writeback,
-implement AI governance, or change frontend read models.
+The private loopback endpoint also accepts controlled UI action requests at
+`POST /semantic/internal/action-request`. The endpoint accepts fixed string DTO
+fields only, rejects raw SPARQL/query payloads, derives graph URIs from
+controlled release/run IDs, validates action preconditions against managed
+canonical/provenance/reasoning graph facts, and writes only audited request,
+execution, notification, validation-report, and initial lifecycle transition
+facts to the managed action-audit graph.
+
+Internal ontology action state machine v1 extends that endpoint boundary with
+`POST /semantic/internal/action-transition`. The transition endpoint accepts a
+target action execution URI, controlled actor/idempotency identifiers, a
+transition reason, and a target state. It permits only the controlled local
+state flow `REQUESTED -> VALIDATED -> QUEUED -> IN_REVIEW ->
+APPROVED|REJECTED -> CLOSED`, validates the candidate action-audit graph with
+SHACL/provenance gates, updates notification state, and restores the previous
+action-audit graph snapshot on write failure. Approved read models
+`semanticActionReviewQueueByIncident` and
+`semanticActionTransitionHistoryByIncident` expose the current review queue and
+transition history to the React detail UI.
+
+Internal ontology action dispatch simulation v1 extends approved local action
+transitions with managed notification facts. When an action transition reaches
+`APPROVED`, the service creates simulated `NOC_QUEUE`, `WORK_ORDER_QUEUE`, and
+`VALIDATION_REVIEW_QUEUE` dispatch records in the managed action-audit graph,
+validates them with the existing action-audit SHACL/provenance gate, and
+exposes them through `semanticActionDispatchQueueByIncident`. These records are
+for local review and UI visibility only; no external NOC, work-order,
+validation, operations, production, or source-system writeback is attempted.
+
+Dynamic ontology playback v1 adds a controlled local replay command for the
+dynamic layer. The replay uses deterministic source-system scenario steps,
+promotes each step through the existing source-to-canonical graph promotion
+service, refreshes reasoning for each promoted step, then writes playback
+event facts into the managed `urn:dcai:graph:action-audit:*` graph with a
+dedicated SHACL/provenance gate and rollback on write failure. The playback
+facts are exposed only through approved private read models:
+`semanticDynamicEventTimelineByIncident`,
+`semanticDynamicStateChangesByIncident`,
+`semanticDynamicReasoningChangesByIncident`, and
+`semanticDynamicActionLifecycleByIncident`.
+
+Run controlled local dynamic playback against a local Fuseki graph-store:
+
+```bash
+docker run --rm \
+  -v "$PWD":/workspace \
+  -w /workspace/semantic-service \
+  -e DCAI_FUSEKI_DATASET_URL=http://host.docker.internal:3030/infrastructure \
+  gradle:8.10.2-jdk17 \
+  gradle --no-daemon run --args="--repo-root=/workspace --run-dynamic-playback"
+```
+
+This is internal CLI/runtime functionality only. It does not expose public
+endpoints, add authentication, mutate canonical/reasoning/operations graphs
+from operator actions, perform source-system writeback, or implement AI
+governance.
+
+Internal AI governance proposal v1 adds an audit-only proposal layer for
+AI-generated semantic suggestions. Controlled local `.properties` proposal
+fixtures under `fixtures/ai-proposals/` can create `AIProposalBatch`,
+`AIProposal`, and `AIProposalValidationReport` facts for reasoning finding
+suggestions, action recommendations, and evidence summaries. The proposal
+service validates source-record provenance, supporting evidence, target object
+existence, confidence score, risk level, model/prompt placeholders, generatedAt,
+SHACL constraints, and explicit provenance before writing only to a managed
+`urn:dcai:graph:ai-audit:*` graph. Idempotency keys prevent deterministic
+reruns from duplicating proposals, and failed writes restore the previous
+ai-audit graph snapshot.
+
+Submit a controlled local AI proposal after source promotion and reasoning
+refresh:
+
+```bash
+docker run --rm \
+  -v "$PWD":/workspace \
+  -w /workspace/semantic-service \
+  -e DCAI_FUSEKI_DATASET_URL=http://host.docker.internal:3030/infrastructure \
+  gradle:8.10.2-jdk17 \
+  gradle --no-daemon run --args="--repo-root=/workspace --submit-ai-proposal --ai-proposal-file=fixtures/ai-proposals/local-ai-governance-v1.properties --ai-input-release-id=local-controlled-source-v1 --ai-reasoning-run-id=local-controlled-reasoning-v1 --ai-audit-release-id=local-ai-governance-v1"
+```
+
+Approved read models `semanticAiProposalReviewQueue` and
+`semanticAiProposalDetailByIncident` expose the audit queue and selected
+incident detail to the private semantic query endpoint and React workbench.
+Human review v1 adds private `POST /semantic/internal/ai-proposal-review` for
+approve/reject decisions. Review decisions are written only to the managed
+ai-audit graph. When an approved proposal is an `ACTION_RECOMMENDATION`, the
+service creates a governed local ontology action request in the managed
+action-audit graph through the existing action validation/provenance gates. If
+that handoff fails, the AI review graph is restored to its previous snapshot.
+This slice does not call external AI APIs, expose public endpoints, add
+authentication, mutate canonical/reasoning/provenance/source/operations graphs
+from AI proposals, or perform source-system writeback.
 
 Post-Phase-20 semantic queue read-model implementation adds
 `semanticFollowUpQueueList` as the first product read model. It returns

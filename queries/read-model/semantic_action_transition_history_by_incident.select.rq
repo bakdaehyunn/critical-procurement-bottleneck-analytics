@@ -1,0 +1,55 @@
+PREFIX dcai: <urn:dcai:ontology:>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT
+  ?graph
+  ?actionAuditReleaseId
+  ?transition
+  ?transitionId
+  ?execution
+  ?executionId
+  ?request
+  ?requestId
+  ?actionType
+  ?actionTypeId
+  ?actorId
+  ?transitionReason
+  ?fromState
+  ?toState
+  ?generatedAt
+  ?incident
+  ?incidentId
+WHERE {
+  GRAPH ?canonicalGraph {
+    ?incident rdf:type dcai:InfrastructureIncident ;
+      dcai:hasIdentifier ?incidentId .
+  }
+  GRAPH ?graph {
+    ?execution rdf:type dcai:OntologyActionExecution ;
+      dcai:hasIdentifier ?executionId ;
+      dcai:hasActionType ?actionType ;
+      dcai:hasTargetObject ?incident ;
+      prov:used ?request .
+
+    ?request rdf:type dcai:OntologyActionRequest ;
+      dcai:hasIdentifier ?requestId .
+
+    ?actionType dcai:hasIdentifier ?actionTypeId .
+
+    ?transition rdf:type dcai:OntologyActionStateTransition ;
+      dcai:hasIdentifier ?transitionId ;
+      dcai:hasTargetObject ?execution ;
+      dcai:hasToActionState ?toState ;
+      dcai:hasTransitionReason ?transitionReason ;
+      dcai:hasActorId ?actorId ;
+      prov:generatedAtTime ?generatedAt .
+
+    OPTIONAL { ?transition dcai:hasFromActionState ?fromState . }
+  }
+  FILTER(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:"))
+  FILTER(STRSTARTS(STR(?graph), "urn:dcai:graph:action-audit:"))
+  BIND(STRAFTER(STR(?graph), "urn:dcai:graph:action-audit:") AS ?actionAuditReleaseId)
+  FILTER(?incidentId = COALESCE(?incidentIdParam, ?incidentId))
+}
+ORDER BY DESC(?generatedAt) ?execution ?transition

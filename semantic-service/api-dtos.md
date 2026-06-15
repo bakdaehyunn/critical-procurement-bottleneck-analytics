@@ -45,6 +45,13 @@ Supported Phase 18 response result types:
 - `ontology-review-queue`
 - `action-availability`
 - `action-audit-history`
+- `action-notification-queue`
+- `action-review-queue`
+- `action-transition-history`
+- `action-dispatch-queue`
+- `dynamic-playback`
+- `ai-proposal-review-queue`
+- `ai-proposal-detail`
 
 Versioning rules:
 
@@ -88,6 +95,7 @@ Response DTO:
 
 - `queryId`: executed query identifier
 - `resultType`: one of the supported Phase 18 response result types
+  including `action-dispatch-queue` and `dynamic-playback`
 - `recordCount`: number of typed records
 - `records`: typed records matching `resultType`
 - `provenance`: `queryId`, `graphScope`, and `contractVersion`
@@ -424,6 +432,157 @@ Action audit history record:
 - `reviewedStatus`: optional review status
 - `reviewSummary`: optional review summary
 - `supportingEvidenceUri`: optional supporting evidence IRI
+
+Action review queue record:
+
+- `graphUri`: managed action-audit named graph IRI
+- `actionAuditReleaseId`: release suffix for the action-audit graph
+- `notificationUri`: local ontology action notification IRI
+- `notificationId`: notification identifier
+- `executionUri`: ontology action execution IRI under review
+- `executionId`: execution identifier
+- `requestUri`: ontology action request IRI
+- `requestId`: request identifier
+- `actionTypeUri`: controlled action type IRI
+- `actionTypeId`: controlled action type identifier
+- `actorId`: internal actor identifier
+- `actionReason`: operator or process reason
+- `currentState`: latest lifecycle state, one of `REQUESTED`, `VALIDATED`,
+  `QUEUED`, `IN_REVIEW`, `APPROVED`, `REJECTED`, or `CLOSED`
+- `stateGeneratedAt`: timestamp of the latest transition
+- `incidentUri`: selected incident IRI
+- `incidentId`: selected incident identifier
+- `sourceRecordUri`: optional source record provenance IRI
+
+Action transition history record:
+
+- `graphUri`: managed action-audit named graph IRI
+- `actionAuditReleaseId`: release suffix for the action-audit graph
+- `transitionUri`: lifecycle transition activity IRI
+- `transitionId`: transition identifier
+- `executionUri`: ontology action execution IRI
+- `executionId`: execution identifier
+- `requestUri`: ontology action request IRI
+- `requestId`: request identifier
+- `actionTypeUri`: controlled action type IRI
+- `actionTypeId`: controlled action type identifier
+- `actorId`: actor that requested the lifecycle transition
+- `transitionReason`: operator or process reason for the transition
+- `fromState`: optional previous lifecycle state
+- `toState`: new lifecycle state
+- `generatedAt`: transition timestamp
+- `incidentUri`: selected incident IRI
+- `incidentId`: selected incident identifier
+
+Action dispatch queue record:
+
+- `graphUri`: managed action-audit named graph IRI
+- `actionAuditReleaseId`: release suffix for the action-audit graph
+- `dispatchUri`: simulated dispatch fact IRI
+- `dispatchId`: dispatch identifier
+- `dispatchChannel`: one of `NOC_QUEUE`, `WORK_ORDER_QUEUE`, or
+  `VALIDATION_REVIEW_QUEUE`
+- `dispatchStatus`: simulated queue state such as `SIMULATED_QUEUED`
+- `dispatchLifecycleState`: lifecycle state that produced the dispatch,
+  currently `APPROVED`
+- `dispatchSummary`: local review summary describing the simulated dispatch
+- `executionUri`: ontology action execution IRI
+- `executionId`: execution identifier
+- `requestUri`: ontology action request IRI
+- `requestId`: request identifier
+- `actionTypeUri`: controlled action type IRI
+- `actionTypeId`: controlled action type identifier
+- `transitionUri`: approval transition activity IRI
+- `transitionId`: approval transition identifier
+- `actorId`: actor that approved the local action
+- `generatedAt`: dispatch fact timestamp
+- `incidentUri`: selected incident IRI
+- `incidentId`: selected incident identifier
+- `sourceRecordUri`: optional source record provenance IRI
+
+AI proposal record:
+
+- `graphUri`: managed ai-audit named graph IRI
+- `aiAuditReleaseId`: release suffix for the ai-audit graph
+- `proposalUri`: AI proposal resource IRI
+- `proposalId`: deterministic proposal identifier
+- `proposalType`: one of `REASONING_FINDING_SUGGESTION`,
+  `ACTION_RECOMMENDATION`, or `EVIDENCE_SUMMARY`
+- `proposalStatus`: local proposal lifecycle status, currently
+  `PENDING_REVIEW`
+- `reviewStatus`: human review status, currently `PENDING_HUMAN_REVIEW`
+- `disabledReason`: reason approve/reject mutation is unavailable
+- `summary`: proposal summary for review
+- `rationale`: source-supported rationale text
+- `confidenceScore`: local confidence policy score from `0.5` to `1.0`
+- `riskLevel`: one of `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL`
+- `modelId`, `promptId`, and `promptHash`: deterministic model/prompt metadata
+  placeholders; no external AI API is called
+- `actorId`: local AI governance simulator actor
+- `generatedAt`: proposal generation timestamp
+- `batchUri` and `batchId`: proposal batch provenance
+- `validationReportUri`, `validationStatus`, and `validationSummary`:
+  validation gate output
+- `incidentUri` and `incidentId`: selected incident target
+- `targetObjectUri`: proposed target object
+- `sourceRecordUri`: required source record provenance reference
+- `supportingEvidenceUri`: required canonical or reasoning evidence reference
+
+Dynamic playback record:
+
+- `graphUri`: managed action-audit named graph IRI containing playback facts
+- `actionAuditReleaseId`: release suffix for the action-audit graph
+- `eventUri`: dynamic playback event IRI
+- `eventId`: deterministic playback event identifier
+- `scenarioId`: deterministic local playback scenario identifier
+- `playbackBatchId`: replay batch identifier
+- `playbackStep`: ordered replay step number
+- `incidentUri`: selected incident IRI
+- `incidentId`: selected incident identifier
+- `eventKind`: controlled local event category such as telemetry impact,
+  validation conflict, recovery blocker, or restore readiness change
+- `sourceFamily`: source-system export family that produced the event
+- `occurredAt`: replay event timestamp
+- `summary`: human-readable semantic delta summary
+- `sourceRecordUri`: promoted source record provenance IRI
+- `beforeState` and `afterState`: canonical graph state labels before/after
+  the replay step
+- `beforeReasoningState` and `afterReasoningState`: reasoning state labels
+  before/after refresh
+- `beforeTrustState` and `afterTrustState`: trust state labels before/after
+  the replay step
+- `beforeBlastRadiusCount` and `afterBlastRadiusCount`: inferred exposure
+  counts before/after refresh
+- `actionLifecycleState`: local action lifecycle state associated with the
+  replay step
+- `canonicalGraphUri`, `provenanceGraphUri`, and `reasoningGraphUri`:
+  optional graph references used by the playback fact
+
+Internal ontology action lifecycle:
+
+- `POST /semantic/internal/action-request` creates an audited local request,
+  validation report, notification, and initial `REQUESTED -> VALIDATED ->
+  QUEUED` transition chain in the managed action-audit graph.
+- `POST /semantic/internal/action-transition` moves an existing action
+  execution through controlled local states only. It is an internal/private
+  boundary and does not mutate source, canonical, provenance, reasoning,
+  operations, production, or external source-system state.
+- When a local action transition reaches `APPROVED`, the service creates
+  simulated `NOC_QUEUE`, `WORK_ORDER_QUEUE`, and `VALIDATION_REVIEW_QUEUE`
+  dispatch records in the managed action-audit graph. These are internal
+  notification facts only, not external writeback.
+
+Internal AI governance review lifecycle:
+
+- `POST /semantic/internal/ai-proposal-review` records a human approve/reject
+  decision for a managed AI proposal using string-only DTO fields.
+- Review decisions write only managed ai-audit graph facts.
+- Approved `ACTION_RECOMMENDATION` proposals create a governed ontology action
+  request in the managed action-audit graph through the existing action
+  validation and provenance gates.
+- The endpoint reports `canonicalGraphMutation`, `reasoningGraphMutation`,
+  `provenanceGraphMutation`, `sourceGraphMutation`, `operationsGraphMutation`,
+  and `externalSystemMutation` as `false`.
 
 Error DTO:
 

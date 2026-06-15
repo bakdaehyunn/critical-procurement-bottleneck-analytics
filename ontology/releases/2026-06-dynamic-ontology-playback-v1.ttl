@@ -1,0 +1,33 @@
+@prefix dcai-release: <urn:dcai:release:> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+dcai-release:2026-06-dynamic-ontology-playback-v1
+  rdf:type owl:Ontology ;
+  dcterms:title "Dynamic ontology playback v1 release" ;
+  dcterms:description "Internal local deterministic dynamic playback for the ontology-native AI data center semantic operations platform. This release adds controlled source-system replay steps, routes each step through existing source promotion and reasoning refresh boundaries, writes playback audit facts into the managed action-audit graph with SHACL/provenance validation and rollback, exposes approved read models for event timeline, graph state changes, reasoning/trust changes, and action lifecycle changes, and renders a compact React detail panel. It does not expose public endpoints, raw SPARQL, authentication, real external connectors, AI governance, commit, or push." ;
+  dcterms:created "2026-06-15"^^xsd:date ;
+  dcterms:requires dcai-release:2026-06-internal-ontology-action-state-machine-v1 ;
+  dcterms:hasPart
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/dynamic/DynamicPlayback.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/dynamic/DynamicPlaybackValidationGate.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/dynamic/LocalDynamicPlaybackScenario.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/runtime/SemanticServiceApplication.kt>,
+    <../../shapes/dynamic-playback.ttl>,
+    <../../queries/read-model/semantic_dynamic_event_timeline_by_incident.select.rq>,
+    <../../queries/read-model/semantic_dynamic_state_changes_by_incident.select.rq>,
+    <../../queries/read-model/semantic_dynamic_reasoning_changes_by_incident.select.rq>,
+    <../../queries/read-model/semantic_dynamic_action_lifecycle_by_incident.select.rq>,
+    <../../queries/manifest.ttl>,
+    <../../frontend/src/api.ts>,
+    <../../frontend/src/App.tsx>,
+    <../../frontend/src/App.css>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/dynamic/DynamicPlaybackServiceTest.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/query/ApprovedQueryCatalogTest.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/query/QueryResultShaperTest.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/response/SemanticResponseSerializerTest.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/runtime/SemanticServiceApplicationTest.kt>,
+    <../../README.md>,
+    <../../semantic-service/README.md> .

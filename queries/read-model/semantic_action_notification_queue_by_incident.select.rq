@@ -1,0 +1,69 @@
+PREFIX dcai: <urn:dcai:ontology:>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT
+  ?graph
+  ?actionAuditReleaseId
+  ?notification
+  ?notificationId
+  ?notificationStatus
+  ?notificationSummary
+  ?execution
+  ?executionId
+  ?request
+  ?requestId
+  ?actionType
+  ?actionTypeId
+  ?actorId
+  ?actionReason
+  ?requestedAt
+  ?generatedAt
+  ?incident
+  ?incidentId
+  ?targetObject
+  ?sourceRecord
+  ?assignedTeam
+  ?assigneeId
+  ?reviewedStatus
+  ?reviewSummary
+WHERE {
+  GRAPH ?canonicalGraph {
+    ?incident rdf:type dcai:InfrastructureIncident ;
+      dcai:hasIdentifier ?incidentId .
+  }
+  GRAPH ?graph {
+    ?notification rdf:type dcai:OntologyActionNotification ;
+      dcai:hasIdentifier ?notificationId ;
+      dcai:hasNotificationStatus ?notificationStatus ;
+      dcai:hasFindingSummary ?notificationSummary ;
+      dcai:hasActionType ?actionType ;
+      dcai:hasTargetObject ?incident ;
+      prov:wasGeneratedBy ?execution ;
+      prov:generatedAtTime ?generatedAt .
+
+    ?execution rdf:type dcai:OntologyActionExecution ;
+      dcai:hasIdentifier ?executionId ;
+      dcai:hasActorId ?actorId ;
+      dcai:hasActionReason ?actionReason ;
+      prov:used ?request .
+
+    ?request rdf:type dcai:OntologyActionRequest ;
+      dcai:hasIdentifier ?requestId ;
+      prov:generatedAtTime ?requestedAt .
+
+    ?actionType dcai:hasIdentifier ?actionTypeId .
+
+    OPTIONAL { ?notification dcai:hasTargetObject ?targetObject . }
+    OPTIONAL { ?execution prov:wasDerivedFrom ?sourceRecord . }
+    OPTIONAL { ?execution dcai:hasAssignedTeam ?assignedTeam . }
+    OPTIONAL { ?execution dcai:hasAssigneeId ?assigneeId . }
+    OPTIONAL { ?execution dcai:hasReviewedStatus ?reviewedStatus . }
+    OPTIONAL { ?execution dcai:hasReviewSummary ?reviewSummary . }
+  }
+  FILTER(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:"))
+  FILTER(STRSTARTS(STR(?graph), "urn:dcai:graph:action-audit:"))
+  BIND(STRAFTER(STR(?graph), "urn:dcai:graph:action-audit:") AS ?actionAuditReleaseId)
+  FILTER(?incidentId = COALESCE(?incidentIdParam, ?incidentId))
+}
+ORDER BY DESC(?generatedAt) ?notification ?targetObject

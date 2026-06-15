@@ -111,6 +111,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AIGovernanceHandoffResponse"
+  /semantic/internal/ai-proposal-review:
+    post:
+      operationId: reviewAIProposalInternal
+      summary: Record an internal human review decision for a managed AI proposal
+      description: >
+        Internal loopback-only endpoint. Review decisions write managed
+        ai-audit graph facts only. Approved ACTION_RECOMMENDATION proposals may
+        create a governed local action-audit request; no canonical, reasoning,
+        provenance, source, operations, production, or external systems are
+        mutated.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AIProposalReviewRequest"
+      responses:
+        "200":
+          description: AI proposal review result envelope.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIProposalReviewResponse"
+        default:
+          description: Semantic service error envelope.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticErrorResponse"
 components:
   schemas:
     GraphScope:
@@ -162,6 +191,13 @@ components:
         - $ref: "#/components/schemas/OntologyReviewQueueResponse"
         - $ref: "#/components/schemas/ActionAvailabilityResponse"
         - $ref: "#/components/schemas/ActionAuditHistoryResponse"
+        - $ref: "#/components/schemas/ActionNotificationQueueResponse"
+        - $ref: "#/components/schemas/ActionReviewQueueResponse"
+        - $ref: "#/components/schemas/ActionTransitionHistoryResponse"
+        - $ref: "#/components/schemas/ActionDispatchQueueResponse"
+        - $ref: "#/components/schemas/DynamicPlaybackResponse"
+        - $ref: "#/components/schemas/AiProposalReviewQueueResponse"
+        - $ref: "#/components/schemas/AiProposalDetailResponse"
       discriminator:
         propertyName: resultType
         mapping:
@@ -187,6 +223,13 @@ components:
           ontology-review-queue: "#/components/schemas/OntologyReviewQueueResponse"
           action-availability: "#/components/schemas/ActionAvailabilityResponse"
           action-audit-history: "#/components/schemas/ActionAuditHistoryResponse"
+          action-notification-queue: "#/components/schemas/ActionNotificationQueueResponse"
+          action-review-queue: "#/components/schemas/ActionReviewQueueResponse"
+          action-transition-history: "#/components/schemas/ActionTransitionHistoryResponse"
+          action-dispatch-queue: "#/components/schemas/ActionDispatchQueueResponse"
+          dynamic-playback: "#/components/schemas/DynamicPlaybackResponse"
+          ai-proposal-review-queue: "#/components/schemas/AiProposalReviewQueueResponse"
+          ai-proposal-detail: "#/components/schemas/AiProposalDetailResponse"
     QueryResultEnvelopeBase:
       type: object
       required:
@@ -223,6 +266,13 @@ components:
             - ontology-review-queue
             - action-availability
             - action-audit-history
+            - action-notification-queue
+            - action-review-queue
+            - action-transition-history
+            - action-dispatch-queue
+            - dynamic-playback
+            - ai-proposal-review-queue
+            - ai-proposal-detail
         recordCount:
           type: integer
           minimum: 0
@@ -1371,6 +1421,560 @@ components:
         supportingEvidenceUri:
           type: string
       additionalProperties: false
+    ActionNotificationQueueResponse:
+      allOf:
+        - $ref: "#/components/schemas/QueryResultEnvelopeBase"
+        - type: object
+          properties:
+            resultType:
+              type: string
+              enum:
+                - action-notification-queue
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/ActionNotificationQueueRecord"
+    ActionNotificationQueueRecord:
+      type: object
+      required:
+        - graphUri
+        - actionAuditReleaseId
+        - notificationUri
+        - notificationId
+        - notificationStatus
+        - notificationSummary
+        - executionUri
+        - executionId
+        - requestUri
+        - requestId
+        - actionTypeUri
+        - actionTypeId
+        - actorId
+        - actionReason
+        - requestedAt
+        - generatedAt
+        - incidentUri
+        - incidentId
+      properties:
+        graphUri:
+          type: string
+        actionAuditReleaseId:
+          type: string
+        notificationUri:
+          type: string
+        notificationId:
+          type: string
+        notificationStatus:
+          type: string
+        notificationSummary:
+          type: string
+        executionUri:
+          type: string
+        executionId:
+          type: string
+        requestUri:
+          type: string
+        requestId:
+          type: string
+        actionTypeUri:
+          type: string
+        actionTypeId:
+          type: string
+        actorId:
+          type: string
+        actionReason:
+          type: string
+        requestedAt:
+          type: string
+        generatedAt:
+          type: string
+        incidentUri:
+          type: string
+        incidentId:
+          type: string
+        targetObjectUri:
+          type: string
+        sourceRecordUri:
+          type: string
+        assignedTeam:
+          type: string
+        assigneeId:
+          type: string
+        reviewedStatus:
+          type: string
+        reviewSummary:
+          type: string
+      additionalProperties: false
+    ActionReviewQueueResponse:
+      allOf:
+        - $ref: "#/components/schemas/QueryResultEnvelopeBase"
+        - type: object
+          properties:
+            resultType:
+              type: string
+              enum:
+                - action-review-queue
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/ActionReviewQueueRecord"
+    ActionReviewQueueRecord:
+      type: object
+      required:
+        - graphUri
+        - actionAuditReleaseId
+        - notificationUri
+        - notificationId
+        - executionUri
+        - executionId
+        - requestUri
+        - requestId
+        - actionTypeUri
+        - actionTypeId
+        - actorId
+        - actionReason
+        - currentState
+        - stateGeneratedAt
+        - incidentUri
+        - incidentId
+      properties:
+        graphUri:
+          type: string
+        actionAuditReleaseId:
+          type: string
+        notificationUri:
+          type: string
+        notificationId:
+          type: string
+        executionUri:
+          type: string
+        executionId:
+          type: string
+        requestUri:
+          type: string
+        requestId:
+          type: string
+        actionTypeUri:
+          type: string
+        actionTypeId:
+          type: string
+        actorId:
+          type: string
+        actionReason:
+          type: string
+        currentState:
+          type: string
+          enum:
+            - REQUESTED
+            - VALIDATED
+            - QUEUED
+            - IN_REVIEW
+            - APPROVED
+            - REJECTED
+            - CLOSED
+        stateGeneratedAt:
+          type: string
+        incidentUri:
+          type: string
+        incidentId:
+          type: string
+        sourceRecordUri:
+          type: string
+      additionalProperties: false
+    ActionTransitionHistoryResponse:
+      allOf:
+        - $ref: "#/components/schemas/QueryResultEnvelopeBase"
+        - type: object
+          properties:
+            resultType:
+              type: string
+              enum:
+                - action-transition-history
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/ActionTransitionHistoryRecord"
+    ActionTransitionHistoryRecord:
+      type: object
+      required:
+        - graphUri
+        - actionAuditReleaseId
+        - transitionUri
+        - transitionId
+        - executionUri
+        - executionId
+        - requestUri
+        - requestId
+        - actionTypeUri
+        - actionTypeId
+        - actorId
+        - transitionReason
+        - toState
+        - generatedAt
+        - incidentUri
+        - incidentId
+      properties:
+        graphUri:
+          type: string
+        actionAuditReleaseId:
+          type: string
+        transitionUri:
+          type: string
+        transitionId:
+          type: string
+        executionUri:
+          type: string
+        executionId:
+          type: string
+        requestUri:
+          type: string
+        requestId:
+          type: string
+        actionTypeUri:
+          type: string
+        actionTypeId:
+          type: string
+        actorId:
+          type: string
+        transitionReason:
+          type: string
+        fromState:
+          type: string
+          enum:
+            - REQUESTED
+            - VALIDATED
+            - QUEUED
+            - IN_REVIEW
+            - APPROVED
+            - REJECTED
+            - CLOSED
+        toState:
+          type: string
+          enum:
+            - REQUESTED
+            - VALIDATED
+            - QUEUED
+            - IN_REVIEW
+            - APPROVED
+            - REJECTED
+            - CLOSED
+        generatedAt:
+          type: string
+        incidentUri:
+          type: string
+        incidentId:
+          type: string
+      additionalProperties: false
+    ActionDispatchQueueResponse:
+      allOf:
+        - $ref: "#/components/schemas/QueryResultEnvelopeBase"
+        - type: object
+          properties:
+            resultType:
+              type: string
+              enum:
+                - action-dispatch-queue
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/ActionDispatchQueueRecord"
+    ActionDispatchQueueRecord:
+      type: object
+      required:
+        - graphUri
+        - actionAuditReleaseId
+        - dispatchUri
+        - dispatchId
+        - dispatchChannel
+        - dispatchStatus
+        - dispatchLifecycleState
+        - dispatchSummary
+        - executionUri
+        - executionId
+        - requestUri
+        - requestId
+        - actionTypeUri
+        - actionTypeId
+        - transitionUri
+        - transitionId
+        - actorId
+        - generatedAt
+        - incidentUri
+        - incidentId
+      properties:
+        graphUri:
+          type: string
+        actionAuditReleaseId:
+          type: string
+        dispatchUri:
+          type: string
+        dispatchId:
+          type: string
+        dispatchChannel:
+          type: string
+          enum:
+            - NOC_QUEUE
+            - WORK_ORDER_QUEUE
+            - VALIDATION_REVIEW_QUEUE
+        dispatchStatus:
+          type: string
+          enum:
+            - SIMULATED_QUEUED
+            - SIMULATED_ACKNOWLEDGED
+            - SIMULATED_CLOSED
+        dispatchLifecycleState:
+          type: string
+          enum:
+            - APPROVED
+        dispatchSummary:
+          type: string
+        executionUri:
+          type: string
+        executionId:
+          type: string
+        requestUri:
+          type: string
+        requestId:
+          type: string
+        actionTypeUri:
+          type: string
+        actionTypeId:
+          type: string
+        transitionUri:
+          type: string
+        transitionId:
+          type: string
+        actorId:
+          type: string
+        generatedAt:
+          type: string
+        incidentUri:
+          type: string
+        incidentId:
+          type: string
+        sourceRecordUri:
+          type: string
+      additionalProperties: false
+    AiProposalReviewQueueResponse:
+      allOf:
+        - $ref: "#/components/schemas/QueryResultEnvelopeBase"
+        - type: object
+          properties:
+            resultType:
+              type: string
+              enum:
+                - ai-proposal-review-queue
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/AiProposalRecord"
+    AiProposalDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/QueryResultEnvelopeBase"
+        - type: object
+          properties:
+            resultType:
+              type: string
+              enum:
+                - ai-proposal-detail
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/AiProposalRecord"
+    AiProposalRecord:
+      type: object
+      required:
+        - graphUri
+        - aiAuditReleaseId
+        - proposalUri
+        - proposalId
+        - proposalType
+        - proposalStatus
+        - reviewStatus
+        - disabledReason
+        - summary
+        - rationale
+        - confidenceScore
+        - riskLevel
+        - modelId
+        - promptId
+        - promptHash
+        - actorId
+        - generatedAt
+        - batchUri
+        - batchId
+        - validationReportUri
+        - validationStatus
+        - validationSummary
+        - incidentUri
+        - incidentId
+        - targetObjectUri
+        - sourceRecordUri
+        - supportingEvidenceUri
+      properties:
+        graphUri:
+          type: string
+        aiAuditReleaseId:
+          type: string
+        proposalUri:
+          type: string
+        proposalId:
+          type: string
+        proposalType:
+          type: string
+          enum:
+            - REASONING_FINDING_SUGGESTION
+            - ACTION_RECOMMENDATION
+            - EVIDENCE_SUMMARY
+        proposalStatus:
+          type: string
+          enum:
+            - PENDING_REVIEW
+        reviewStatus:
+          type: string
+          enum:
+            - PENDING_HUMAN_REVIEW
+        disabledReason:
+          type: string
+        summary:
+          type: string
+        rationale:
+          type: string
+        confidenceScore:
+          type: number
+          minimum: 0.5
+          maximum: 1
+        riskLevel:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+        modelId:
+          type: string
+        promptId:
+          type: string
+        promptHash:
+          type: string
+        actorId:
+          type: string
+        generatedAt:
+          type: string
+        batchUri:
+          type: string
+        batchId:
+          type: string
+        validationReportUri:
+          type: string
+        validationStatus:
+          type: string
+        validationSummary:
+          type: string
+        incidentUri:
+          type: string
+        incidentId:
+          type: string
+        targetObjectUri:
+          type: string
+        sourceRecordUri:
+          type: string
+        supportingEvidenceUri:
+          type: string
+      additionalProperties: false
+    DynamicPlaybackResponse:
+      allOf:
+        - $ref: "#/components/schemas/QueryResultEnvelopeBase"
+        - type: object
+          properties:
+            resultType:
+              type: string
+              enum:
+                - dynamic-playback
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/DynamicPlaybackRecord"
+    DynamicPlaybackRecord:
+      type: object
+      required:
+        - graphUri
+        - actionAuditReleaseId
+        - eventUri
+        - eventId
+        - scenarioId
+        - playbackBatchId
+        - playbackStep
+        - incidentUri
+        - incidentId
+        - eventKind
+        - sourceFamily
+        - occurredAt
+        - summary
+        - sourceRecordUri
+        - beforeState
+        - afterState
+        - beforeReasoningState
+        - afterReasoningState
+        - beforeTrustState
+        - afterTrustState
+        - beforeBlastRadiusCount
+        - afterBlastRadiusCount
+        - actionLifecycleState
+      properties:
+        graphUri:
+          type: string
+        actionAuditReleaseId:
+          type: string
+        eventUri:
+          type: string
+        eventId:
+          type: string
+        scenarioId:
+          type: string
+        playbackBatchId:
+          type: string
+        playbackStep:
+          type: integer
+        incidentUri:
+          type: string
+        incidentId:
+          type: string
+        eventKind:
+          type: string
+        sourceFamily:
+          type: string
+        occurredAt:
+          type: string
+        summary:
+          type: string
+        sourceRecordUri:
+          type: string
+        beforeState:
+          type: string
+        afterState:
+          type: string
+        beforeReasoningState:
+          type: string
+        afterReasoningState:
+          type: string
+        beforeTrustState:
+          type: string
+        afterTrustState:
+          type: string
+        beforeBlastRadiusCount:
+          type: integer
+        afterBlastRadiusCount:
+          type: integer
+        actionLifecycleState:
+          type: string
+        canonicalGraphUri:
+          type: string
+        provenanceGraphUri:
+          type: string
+        reasoningGraphUri:
+          type: string
+      additionalProperties: false
     ReasoningValidationRequest:
       type: object
       required:
@@ -1482,6 +2086,137 @@ components:
           type: array
           items:
             type: string
+    AIProposalReviewRequest:
+      type: object
+      required:
+        - reviewId
+        - idempotencyKey
+        - actorId
+        - reviewedAt
+        - proposalUri
+        - decision
+        - reviewReason
+        - sourceReleaseId
+        - aiAuditReleaseId
+        - actionAuditReleaseId
+      properties:
+        reviewId:
+          type: string
+        idempotencyKey:
+          type: string
+        actorId:
+          type: string
+        reviewedAt:
+          type: string
+          format: date-time
+        proposalUri:
+          type: string
+        decision:
+          type: string
+          enum:
+            - APPROVE
+            - REJECT
+        reviewReason:
+          type: string
+        actionId:
+          type: string
+        sourceReleaseId:
+          type: string
+        reasoningRunId:
+          type: string
+        aiAuditReleaseId:
+          type: string
+        actionAuditReleaseId:
+          type: string
+      additionalProperties: false
+    AIProposalReviewResponse:
+      type: object
+      required:
+        - resultType
+        - reviewed
+        - decision
+        - reviewStatus
+        - reviewId
+        - idempotencyKey
+        - proposalUri
+        - aiAuditGraphUri
+        - writtenGraphUris
+        - idempotentReplay
+        - actionRequestCreated
+        - canonicalGraphMutation
+        - reasoningGraphMutation
+        - provenanceGraphMutation
+        - sourceGraphMutation
+        - operationsGraphMutation
+        - externalSystemMutation
+        - validation
+      properties:
+        resultType:
+          type: string
+          enum:
+            - ai-proposal-review
+        reviewed:
+          type: boolean
+        decision:
+          type: string
+          enum:
+            - APPROVE
+            - REJECT
+        reviewStatus:
+          type: string
+          enum:
+            - APPROVED
+            - REJECTED
+        reviewId:
+          type: string
+        idempotencyKey:
+          type: string
+        proposalUri:
+          type: string
+        aiAuditGraphUri:
+          type: string
+        actionAuditGraphUri:
+          type: string
+        writtenGraphUris:
+          type: array
+          items:
+            type: string
+        idempotentReplay:
+          type: boolean
+        actionRequestCreated:
+          type: boolean
+        actionRequestId:
+          type: string
+        actionId:
+          type: string
+        canonicalGraphMutation:
+          type: boolean
+        reasoningGraphMutation:
+          type: boolean
+        provenanceGraphMutation:
+          type: boolean
+        sourceGraphMutation:
+          type: boolean
+        operationsGraphMutation:
+          type: boolean
+        externalSystemMutation:
+          type: boolean
+        validation:
+          type: object
+          required:
+            - conforms
+            - tripleCount
+            - errors
+          properties:
+            conforms:
+              type: boolean
+            tripleCount:
+              type: integer
+            errors:
+              type: array
+              items:
+                type: string
+      additionalProperties: false
     ValidationFinding:
       type: object
       required:

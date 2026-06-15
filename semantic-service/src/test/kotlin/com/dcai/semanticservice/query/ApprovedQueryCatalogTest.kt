@@ -41,6 +41,16 @@ class ApprovedQueryCatalogTest {
                 "semanticActionAuditHistoryByRelease",
                 "semanticActionAuditHistoryByIncident",
                 "semanticActionAuditHistoryByTarget",
+                "semanticActionNotificationQueueByIncident",
+                "semanticActionReviewQueueByIncident",
+                "semanticActionTransitionHistoryByIncident",
+                "semanticActionDispatchQueueByIncident",
+                "semanticDynamicEventTimelineByIncident",
+                "semanticDynamicStateChangesByIncident",
+                "semanticDynamicReasoningChangesByIncident",
+                "semanticDynamicActionLifecycleByIncident",
+                "semanticAiProposalReviewQueue",
+                "semanticAiProposalDetailByIncident",
             ),
             manifest.entries.keys,
         )
@@ -76,6 +86,40 @@ class ApprovedQueryCatalogTest {
             manifest.requireQuery("semanticActionAuditHistoryByIncident").graphScope,
         )
         assertTrue(manifest.requireQuery("semanticActionAuditHistoryByIncident").sparql.contains("urn:dcai:graph:action-audit:"))
+        assertEquals(
+            "managed action-audit notification state, promoted canonical graph",
+            manifest.requireQuery("semanticActionNotificationQueueByIncident").graphScope,
+        )
+        assertTrue(manifest.requireQuery("semanticActionNotificationQueueByIncident").sparql.contains("OntologyActionNotification"))
+        assertEquals(
+            "managed action-audit lifecycle state, promoted canonical graph",
+            manifest.requireQuery("semanticActionReviewQueueByIncident").graphScope,
+        )
+        assertTrue(manifest.requireQuery("semanticActionReviewQueueByIncident").sparql.contains("OntologyActionStateTransition"))
+        assertEquals(
+            "managed action-audit lifecycle state, promoted canonical graph",
+            manifest.requireQuery("semanticActionTransitionHistoryByIncident").graphScope,
+        )
+        assertTrue(manifest.requireQuery("semanticActionTransitionHistoryByIncident").sparql.contains("hasFromActionState"))
+        assertEquals(
+            "managed action-audit dispatch simulation state, promoted canonical graph",
+            manifest.requireQuery("semanticActionDispatchQueueByIncident").graphScope,
+        )
+        assertTrue(manifest.requireQuery("semanticActionDispatchQueueByIncident").sparql.contains("OntologyActionDispatch"))
+        assertEquals(
+            "managed action-audit dynamic playback state, promoted source/canonical/provenance/reasoning graph references",
+            manifest.requireQuery("semanticDynamicEventTimelineByIncident").graphScope,
+        )
+        assertTrue(manifest.requireQuery("semanticDynamicEventTimelineByIncident").sparql.contains("DynamicPlaybackEvent"))
+        assertTrue(manifest.requireQuery("semanticDynamicReasoningChangesByIncident").sparql.contains("hasAfterReasoningState"))
+        assertTrue(manifest.requireQuery("semanticDynamicActionLifecycleByIncident").sparql.contains("hasActionLifecycleState"))
+        assertEquals(
+            "managed ai-audit graph, promoted canonical/provenance graph",
+            manifest.requireQuery("semanticAiProposalReviewQueue").graphScope,
+        )
+        assertTrue(manifest.requireQuery("semanticAiProposalReviewQueue").sparql.contains("AIProposal"))
+        assertTrue(manifest.requireQuery("semanticAiProposalReviewQueue").sparql.contains("SourceRecord"))
+        assertTrue(manifest.requireQuery("semanticAiProposalDetailByIncident").sparql.contains("incidentIdParam"))
     }
 
     @Test

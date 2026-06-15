@@ -1,0 +1,209 @@
+@prefix dcai: <urn:dcai:ontology:> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+dcai:AIProposalBatchShape
+  a sh:NodeShape ;
+  sh:targetClass dcai:AIProposalBatch ;
+  sh:property [
+    sh:path dcai:hasIdentifier ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path prov:generatedAtTime ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:dateTime
+  ] .
+
+dcai:AIProposalShape
+  a sh:NodeShape ;
+  sh:targetClass dcai:AIProposal ;
+  sh:property [
+    sh:path dcai:hasIdentifier ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasIdempotencyKey ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasProposalType ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:in ("REASONING_FINDING_SUGGESTION" "ACTION_RECOMMENDATION" "EVIDENCE_SUMMARY")
+  ] ;
+  sh:property [
+    sh:path dcai:hasProposalStatus ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:in ("PENDING_REVIEW" "APPROVED" "REJECTED")
+  ] ;
+  sh:property [
+    sh:path dcai:hasProposalSummary ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasProposalRationale ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasConfidenceScore ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:decimal ;
+    sh:minInclusive 0.5 ;
+    sh:maxInclusive 1.0
+  ] ;
+  sh:property [
+    sh:path dcai:hasRiskLevel ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:in ("LOW" "MEDIUM" "HIGH" "CRITICAL")
+  ] ;
+  sh:property [
+    sh:path dcai:hasModelId ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasPromptId ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasPromptHash ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasAIGovernanceReviewStatus ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:in ("PENDING_HUMAN_REVIEW" "APPROVED" "REJECTED")
+  ] ;
+  sh:property [
+    sh:path dcai:hasAIGovernanceDisabledReason ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasTargetObject ;
+    sh:minCount 1
+  ] ;
+  sh:property [
+    sh:path prov:used ;
+    sh:minCount 2
+  ] ;
+  sh:property [
+    sh:path prov:wasGeneratedBy ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:class dcai:AIProposalBatch
+  ] ;
+  sh:property [
+    sh:path prov:generatedAtTime ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:dateTime
+  ] .
+
+dcai:AIProposalValidationReportShape
+  a sh:NodeShape ;
+  sh:targetClass dcai:AIProposalValidationReport ;
+  sh:property [
+    sh:path dcai:hasIdentifier ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasAIValidationStatus ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:in ("CONFORMS")
+  ] ;
+  sh:property [
+    sh:path dcai:hasAIValidationSummary ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path prov:wasGeneratedBy ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:class dcai:AIProposal
+  ] .
+
+dcai:AIApprovalDecisionShape
+  a sh:NodeShape ;
+  sh:targetClass dcai:AIApprovalDecision ;
+  sh:property [
+    sh:path dcai:hasIdentifier ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasIdempotencyKey ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasApprovalState ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:in ("APPROVED" "REJECTED")
+  ] ;
+  sh:property [
+    sh:path dcai:hasActorId ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasReviewSummary ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasTargetObject ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:class dcai:AIProposal
+  ] ;
+  sh:property [
+    sh:path prov:used ;
+    sh:minCount 1 ;
+    sh:class dcai:AIProposal
+  ] ;
+  sh:property [
+    sh:path prov:wasDerivedFrom ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:class dcai:AIProposal
+  ] ;
+  sh:property [
+    sh:path prov:generatedAtTime ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:dateTime
+  ] .

@@ -1,0 +1,35 @@
+@prefix dcai-release: <urn:dcai:release:> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+dcai-release:2026-06-internal-ontology-action-state-machine-v1
+  rdf:type owl:Ontology ;
+  dcterms:title "Internal ontology action state machine v1 release" ;
+  dcterms:description "Internal kinetic-layer state machine release for governed ontology action records. It adds controlled lifecycle states REQUESTED, VALIDATED, QUEUED, IN_REVIEW, APPROVED, REJECTED, and CLOSED; transition DTOs and validation; SHACL/provenance gates for action transition facts; idempotent and rollback-safe writes to managed action-audit graph state only; approved semanticActionReviewQueueByIncident and semanticActionTransitionHistoryByIncident read models; React detail UI review controls for queued, in-review, approved, rejected, and closed local action records; lifecycle transition history; focused tests; API DTO notes; and docs. It does not expose public endpoints, add authentication, implement AI governance, mutate source/canonical/reasoning/provenance/operations/production graphs from UI actions, add real external connectors, perform source-system writeback, commit, or push." ;
+  dcterms:created "2026-06-14"^^xsd:date ;
+  dcterms:requires dcai-release:2026-06-internal-ontology-action-request-notification-v1 ;
+  dcterms:hasPart
+    <../../ontology/modules/operations.ttl>,
+    <../../shapes/action-audit.ttl>,
+    <../../queries/manifest.ttl>,
+    <../../queries/read-model/semantic_action_review_queue_by_incident.select.rq>,
+    <../../queries/read-model/semantic_action_transition_history_by_incident.select.rq>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/actions/OntologyActionRequest.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/actions/OntologyActionRdfMapper.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/actions/OntologyActionTransitionService.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/actions/OntologyActionValidationGate.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/api/PrivateOntologyActionEndpoint.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/api/PrivateSemanticQueryEndpoint.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/query/QueryResultEnvelope.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/query/QueryResultShaper.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/response/SemanticResponseSerializer.kt>,
+    <../../semantic-service/openapi.semantic-service.yaml>,
+    <../../semantic-service/api-dtos.md>,
+    <../../frontend/src/api.ts>,
+    <../../frontend/src/App.tsx>,
+    <../../frontend/src/App.css>,
+    <../../README.md>,
+    <../../semantic-service/README.md>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/api/README.md> .

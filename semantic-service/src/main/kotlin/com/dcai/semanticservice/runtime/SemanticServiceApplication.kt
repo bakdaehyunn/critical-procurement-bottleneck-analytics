@@ -23,6 +23,13 @@ import com.dcai.semanticservice.connectors.RecordedSourceScenarioProfile
 import com.dcai.semanticservice.connectors.RecordedSourceConnectorSimulationLoader
 import com.dcai.semanticservice.contracts.ContractValidationReport
 import com.dcai.semanticservice.contracts.StaticContractValidator
+import com.dcai.semanticservice.dynamic.DynamicPlaybackPlan
+import com.dcai.semanticservice.dynamic.DynamicPlaybackResult
+import com.dcai.semanticservice.dynamic.DynamicPlaybackRunner
+import com.dcai.semanticservice.dynamic.DynamicPlaybackRdfMapper
+import com.dcai.semanticservice.dynamic.DynamicPlaybackService
+import com.dcai.semanticservice.dynamic.DynamicPlaybackValidationGate
+import com.dcai.semanticservice.dynamic.LocalDynamicPlaybackScenario
 import com.dcai.semanticservice.fixtures.ControlledFixtureGraphLoader
 import com.dcai.semanticservice.fixtures.FixtureGraphLoadPlan
 import com.dcai.semanticservice.fixtures.FixtureGraphLoader
@@ -35,6 +42,16 @@ import com.dcai.semanticservice.graph.GraphConnectionCheck
 import com.dcai.semanticservice.graph.JenaFusekiReadOnlyGraphClient
 import com.dcai.semanticservice.graph.NamedGraphStore
 import com.dcai.semanticservice.graph.ReadOnlyGraphClient
+import com.dcai.semanticservice.governance.AiGovernanceGraphUris
+import com.dcai.semanticservice.governance.AiGovernanceProposalLoader
+import com.dcai.semanticservice.governance.AiGovernanceProposalPlan
+import com.dcai.semanticservice.governance.AiGovernanceProposalPreconditionValidator
+import com.dcai.semanticservice.governance.AiGovernanceProposalRdfMapper
+import com.dcai.semanticservice.governance.AiGovernanceProposalRequest
+import com.dcai.semanticservice.governance.AiGovernanceProposalResult
+import com.dcai.semanticservice.governance.AiGovernanceProposalService
+import com.dcai.semanticservice.governance.AiGovernanceProposalSubmitter
+import com.dcai.semanticservice.governance.AiGovernanceProposalValidationGate
 import com.dcai.semanticservice.ingestion.FileSourceExtractLoader
 import com.dcai.semanticservice.ingestion.LocalControlledSourceExtract
 import com.dcai.semanticservice.ingestion.SourceExtractBatch
@@ -138,7 +155,9 @@ object SemanticServiceApplication {
             options.refreshReasoning ||
             options.inspectGraphLifecycle ||
             options.submitOntologyAction ||
-            options.inspectActionAudit
+            options.submitAiProposal ||
+            options.inspectActionAudit ||
+            options.runDynamicPlayback
         ) {
             FusekiNamedGraphWriter(FusekiGraphStoreConfig.fromEnvironment())
         } else {
@@ -231,6 +250,64 @@ object SemanticServiceApplication {
         val actionAuditInspector = actionAuditInspectionPlan?.let {
             OntologyActionAuditInspector(requireNotNull(graphStore))
         }
+        val aiProposalRequest = if (options.submitAiProposal) {
+            loadAiGovernanceProposalRequest(
+                repoRoot = repoRoot,
+                aiProposalFile = options.aiProposalFile,
+            )
+        } else {
+            null
+        }
+        val aiProposalPlan = aiProposalRequest?.let { request ->
+            AiGovernanceProposalPlan(
+                request = request,
+                graphs = AiGovernanceGraphUris.forRelease(
+                    sourceReleaseId = options.aiInputReleaseId ?: options.sourceReleaseId,
+                    reasoningRunId = options.aiReasoningRunId ?: options.reasoningRunId,
+                    aiAuditReleaseId = options.aiAuditReleaseId,
+                ),
+            )
+        }
+        val aiProposalSubmitter = aiProposalPlan?.let {
+            AiGovernanceProposalService(
+                mapper = AiGovernanceProposalRdfMapper(),
+                preconditionValidator = AiGovernanceProposalPreconditionValidator(),
+                validationGate = AiGovernanceProposalValidationGate(repoRoot),
+                graphStore = requireNotNull(graphStore),
+            )
+        }
+        val dynamicPlaybackPlan = if (options.runDynamicPlayback) {
+            DynamicPlaybackPlan(
+                scenario = LocalDynamicPlaybackScenario.scenario(
+                    scenarioId = options.dynamicPlaybackScenarioId,
+                    playbackBatchId = options.dynamicPlaybackBatchId,
+                ),
+                graphs = OntologyActionGraphUris.forRelease(
+                    sourceReleaseId = options.dynamicPlaybackScenarioId,
+                    reasoningRunId = "${options.dynamicPlaybackScenarioId}-reasoning-04",
+                    actionAuditReleaseId = options.dynamicPlaybackActionAuditReleaseId,
+                ),
+            )
+        } else {
+            null
+        }
+        val dynamicPlaybackRunner = dynamicPlaybackPlan?.let {
+            DynamicPlaybackService(
+                sourcePromoter = GraphPromotionService(
+                    mapper = SourceExtractRdfMapper(),
+                    validationGate = ProductionGraphValidationGate(repoRoot),
+                    graphStore = requireNotNull(graphStore),
+                ),
+                reasoningRefresher = ReasoningPromotionService(
+                    builder = ReasoningModelBuilder(),
+                    validationGate = ReasoningValidationGate(repoRoot),
+                    graphStore = requireNotNull(graphStore),
+                ),
+                mapper = DynamicPlaybackRdfMapper(),
+                validationGate = DynamicPlaybackValidationGate(repoRoot),
+                graphStore = requireNotNull(graphStore),
+            )
+        }
         val report = run(
             repoRoot = repoRoot,
             graphClient = graphClient,
@@ -250,6 +327,10 @@ object SemanticServiceApplication {
             ontologyActionAuditPlan = ontologyActionAuditPlan,
             actionAuditInspector = actionAuditInspector,
             actionAuditInspectionPlan = actionAuditInspectionPlan,
+            aiProposalSubmitter = aiProposalSubmitter,
+            aiProposalPlan = aiProposalPlan,
+            dynamicPlaybackRunner = dynamicPlaybackRunner,
+            dynamicPlaybackPlan = dynamicPlaybackPlan,
         )
 
         println("DCAI Semantic Service")
@@ -267,6 +348,8 @@ object SemanticServiceApplication {
         println("sourceScenarioGenerationEnabled=${report.sourceScenarioGenerationEnabled}")
         println("ontologyActionAuditEnabled=${report.ontologyActionAuditEnabled}")
         println("actionAuditInspectionEnabled=${report.actionAuditInspectionEnabled}")
+        println("aiGovernanceProposalEnabled=${report.aiGovernanceProposalEnabled}")
+        println("dynamicPlaybackEnabled=${report.dynamicPlaybackEnabled}")
         report.graphConnectionCheck?.let { check ->
             println("graphReachable=${check.reachable}")
             println("graphDatasetUrl=${check.datasetUrl}")
@@ -365,6 +448,24 @@ object SemanticServiceApplication {
                 println("actionAuditTypeCount.$actionType=$count")
             }
         }
+        report.aiGovernanceProposalResult?.let { result ->
+            println("aiGovernanceProposalSucceeded=${result.proposed}")
+            println("aiGovernanceProposalGraph=${result.aiAuditGraphUri}")
+            println("aiGovernanceProposalWrittenGraphs=${result.writtenGraphUris.size}")
+            println("aiGovernanceProposalIdempotentReplay=${result.idempotentReplay}")
+            println("aiGovernanceCanonicalGraphMutation=false")
+            println("aiGovernanceReasoningGraphMutation=false")
+            println("aiGovernanceOperationsGraphMutation=false")
+            println("aiGovernanceExternalSystemMutation=false")
+        }
+        report.dynamicPlaybackResult?.let { result ->
+            println("dynamicPlaybackSucceeded=${result.played}")
+            println("dynamicPlaybackScenario=${result.scenarioId}")
+            println("dynamicPlaybackBatch=${result.playbackBatchId}")
+            println("dynamicPlaybackActionAuditGraph=${result.actionAuditGraphUri}")
+            println("dynamicPlaybackSteps=${result.stepResults.size}")
+            println("dynamicPlaybackWrittenGraphs=${result.writtenGraphUris.size}")
+        }
 
         if (!report.isReady) {
             report.contractValidation.errors.forEach { error -> println("error=$error") }
@@ -377,6 +478,8 @@ object SemanticServiceApplication {
             report.lifecycleInspectionResult?.errors?.forEach { error -> println("error=$error") }
             report.ontologyActionAuditResult?.errors?.forEach { error -> println("error=$error") }
             report.actionAuditInspectionResult?.errors?.forEach { error -> println("error=$error") }
+            report.aiGovernanceProposalResult?.errors?.forEach { error -> println("error=$error") }
+            report.dynamicPlaybackResult?.errors?.forEach { error -> println("error=$error") }
             exitProcess(1)
         }
     }
@@ -401,6 +504,10 @@ object SemanticServiceApplication {
         ontologyActionAuditPlan: OntologyActionAuditPlan? = null,
         actionAuditInspector: OntologyActionAuditInspector? = null,
         actionAuditInspectionPlan: OntologyActionAuditInspectionPlan? = null,
+        aiProposalSubmitter: AiGovernanceProposalSubmitter? = null,
+        aiProposalPlan: AiGovernanceProposalPlan? = null,
+        dynamicPlaybackRunner: DynamicPlaybackRunner? = null,
+        dynamicPlaybackPlan: DynamicPlaybackPlan? = null,
     ): SemanticServiceRuntimeReport {
         val validation = StaticContractValidator().validate(repoRoot)
         val graphConnectionCheck = graphClient?.checkConnectivity()
@@ -439,6 +546,14 @@ object SemanticServiceApplication {
             requireNotNull(actionAuditInspector) { "actionAuditInspector is required when actionAuditInspectionPlan is provided" }
                 .inspect(plan)
         }
+        val aiGovernanceProposalResult = aiProposalPlan?.let { plan ->
+            requireNotNull(aiProposalSubmitter) { "aiProposalSubmitter is required when aiProposalPlan is provided" }
+                .submit(plan)
+        }
+        val dynamicPlaybackResult = dynamicPlaybackPlan?.let { plan ->
+            requireNotNull(dynamicPlaybackRunner) { "dynamicPlaybackRunner is required when dynamicPlaybackPlan is provided" }
+                .run(plan)
+        }
         return SemanticServiceRuntimeReport(
             repoRoot = repoRoot,
             contractValidation = validation,
@@ -453,6 +568,8 @@ object SemanticServiceApplication {
             generatedScenarioReport = generatedScenarioReport,
             ontologyActionAuditResult = ontologyActionAuditResult,
             actionAuditInspectionResult = actionAuditInspectionResult,
+            aiGovernanceProposalResult = aiGovernanceProposalResult,
+            dynamicPlaybackResult = dynamicPlaybackResult,
         )
     }
 
@@ -487,6 +604,15 @@ object SemanticServiceApplication {
             "--action-request-file must resolve under fixtures/action-requests"
         }
         return actionRequestPath
+    }
+
+    fun resolveControlledAiProposalPath(repoRoot: Path, aiProposalPathArgument: String): Path {
+        val aiProposalRoot = repoRoot.resolve("fixtures/ai-proposals").toAbsolutePath().normalize()
+        val aiProposalPath = repoRoot.resolve(aiProposalPathArgument).toAbsolutePath().normalize()
+        require(aiProposalPath.startsWith(aiProposalRoot)) {
+            "--ai-proposal-file must resolve under fixtures/ai-proposals"
+        }
+        return aiProposalPath
     }
 
     fun defaultGeneratedSourceScenarioDirectory(
@@ -550,6 +676,15 @@ object SemanticServiceApplication {
             ?: error("--action-request-file is required when --submit-ontology-action is set")
         return OntologyActionRequestLoader().load(resolveControlledActionRequestPath(repoRoot, path))
     }
+
+    fun loadAiGovernanceProposalRequest(
+        repoRoot: Path,
+        aiProposalFile: String?,
+    ): AiGovernanceProposalRequest {
+        val path = aiProposalFile
+            ?: error("--ai-proposal-file is required when --submit-ai-proposal is set")
+        return AiGovernanceProposalLoader().load(resolveControlledAiProposalPath(repoRoot, path))
+    }
 }
 
 data class SourceExtractInput(
@@ -588,6 +723,8 @@ data class SemanticServiceRuntimeReport(
     val generatedScenarioReport: RecordedSourceScenarioGenerationReport? = null,
     val ontologyActionAuditResult: OntologyActionAuditResult? = null,
     val actionAuditInspectionResult: OntologyActionAuditInspectionResult? = null,
+    val aiGovernanceProposalResult: AiGovernanceProposalResult? = null,
+    val dynamicPlaybackResult: DynamicPlaybackResult? = null,
 ) {
     val mode: String = "contract-validation-runtime"
     val isReady: Boolean = contractValidation.isValid &&
@@ -597,11 +734,15 @@ data class SemanticServiceRuntimeReport(
         (reasoningPromotionResult == null || reasoningPromotionResult.promoted) &&
         (lifecycleInspectionResult == null || lifecycleInspectionResult.inspected) &&
         (ontologyActionAuditResult == null || ontologyActionAuditResult.audited) &&
-        (actionAuditInspectionResult == null || actionAuditInspectionResult.inspected)
+        (actionAuditInspectionResult == null || actionAuditInspectionResult.inspected) &&
+        (aiGovernanceProposalResult == null || aiGovernanceProposalResult.proposed) &&
+        (dynamicPlaybackResult == null || dynamicPlaybackResult.played)
     val status: String = if (isReady) "ready" else "blocked"
     val graphExecutionEnabled: Boolean = sourcePromotionResult != null ||
         reasoningPromotionResult != null ||
-        ontologyActionAuditResult != null
+        ontologyActionAuditResult != null ||
+        aiGovernanceProposalResult != null ||
+        dynamicPlaybackResult != null
     val httpEndpointsEnabled: Boolean = false
     val fixtureLoadingEnabled: Boolean = fixtureLoadSummary != null
     val queryExecutionEnabled: Boolean = queryExecutionReport != null
@@ -611,6 +752,8 @@ data class SemanticServiceRuntimeReport(
     val sourceScenarioGenerationEnabled: Boolean = generatedScenarioReport != null
     val ontologyActionAuditEnabled: Boolean = ontologyActionAuditResult != null
     val actionAuditInspectionEnabled: Boolean = actionAuditInspectionResult != null
+    val aiGovernanceProposalEnabled: Boolean = aiGovernanceProposalResult != null
+    val dynamicPlaybackEnabled: Boolean = dynamicPlaybackResult != null
 }
 
 data class SemanticServiceRuntimeOptions(
@@ -637,8 +780,17 @@ data class SemanticServiceRuntimeOptions(
     val actionInputReleaseId: String? = null,
     val actionReasoningRunId: String? = null,
     val actionAuditReleaseId: String = "local-action-audit-v1",
+    val submitAiProposal: Boolean = false,
+    val aiProposalFile: String? = null,
+    val aiInputReleaseId: String? = null,
+    val aiReasoningRunId: String? = null,
+    val aiAuditReleaseId: String = "local-ai-governance-v1",
     val inspectActionAudit: Boolean = false,
     val inspectActionAuditReleaseId: String? = null,
+    val runDynamicPlayback: Boolean = false,
+    val dynamicPlaybackScenarioId: String = LocalDynamicPlaybackScenario.DEFAULT_SCENARIO_ID,
+    val dynamicPlaybackBatchId: String = LocalDynamicPlaybackScenario.DEFAULT_PLAYBACK_BATCH_ID,
+    val dynamicPlaybackActionAuditReleaseId: String = LocalDynamicPlaybackScenario.DEFAULT_ACTION_AUDIT_RELEASE_ID,
     val servePrivateQueryEndpoint: Boolean = false,
     val privateEndpointHost: String = "127.0.0.1",
     val privateEndpointPort: Int = 18080,
@@ -668,8 +820,17 @@ data class SemanticServiceRuntimeOptions(
             var actionInputReleaseId: String? = null
             var actionReasoningRunId: String? = null
             var actionAuditReleaseId = "local-action-audit-v1"
+            var submitAiProposal = false
+            var aiProposalFile: String? = null
+            var aiInputReleaseId: String? = null
+            var aiReasoningRunId: String? = null
+            var aiAuditReleaseId = "local-ai-governance-v1"
             var inspectActionAudit = false
             var inspectActionAuditReleaseId: String? = null
+            var runDynamicPlayback = false
+            var dynamicPlaybackScenarioId = LocalDynamicPlaybackScenario.DEFAULT_SCENARIO_ID
+            var dynamicPlaybackBatchId = LocalDynamicPlaybackScenario.DEFAULT_PLAYBACK_BATCH_ID
+            var dynamicPlaybackActionAuditReleaseId = LocalDynamicPlaybackScenario.DEFAULT_ACTION_AUDIT_RELEASE_ID
             var servePrivateQueryEndpoint = false
             var privateEndpointHost = "127.0.0.1"
             var privateEndpointPort = 18080
@@ -683,7 +844,9 @@ data class SemanticServiceRuntimeOptions(
                     arg == "--refresh-reasoning" -> refreshReasoning = true
                     arg == "--inspect-graph-lifecycle" -> inspectGraphLifecycle = true
                     arg == "--submit-ontology-action" -> submitOntologyAction = true
+                    arg == "--submit-ai-proposal" -> submitAiProposal = true
                     arg == "--inspect-action-audit" -> inspectActionAudit = true
+                    arg == "--run-dynamic-playback" -> runDynamicPlayback = true
                     arg == "--serve-private-query-endpoint" -> servePrivateQueryEndpoint = true
                     arg.startsWith("--source-extract-file=") -> {
                         sourceExtractFile = arg.substringAfter("=")
@@ -735,10 +898,44 @@ data class SemanticServiceRuntimeOptions(
                         actionAuditReleaseId = arg.substringAfter("=")
                         require(actionAuditReleaseId.isNotBlank()) { "--action-audit-release-id requires a value" }
                     }
+                    arg.startsWith("--ai-proposal-file=") -> {
+                        aiProposalFile = arg.substringAfter("=")
+                        require(aiProposalFile.isNotBlank()) { "--ai-proposal-file requires a value" }
+                    }
+                    arg.startsWith("--ai-input-release-id=") -> {
+                        aiInputReleaseId = arg.substringAfter("=")
+                        require(aiInputReleaseId.isNotBlank()) { "--ai-input-release-id requires a value" }
+                    }
+                    arg.startsWith("--ai-reasoning-run-id=") -> {
+                        aiReasoningRunId = arg.substringAfter("=")
+                        require(aiReasoningRunId.isNotBlank()) { "--ai-reasoning-run-id requires a value" }
+                    }
+                    arg.startsWith("--ai-audit-release-id=") -> {
+                        aiAuditReleaseId = arg.substringAfter("=")
+                        require(aiAuditReleaseId.isNotBlank()) { "--ai-audit-release-id requires a value" }
+                    }
                     arg.startsWith("--inspect-action-audit-release-id=") -> {
                         inspectActionAuditReleaseId = arg.substringAfter("=")
                         require(inspectActionAuditReleaseId.isNotBlank()) {
                             "--inspect-action-audit-release-id requires a value"
+                        }
+                    }
+                    arg.startsWith("--dynamic-playback-scenario-id=") -> {
+                        dynamicPlaybackScenarioId = arg.substringAfter("=")
+                        require(dynamicPlaybackScenarioId.isNotBlank()) {
+                            "--dynamic-playback-scenario-id requires a value"
+                        }
+                    }
+                    arg.startsWith("--dynamic-playback-batch-id=") -> {
+                        dynamicPlaybackBatchId = arg.substringAfter("=")
+                        require(dynamicPlaybackBatchId.isNotBlank()) {
+                            "--dynamic-playback-batch-id requires a value"
+                        }
+                    }
+                    arg.startsWith("--dynamic-playback-action-audit-release-id=") -> {
+                        dynamicPlaybackActionAuditReleaseId = arg.substringAfter("=")
+                        require(dynamicPlaybackActionAuditReleaseId.isNotBlank()) {
+                            "--dynamic-playback-action-audit-release-id requires a value"
                         }
                     }
                     arg.startsWith("--reasoning-input-release-id=") -> {
@@ -790,8 +987,17 @@ data class SemanticServiceRuntimeOptions(
                 actionInputReleaseId = actionInputReleaseId,
                 actionReasoningRunId = actionReasoningRunId,
                 actionAuditReleaseId = actionAuditReleaseId,
+                submitAiProposal = submitAiProposal,
+                aiProposalFile = aiProposalFile,
+                aiInputReleaseId = aiInputReleaseId,
+                aiReasoningRunId = aiReasoningRunId,
+                aiAuditReleaseId = aiAuditReleaseId,
                 inspectActionAudit = inspectActionAudit,
                 inspectActionAuditReleaseId = inspectActionAuditReleaseId,
+                runDynamicPlayback = runDynamicPlayback,
+                dynamicPlaybackScenarioId = dynamicPlaybackScenarioId,
+                dynamicPlaybackBatchId = dynamicPlaybackBatchId,
+                dynamicPlaybackActionAuditReleaseId = dynamicPlaybackActionAuditReleaseId,
                 servePrivateQueryEndpoint = servePrivateQueryEndpoint,
                 privateEndpointHost = privateEndpointHost,
                 privateEndpointPort = privateEndpointPort,

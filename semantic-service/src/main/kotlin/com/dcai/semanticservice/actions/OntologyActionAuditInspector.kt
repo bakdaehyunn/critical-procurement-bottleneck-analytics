@@ -22,6 +22,7 @@ open class OntologyActionAuditInspector(
                 executionCount = snapshot.model.countType(Dcai.OntologyActionExecution),
                 requestCount = snapshot.model.countType(Dcai.OntologyActionRequest),
                 validationReportCount = snapshot.model.countType(Dcai.ActionValidationReport),
+                notificationCount = snapshot.model.countType(Dcai.OntologyActionNotification),
                 actionTypeCounts = snapshot.model.actionTypeCounts(),
                 idempotencyKeyCount = snapshot.model
                     .listObjectsOfProperty(Dcai.hasIdempotencyKey)
@@ -83,6 +84,7 @@ data class OntologyActionAuditInspectionResult(
     val executionCount: Int = 0,
     val requestCount: Int = 0,
     val validationReportCount: Int = 0,
+    val notificationCount: Int = 0,
     val actionTypeCounts: Map<String, Int> = emptyMap(),
     val idempotencyKeyCount: Int = 0,
     val latestGeneratedAt: String? = null,

@@ -1185,13 +1185,21 @@ select:focus {
 .ontology-action-card-header button {
   min-height: 28px;
   padding: 4px 9px;
-  border: 1px solid #d9c390;
-  border-radius: 999px;
-  background: #fff8e8;
-  color: #8a5a0f;
+  border: 1px solid #98c8bf;
+  border-radius: 7px;
+  background: #ecf8f5;
+  color: #1f665d;
   font: inherit;
   font-size: 0.74rem;
   font-weight: 850;
+  cursor: pointer;
+}
+
+.ontology-action-card-header button:disabled {
+  border-color: #d8e0e2;
+  background: #f3f6f6;
+  color: #7c8a90;
+  cursor: not-allowed;
 }
 
 .ontology-action-card p {
@@ -1251,7 +1259,35 @@ select:focus {
   white-space: normal;
 }
 
-.ontology-action-audit-history {
+.ontology-action-scope {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid #cfe4e0;
+  border-radius: 7px;
+  background: #f6fbfa;
+}
+
+.ontology-action-scope span {
+  color: #55636a;
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.ontology-action-scope strong {
+  color: #1f665d;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.ontology-action-audit-history,
+.ontology-action-notifications,
+.ontology-action-lifecycle,
+.ai-proposal-panel,
+.ontology-action-dispatches,
+.ontology-action-transition-history {
   display: grid;
   gap: 10px;
   padding-top: 2px;
@@ -1289,12 +1325,26 @@ select:focus {
   overflow-wrap: anywhere;
 }
 
-.ontology-action-history-list {
+.ontology-action-history-list,
+.ontology-action-lifecycle-list,
+.ai-proposal-list,
+.ontology-action-dispatch-list,
+.ontology-action-transition-list {
   display: grid;
   gap: 10px;
 }
 
-.ontology-action-history-card {
+.ontology-action-notification-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ontology-action-history-card,
+.ontology-action-notification-card,
+.ontology-action-lifecycle-card,
+.ai-proposal-card,
+.ontology-action-dispatch-card,
+.ontology-action-transition-card {
   display: grid;
   min-width: 0;
   gap: 10px;
@@ -1302,6 +1352,52 @@ select:focus {
   border: 1px solid #d6e2df;
   border-radius: 8px;
   background: #ffffff;
+}
+
+.ontology-action-notification-card {
+  border-color: #efd49a;
+  background: #fffaf0;
+}
+
+.ontology-action-dispatch-card {
+  border-color: #b8d6e7;
+  background: #f5fbff;
+}
+
+.ai-proposal-card {
+  border-color: #c9d7ed;
+  background: #f7faff;
+}
+
+.ontology-action-notification-card > div:first-child,
+.ontology-action-dispatch-card > div:first-child {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.ontology-action-notification-card > div:first-child span,
+.ontology-action-dispatch-card > div:first-child span {
+  width: max-content;
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.ontology-action-notification-card > div:first-child span {
+  border: 1px solid #efd49a;
+  background: #fff8e8;
+  color: #8a5a0f;
+}
+
+.ontology-action-dispatch-card > div:first-child span {
+  border: 1px solid #b8d6e7;
+  background: #edf8ff;
+  color: #245f7a;
 }
 
 .ontology-action-history-card-header {
@@ -1325,7 +1421,24 @@ select:focus {
   color: #2f6f41;
 }
 
-.ontology-action-history-card p {
+.history-status.danger {
+  border-color: #efc7c3;
+  background: #fff2f0;
+  color: #9d3f37;
+}
+
+.ontology-action-history-card p,
+.ontology-action-lifecycle-card p,
+.ai-proposal-card p,
+.ontology-action-dispatch-card p,
+.ontology-action-transition-card p {
+  margin: 0;
+  color: #52616b;
+  font-size: 0.84rem;
+  line-height: 1.42;
+}
+
+.ontology-action-notification-card p {
   margin: 0;
   color: #52616b;
   font-size: 0.84rem;
@@ -1333,10 +1446,111 @@ select:focus {
 }
 
 .ontology-action-history-facts,
-.ontology-action-history-links {
+.ontology-action-history-links,
+.ontology-action-transition-controls {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 8px;
+}
+
+.ontology-action-lifecycle-card-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.ai-proposal-card-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.ai-proposal-card-header span:first-child {
+  display: block;
+  color: #55636a;
+  font-size: 0.74rem;
+  font-weight: 850;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.ai-proposal-card-header strong {
+  display: block;
+  min-width: 0;
+  color: #172026;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.ontology-action-lifecycle-card-header span,
+.ontology-action-transition-card span,
+.lifecycle-actor span {
+  color: #55636a;
+  font-size: 0.74rem;
+  font-weight: 850;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.ontology-action-lifecycle-card-header strong,
+.ontology-action-transition-card strong {
+  display: block;
+  min-width: 0;
+  color: #172026;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.lifecycle-actor {
+  display: grid;
+  max-width: 340px;
+  gap: 5px;
+}
+
+.lifecycle-actor input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid #d8e0e2;
+  border-radius: 7px;
+  color: #172026;
+  font: inherit;
+}
+
+.ontology-action-transition-controls button {
+  min-height: 32px;
+  padding: 7px 10px;
+  border: 1px solid #98c8bf;
+  border-radius: 7px;
+  background: #ecf8f5;
+  color: #1f665d;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.ontology-action-transition-controls button:disabled {
+  border-color: #d8e0e2;
+  background: #f3f6f6;
+  color: #7c8a90;
+  cursor: not-allowed;
+}
+
+.ontology-action-transition-controls span,
+.ontology-action-boundary-note {
+  color: #5b6970;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.ontology-action-boundary-note {
+  padding: 9px 10px;
+  border: 1px solid #d6e2df;
+  border-radius: 7px;
+  background: #f8fbfb;
 }
 
 .ontology-action-history-links div,
@@ -1358,6 +1572,122 @@ select:focus {
   line-height: 1.35;
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(13, 24, 22, 0.42);
+}
+
+.ontology-action-modal {
+  display: grid;
+  width: min(720px, 100%);
+  max-height: min(760px, calc(100vh - 36px));
+  gap: 14px;
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid #c9d8d5;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(18, 29, 27, 0.28);
+}
+
+.ontology-action-modal-header,
+.ontology-action-modal-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.ontology-action-modal-header span,
+.ontology-action-modal-grid span,
+.ontology-action-modal-footer span {
+  color: #55636a;
+  font-size: 0.74rem;
+  font-weight: 850;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.ontology-action-modal-header strong {
+  display: block;
+  min-width: 0;
+  color: #172026;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.ontology-action-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ontology-action-modal-grid label {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.ontology-action-modal-grid label:has(textarea) {
+  grid-column: 1 / -1;
+}
+
+.ontology-action-modal-grid input,
+.ontology-action-modal-grid select,
+.ontology-action-modal-grid textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #d8e0e2;
+  border-radius: 7px;
+  padding: 8px 9px;
+  color: #172026;
+  font: inherit;
+}
+
+.ontology-action-modal-targets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.ontology-action-modal-footer > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ontology-action-modal-footer button {
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid #d8e0e2;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #172026;
+  font: inherit;
+  font-weight: 800;
+}
+
+.ontology-action-modal-footer button:last-child {
+  border-color: #98c8bf;
+  background: #ecf8f5;
+  color: #1f665d;
+}
+
+.ontology-action-modal-footer button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.compact-error {
+  margin: 0;
+  font-size: 0.82rem;
 }
 
 .semantic-explanation-canvas {
@@ -1422,13 +1752,15 @@ select:focus {
 }
 
 .semantic-timeline-list,
-.provenance-chain {
+.provenance-chain,
+.dynamic-playback-list {
   display: grid;
   gap: 8px;
 }
 
 .semantic-timeline-event,
-.provenance-step {
+.provenance-step,
+.dynamic-playback-event {
   display: grid;
   min-width: 0;
   gap: 4px;
@@ -1436,6 +1768,85 @@ select:focus {
   border: 1px solid #edf1f3;
   border-radius: 8px;
   background: #fbfcfc;
+}
+
+.dynamic-playback-panel {
+  grid-column: 1 / -1;
+}
+
+.dynamic-state-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.dynamic-state-grid div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #e0ece9;
+  border-radius: 8px;
+  background: #f7fbfa;
+}
+
+.dynamic-state-grid span,
+.dynamic-playback-step span,
+.dynamic-playback-change span {
+  color: #5a6670;
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.dynamic-state-grid strong,
+.dynamic-playback-step strong,
+.dynamic-playback-change strong {
+  min-width: 0;
+  color: #172026;
+  font-size: 0.88rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.dynamic-state-grid small,
+.dynamic-playback-step small,
+.dynamic-playback-change small {
+  min-width: 0;
+  color: #66727a;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.dynamic-playback-event {
+  grid-template-columns: minmax(120px, 0.8fr) minmax(180px, 1.2fr) minmax(220px, 1.4fr);
+  align-items: start;
+}
+
+.dynamic-playback-step,
+.dynamic-playback-change {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.dynamic-playback-event code {
+  grid-column: 1 / -1;
+  min-width: 0;
+  color: #52616b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+@media (max-width: 760px) {
+  .dynamic-playback-event {
+    grid-template-columns: 1fr;
+  }
 }
 
 .provenance-step {

@@ -43,7 +43,17 @@ dcai-query:manifest
     dcai-query:semanticAvailableActionsByFinding,
     dcai-query:semanticActionAuditHistoryByRelease,
     dcai-query:semanticActionAuditHistoryByIncident,
-    dcai-query:semanticActionAuditHistoryByTarget .
+    dcai-query:semanticActionAuditHistoryByTarget,
+    dcai-query:semanticActionNotificationQueueByIncident,
+    dcai-query:semanticActionReviewQueueByIncident,
+    dcai-query:semanticActionTransitionHistoryByIncident,
+    dcai-query:semanticActionDispatchQueueByIncident,
+    dcai-query:semanticDynamicEventTimelineByIncident,
+    dcai-query:semanticDynamicStateChangesByIncident,
+    dcai-query:semanticDynamicReasoningChangesByIncident,
+    dcai-query:semanticDynamicActionLifecycleByIncident,
+    dcai-query:semanticAiProposalReviewQueue,
+    dcai-query:semanticAiProposalDetailByIncident .
 
 dcai-query:sourceToCanonicalPromotion
   rdf:type dcai-query:QueryEntry ;
@@ -323,4 +333,84 @@ dcai-query:semanticActionAuditHistoryByTarget
   dcai-query:queryPath "queries/read-model/semantic_action_audit_history_by_target.select.rq" ;
   dcai-query:queryMode "SELECT" ;
   dcai-query:graphScope "managed action-audit graph" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticActionNotificationQueueByIncident
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic ontology action notification queue by incident read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_action_notification_queue_by_incident.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "managed action-audit notification state, promoted canonical graph" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticActionReviewQueueByIncident
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic ontology action review queue by incident read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_action_review_queue_by_incident.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "managed action-audit lifecycle state, promoted canonical graph" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticActionTransitionHistoryByIncident
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic ontology action transition history by incident read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_action_transition_history_by_incident.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "managed action-audit lifecycle state, promoted canonical graph" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticActionDispatchQueueByIncident
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic ontology action dispatch simulation queue by incident read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_action_dispatch_queue_by_incident.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "managed action-audit dispatch simulation state, promoted canonical graph" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticDynamicEventTimelineByIncident
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic dynamic playback event timeline by incident read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_dynamic_event_timeline_by_incident.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "managed action-audit dynamic playback state, promoted source/canonical/provenance/reasoning graph references" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticDynamicStateChangesByIncident
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic dynamic playback graph state changes by incident read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_dynamic_state_changes_by_incident.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "managed action-audit dynamic playback state, promoted canonical graph references" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticDynamicReasoningChangesByIncident
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic dynamic playback reasoning changes by incident read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_dynamic_reasoning_changes_by_incident.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "managed action-audit dynamic playback state, promoted reasoning graph references" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticDynamicActionLifecycleByIncident
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic dynamic playback action lifecycle changes by incident read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_dynamic_action_lifecycle_by_incident.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "managed action-audit dynamic playback state and internal action lifecycle state" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticAiProposalReviewQueue
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic AI governance proposal review queue read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_ai_proposal_review_queue.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "managed ai-audit graph, promoted canonical/provenance graph" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticAiProposalDetailByIncident
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic AI governance proposal detail by incident read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_ai_proposal_detail_by_incident.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "managed ai-audit graph, promoted canonical/provenance graph" ;
   dcai-query:implementationStatus "phase16-approved" .

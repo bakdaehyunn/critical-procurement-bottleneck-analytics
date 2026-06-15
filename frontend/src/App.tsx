@@ -23,12 +23,19 @@ import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from 're
 import {
   type DashboardData,
   type DashboardFilters,
+  type AiProposalItem,
   type FilterMetadata,
   type FollowUpItem,
   type InfrastructureDependency,
   type OntologyActionAffordance,
   type OntologyActionAuditHistoryItem,
+  type OntologyActionDispatchQueueItem,
+  type OntologyActionLifecycleState,
+  type OntologyActionNotificationItem,
   type OntologyActionPlacement,
+  type OntologyActionReviewQueueItem,
+  type OntologyActionSubmission,
+  type OntologyActionTransitionHistoryItem,
   type OntologyReviewQueueItem,
   type RequestDetail,
   type RequestSemanticContext,
@@ -40,6 +47,9 @@ import {
   filterDashboardData,
   isRedundancyLost,
   isVendorPartsEscalation,
+  submitAiProposalReview,
+  submitOntologyActionRequest,
+  submitOntologyActionTransition,
 } from './api'
 import './App.css'
 
@@ -744,6 +754,7 @@ function FollowUpDetailPage() {
   const [topologyDependencies, setTopologyDependencies] = useState<InfrastructureDependency[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [reloadVersion, setReloadVersion] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -781,7 +792,7 @@ function FollowUpDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [incidentId])
+  }, [incidentId, reloadVersion])
 
   return (
     <main className="app-shell detail-page-shell">
@@ -822,9 +833,9 @@ function FollowUpDetailPage() {
 
         <div className="detail-page-body">
           {loading ? <div className="empty-state">Loading selected incident details</div> : null}
-          {!loading && activeTab === 'summary' ? <RequestDetailView detail={detail} semanticContext={semanticContext} topologyDependencies={topologyDependencies} /> : null}
+          {!loading && activeTab === 'summary' ? <RequestDetailView detail={detail} semanticContext={semanticContext} topologyDependencies={topologyDependencies} onActionSubmitted={() => setReloadVersion((version) => version + 1)} /> : null}
           {!loading && activeTab === 'impact' ? <ImpactView detail={detail} semanticContext={semanticContext} /> : null}
-          {!loading && activeTab === 'trust' ? <RequestTrustView detail={detail} semanticContext={semanticContext} /> : null}
+          {!loading && activeTab === 'trust' ? <RequestTrustView detail={detail} semanticContext={semanticContext} onActionSubmitted={() => setReloadVersion((version) => version + 1)} /> : null}
           {!loading && activeTab === 'dependencies' ? <DependencyDetailView detail={detail} semanticContext={semanticContext} topologyDependencies={topologyDependencies} /> : null}
         </div>
       </section>
@@ -849,10 +860,11 @@ function NotFoundPage() {
   )
 }
 
-function RequestDetailView({ detail, semanticContext, topologyDependencies }: {
+function RequestDetailView({ detail, semanticContext, topologyDependencies, onActionSubmitted }: {
   detail: RequestDetail | null
   semanticContext: RequestSemanticContext | null
   topologyDependencies: InfrastructureDependency[]
+  onActionSubmitted: () => void
 }) {
   if (!detail) {
     return <div className="empty-state">Select a semantic finding to inspect the recommended action</div>
@@ -879,7 +891,7 @@ function RequestDetailView({ detail, semanticContext, topologyDependencies }: {
         <strong>{detail.request.recommended_action}</strong>
       </div>
 
-      <OntologyActionPanel detail={detail} placement="summary" />
+      <OntologyActionPanel detail={detail} placement="summary" onActionSubmitted={onActionSubmitted} />
 
       <SemanticTracePanel semanticContext={semanticContext} />
 
@@ -946,12 +958,15 @@ function RequestDetailView({ detail, semanticContext, topologyDependencies }: {
   )
 }
 
-function OntologyActionPanel({ detail, placement }: {
+function OntologyActionPanel({ detail, placement, onActionSubmitted }: {
   detail: RequestDetail
   placement: OntologyActionPlacement
+  onActionSubmitted: () => void
 }) {
+  const [selectedAction, setSelectedAction] = useState<OntologyActionAffordance | null>(null)
   const actions = detail.ontology_actions.filter((action) => action.ui_placement.includes(placement))
-  if (!actions.length) {
+  const aiProposals = placement === 'summary' ? detail.ai_proposals : []
+  if (!actions.length && !aiProposals.length) {
     return null
   }
   return (
@@ -960,29 +975,146 @@ function OntologyActionPanel({ detail, placement }: {
         <Wrench size={17} />
         <div>
           <span>Governed ontology actions</span>
-          <strong>{actions.length} read-only action affordance{actions.length === 1 ? '' : 's'}</strong>
+          <strong>{actions.length} request contract{actions.length === 1 ? '' : 's'} and {aiProposals.length} AI proposal{aiProposals.length === 1 ? '' : 's'}</strong>
         </div>
       </div>
-      <div className="ontology-action-grid">
-        {actions.map((action) => (
-          <OntologyActionCard action={action} key={`${placement}-${action.action_id}`} />
-        ))}
-      </div>
+      {actions.length ? (
+        <div className="ontology-action-grid">
+          {actions.map((action) => (
+            <OntologyActionCard action={action} key={`${placement}-${action.action_id}`} onRequest={() => setSelectedAction(action)} />
+          ))}
+        </div>
+      ) : null}
+      <AiProposalPanel proposals={aiProposals} onReviewed={onActionSubmitted} />
+      <OntologyActionLifecycleReviewPanel queue={detail.action_review_queue} onTransitioned={onActionSubmitted} />
+      <OntologyActionNotificationPanel notifications={detail.action_notifications} />
+      <OntologyActionDispatchQueuePanel dispatches={detail.action_dispatch_queue} />
+      <OntologyActionTransitionHistoryPanel history={detail.action_transition_history} />
       <OntologyActionAuditHistoryPanel history={detail.action_audit_history} />
+      {selectedAction ? (
+        <OntologyActionRequestModal
+          action={selectedAction}
+          onClose={() => setSelectedAction(null)}
+          onSubmitted={() => {
+            setSelectedAction(null)
+            onActionSubmitted()
+          }}
+        />
+      ) : null}
     </section>
   )
 }
 
-function OntologyActionCard({ action }: { action: OntologyActionAffordance }) {
+function AiProposalPanel({ proposals, onReviewed }: {
+  proposals: AiProposalItem[]
+  onReviewed: () => void
+}) {
+  const uniqueProposals = uniqueAiProposals(proposals)
+  const [pendingProposal, setPendingProposal] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  if (!uniqueProposals.length) {
+    return null
+  }
+  async function reviewProposal(proposal: AiProposalItem, decision: 'APPROVE' | 'REJECT') {
+    setPendingProposal(`${proposal.proposal_uri}:${decision}`)
+    setError(null)
+    try {
+      await submitAiProposalReview({
+        proposal_uri: proposal.proposal_uri,
+        proposal_id: proposal.proposal_id,
+        decision,
+        actor_id: 'operator-local-reviewer',
+        review_reason: decision === 'APPROVE'
+          ? `Human reviewer approved AI proposal ${proposal.proposal_id} for governed local action audit creation.`
+          : `Human reviewer rejected AI proposal ${proposal.proposal_id} after local governance review.`,
+        action_id: decision === 'APPROVE' && proposal.proposal_type === 'ACTION_RECOMMENDATION'
+          ? 'AcknowledgeRestoreBlocker'
+          : undefined,
+      })
+      onReviewed()
+    } catch (reviewError) {
+      setError(reviewError instanceof Error ? reviewError.message : 'AI proposal review failed.')
+    } finally {
+      setPendingProposal(null)
+    }
+  }
   return (
-    <article className="ontology-action-card" aria-label={`${action.label} disabled`}>
+    <div className="ai-proposal-panel" aria-label="AI governance proposals">
+      <div className="ontology-action-history-header">
+        <ShieldAlert size={16} />
+        <div>
+          <span>AI governance proposals</span>
+          <strong>{uniqueProposals.length} managed ai-audit proposal{uniqueProposals.length === 1 ? '' : 's'} pending review</strong>
+        </div>
+      </div>
+      {error ? <div className="ontology-action-error">{error}</div> : null}
+      <div className="ai-proposal-list">
+        {uniqueProposals.map((proposal) => {
+          const reviewable = proposal.review_status === 'PENDING_HUMAN_REVIEW'
+          const approvePending = pendingProposal === `${proposal.proposal_uri}:APPROVE`
+          const rejectPending = pendingProposal === `${proposal.proposal_uri}:REJECT`
+          return (
+            <article key={proposal.proposal_uri} className="ai-proposal-card">
+              <div className="ai-proposal-card-header">
+                <div>
+                  <span>{formatStage(proposal.proposal_type)} · {formatStage(proposal.risk_level)} · {formatStage(proposal.review_status)}</span>
+                  <strong>{proposal.summary}</strong>
+                </div>
+                <span className="history-status">{Math.round(proposal.confidence_score * 100)}%</span>
+              </div>
+              <p>{proposal.rationale}</p>
+              <div className="ontology-action-transition-controls">
+                <button
+                  type="button"
+                  disabled={!reviewable || pendingProposal !== null}
+                  title={reviewable ? 'Approve AI proposal and create a governed local action request when applicable.' : proposal.disabled_reason}
+                  onClick={() => void reviewProposal(proposal, 'APPROVE')}
+                >
+                  {approvePending ? 'Approving' : 'Approve'}
+                </button>
+                <button
+                  type="button"
+                  disabled={!reviewable || pendingProposal !== null}
+                  title={reviewable ? 'Reject AI proposal in the managed ai-audit graph.' : proposal.disabled_reason}
+                  onClick={() => void reviewProposal(proposal, 'REJECT')}
+                >
+                  {rejectPending ? 'Rejecting' : 'Reject'}
+                </button>
+                <span>{reviewable ? 'Human review writes ai-audit only; approved action recommendations queue action-audit requests.' : proposal.disabled_reason}</span>
+              </div>
+              <div className="ontology-action-history-links">
+                <ActionHistoryLink label="Proposal" uri={proposal.proposal_uri} />
+                <ActionHistoryLink label="Evidence" uri={proposal.supporting_evidence_uri} />
+                <ActionHistoryLink label="Source" uri={proposal.source_record_uri} />
+                <ActionHistoryLink label="Validation" uri={proposal.validation_report_uri} />
+              </div>
+            </article>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function OntologyActionCard({ action, onRequest }: {
+  action: OntologyActionAffordance
+  onRequest: () => void
+}) {
+  const requestability = ontologyActionRequestability(action)
+  return (
+    <article className="ontology-action-card" aria-label={`${action.label} ontology action`}>
       <div className="ontology-action-card-header">
         <div>
           <span>{action.action_id}</span>
           <strong>{action.label}</strong>
         </div>
-        <button type="button" disabled title="Ontology action execution is not implemented">
-          Disabled
+        <button
+          type="button"
+          disabled={!requestability.requestable}
+          title={requestability.reason}
+          onClick={onRequest}
+        >
+          Queue request
         </button>
       </div>
       <p>{action.description}</p>
@@ -1024,7 +1156,286 @@ function OntologyActionCard({ action }: { action: OntologyActionAffordance }) {
           <li key={`${action.action_id}-disabled-${reason}`}>{reason}</li>
         ))}
       </ActionDetailGroup>
+      <div className="ontology-action-scope">
+        <span>Internal governed record</span>
+        <strong>{requestability.reason}; no external writeback is attempted.</strong>
+      </div>
     </article>
+  )
+}
+
+function OntologyActionRequestModal({ action, onClose, onSubmitted }: {
+  action: OntologyActionAffordance
+  onClose: () => void
+  onSubmitted: () => void
+}) {
+  const [actorId, setActorId] = useState('operator-local-reviewer')
+  const [reason, setReason] = useState(defaultActionReason(action))
+  const [assignedTeam, setAssignedTeam] = useState('OPS_VALIDATION')
+  const [assigneeId, setAssigneeId] = useState('')
+  const [reviewedStatus, setReviewedStatus] = useState('NEEDS_REVIEW')
+  const [reviewSummary, setReviewSummary] = useState(defaultReviewSummary(action))
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const requestability = ontologyActionRequestability(action)
+
+  async function submit() {
+    const submission = buildActionSubmission(action, {
+      actorId,
+      reason,
+      assignedTeam,
+      assigneeId,
+      reviewedStatus,
+      reviewSummary,
+    })
+    if (!submission) {
+      setError('Required semantic target object is missing.')
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+    try {
+      await submitOntologyActionRequest(submission)
+      onSubmitted()
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : 'Ontology action request failed.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <div className="ontology-action-modal" role="dialog" aria-modal="true" aria-label={`${action.label} request`}>
+        <div className="ontology-action-modal-header">
+          <div>
+            <span>Controlled ontology action</span>
+            <strong>{action.label}</strong>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} title="Close">
+            ×
+          </button>
+        </div>
+        <div className="ontology-action-modal-grid">
+          <label>
+            <span>Actor</span>
+            <input value={actorId} onChange={(event) => setActorId(event.target.value)} />
+          </label>
+          <label>
+            <span>Reason</span>
+            <textarea value={reason} onChange={(event) => setReason(event.target.value)} rows={3} />
+          </label>
+          {action.action_id === 'AssignEvidenceReview' ? (
+            <>
+              <label>
+                <span>Assigned team</span>
+                <input value={assignedTeam} onChange={(event) => setAssignedTeam(event.target.value)} />
+              </label>
+              <label>
+                <span>Assignee</span>
+                <input value={assigneeId} onChange={(event) => setAssigneeId(event.target.value)} />
+              </label>
+            </>
+          ) : null}
+          {action.action_id === 'RecordValidationReview' ? (
+            <>
+              <label>
+                <span>Reviewed status</span>
+                <select value={reviewedStatus} onChange={(event) => setReviewedStatus(event.target.value)}>
+                  <option value="NEEDS_REVIEW">Needs review</option>
+                  <option value="PASSED">Passed</option>
+                  <option value="FAILED">Failed</option>
+                  <option value="BLOCKED">Blocked</option>
+                  <option value="CONFLICTING_VALIDATION">Conflicting validation</option>
+                </select>
+              </label>
+              <label>
+                <span>Review summary</span>
+                <textarea value={reviewSummary} onChange={(event) => setReviewSummary(event.target.value)} rows={3} />
+              </label>
+            </>
+          ) : null}
+        </div>
+        <div className="ontology-action-modal-targets">
+          <ActionHistoryLink label="Incident" uri={action.incident_uri} />
+          <ActionHistoryLink label="Source record" uri={action.source_record_uri} />
+          <ActionHistoryLink label="Primary target" uri={primaryActionTarget(action)?.resource_uri ?? null} />
+        </div>
+        {error ? <div className="error-banner compact-error">{error}</div> : null}
+        <div className="ontology-action-modal-footer">
+          <span>{requestability.reason}</span>
+          <div>
+            <button type="button" onClick={onClose}>Cancel</button>
+            <button type="button" disabled={!requestability.requestable || submitting || !actorId.trim() || !reason.trim()} onClick={submit}>
+              {submitting ? 'Submitting' : 'Submit request'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function OntologyActionLifecycleReviewPanel({ queue, onTransitioned }: {
+  queue: OntologyActionReviewQueueItem[]
+  onTransitioned: () => void
+}) {
+  const reviewItems = uniqueActionReviewQueue(queue)
+  const [actorId, setActorId] = useState('operator-local-reviewer')
+  const [submittingKey, setSubmittingKey] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submitTransition(item: OntologyActionReviewQueueItem, transition: ActionLifecycleTransitionOption) {
+    setSubmittingKey(`${item.execution_uri}-${transition.toState}`)
+    setError(null)
+    try {
+      await submitOntologyActionTransition({
+        target_execution_uri: item.execution_uri,
+        to_state: transition.toState,
+        actor_id: actorId.trim(),
+        transition_reason: transition.reason(item),
+      })
+      onTransitioned()
+    } catch (transitionError) {
+      setError(transitionError instanceof Error ? transitionError.message : 'Ontology action transition failed.')
+    } finally {
+      setSubmittingKey(null)
+    }
+  }
+
+  return (
+    <div className="ontology-action-lifecycle" aria-label="Internal ontology action lifecycle review">
+      <div className="ontology-action-history-header">
+        <CheckCircle2 size={16} />
+        <div>
+          <span>Internal lifecycle review</span>
+          <strong>{reviewItems.length ? `${reviewItems.length} action${reviewItems.length === 1 ? '' : 's'} awaiting local lifecycle decision` : 'No queued internal action records'}</strong>
+        </div>
+      </div>
+      {reviewItems.length ? (
+        <>
+          <label className="lifecycle-actor">
+            <span>Reviewer</span>
+            <input value={actorId} onChange={(event) => setActorId(event.target.value)} />
+          </label>
+          <div className="ontology-action-lifecycle-list">
+            {reviewItems.map((item) => {
+              const transitions = actionTransitionOptions(item.current_state)
+              return (
+                <article className="ontology-action-lifecycle-card" key={item.execution_uri}>
+                  <div className="ontology-action-lifecycle-card-header">
+                    <div>
+                      <span>{item.request_id}</span>
+                      <strong>{item.action_type_id}</strong>
+                    </div>
+                    <span className={`history-status ${actionStateTone(item.current_state)}`}>
+                      {formatStage(item.current_state)}
+                    </span>
+                  </div>
+                  <p>{item.action_reason}</p>
+                  <div className="ontology-action-history-links">
+                    <ActionHistoryLink label="Execution" uri={item.execution_uri} />
+                    <ActionHistoryLink label="Notification" uri={item.notification_uri} />
+                    <ActionHistoryLink label="Source" uri={item.source_record_uri} />
+                  </div>
+                  <div className="ontology-action-transition-controls">
+                    {transitions.length ? transitions.map((transition) => {
+                      const key = `${item.execution_uri}-${transition.toState}`
+                      return (
+                        <button
+                          type="button"
+                          key={transition.toState}
+                          disabled={Boolean(submittingKey) || !actorId.trim()}
+                          onClick={() => submitTransition(item, transition)}
+                        >
+                          {submittingKey === key ? 'Writing' : transition.label}
+                        </button>
+                      )
+                    }) : (
+                      <span>Lifecycle is closed for local review.</span>
+                    )}
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </>
+      ) : (
+        <div className="empty-state compact-empty">No internal ontology action has been queued for this incident yet.</div>
+      )}
+      {error ? <div className="error-banner compact-error">{error}</div> : null}
+      <div className="ontology-action-boundary-note">
+        These controls write only governed action-audit lifecycle state. They do not update canonical, reasoning, operations, production, or external source-system records.
+      </div>
+    </div>
+  )
+}
+
+function OntologyActionNotificationPanel({ notifications }: { notifications: OntologyActionNotificationItem[] }) {
+  const groupedNotifications = uniqueActionNotifications(notifications)
+  return (
+    <div className="ontology-action-notifications" aria-label="Ontology action notifications">
+      <div className="ontology-action-history-header">
+        <AlertTriangle size={16} />
+        <div>
+          <span>Local action notifications</span>
+          <strong>{groupedNotifications.length ? `${groupedNotifications.length} local lifecycle notification${groupedNotifications.length === 1 ? '' : 's'}` : 'No local lifecycle notifications'}</strong>
+        </div>
+      </div>
+      {groupedNotifications.length ? (
+        <div className="ontology-action-notification-list">
+          {groupedNotifications.map((item) => (
+            <article key={item.notification_uri} className="ontology-action-notification-card">
+              <div>
+                <span>{formatStage(item.notification_status)}</span>
+                <strong>{item.action_type_id}</strong>
+              </div>
+              <p>{item.notification_summary}</p>
+              <div className="ontology-action-history-links">
+                <ActionHistoryLink label="Notification" uri={item.notification_uri} />
+                <ActionHistoryLink label="Execution" uri={item.execution_uri} />
+                <ActionHistoryLink label="Target" uri={item.target_object_uri} />
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function OntologyActionDispatchQueuePanel({ dispatches }: { dispatches: OntologyActionDispatchQueueItem[] }) {
+  const queuedDispatches = uniqueActionDispatches(dispatches)
+  return (
+    <div className="ontology-action-dispatches" aria-label="Ontology action dispatch simulation">
+      <div className="ontology-action-history-header">
+        <ServerCog size={16} />
+        <div>
+          <span>Simulated operations dispatch</span>
+          <strong>{queuedDispatches.length ? `${queuedDispatches.length} internal dispatch record${queuedDispatches.length === 1 ? '' : 's'}` : 'No simulated dispatch records'}</strong>
+        </div>
+      </div>
+      {queuedDispatches.length ? (
+        <div className="ontology-action-dispatch-list">
+          {queuedDispatches.map((item) => (
+            <article key={item.dispatch_uri} className="ontology-action-dispatch-card">
+              <div>
+                <span>{formatStage(item.dispatch_channel)} · {formatStage(item.dispatch_status)}</span>
+                <strong>{item.action_type_id}</strong>
+              </div>
+              <p>{item.dispatch_summary}</p>
+              <div className="ontology-action-history-links">
+                <ActionHistoryLink label="Dispatch" uri={item.dispatch_uri} />
+                <ActionHistoryLink label="Transition" uri={item.transition_uri} />
+                <ActionHistoryLink label="Execution" uri={item.execution_uri} />
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state compact-empty">Approved local actions have not produced simulated dispatch records for this incident yet.</div>
+      )}
+    </div>
   )
 }
 
@@ -1037,6 +1448,41 @@ function ActionDetailGroup({ title, tone, children }: {
     <div className={`ontology-action-detail ${tone ?? ''}`}>
       <span>{title}</span>
       <ul>{children}</ul>
+    </div>
+  )
+}
+
+function OntologyActionTransitionHistoryPanel({ history }: { history: OntologyActionTransitionHistoryItem[] }) {
+  const transitions = uniqueActionTransitionHistory(history).slice(0, 12)
+  return (
+    <div className="ontology-action-transition-history" aria-label="Ontology action transition history">
+      <div className="ontology-action-history-header">
+        <GitBranch size={16} />
+        <div>
+          <span>Lifecycle transition history</span>
+          <strong>{transitions.length ? `${transitions.length} graph-backed transition${transitions.length === 1 ? '' : 's'}` : 'No transition facts for this finding'}</strong>
+        </div>
+      </div>
+      {transitions.length ? (
+        <div className="ontology-action-transition-list">
+          {transitions.map((item) => (
+            <article className="ontology-action-transition-card" key={item.transition_uri}>
+              <div>
+                <span>{item.generated_at}</span>
+                <strong>{formatTransitionEdge(item.from_state, item.to_state)}</strong>
+              </div>
+              <p>{item.transition_reason}</p>
+              <div className="ontology-action-history-links">
+                <ActionHistoryLink label="Transition" uri={item.transition_uri} />
+                <ActionHistoryLink label="Execution" uri={item.execution_uri} />
+                <ActionHistoryLink label="Request" uri={item.request_uri} />
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state compact-empty">No lifecycle transitions have been written for this selected incident yet.</div>
+      )}
     </div>
   )
 }
@@ -1117,6 +1563,230 @@ function uniqueActionAuditHistory(history: OntologyActionAuditHistoryItem[]): On
     }
   })
   return Array.from(byExecution.values()).sort((left, right) => right.executed_at.localeCompare(left.executed_at))
+}
+
+function uniqueActionNotifications(notifications: OntologyActionNotificationItem[]): OntologyActionNotificationItem[] {
+  const byNotification = new Map<string, OntologyActionNotificationItem>()
+  notifications.forEach((item) => {
+    const existing = byNotification.get(item.notification_uri)
+    if (!existing || (!existing.target_object_uri && item.target_object_uri)) {
+      byNotification.set(item.notification_uri, item)
+    }
+  })
+  return Array.from(byNotification.values()).sort((left, right) => right.generated_at.localeCompare(left.generated_at))
+}
+
+function uniqueActionDispatches(dispatches: OntologyActionDispatchQueueItem[]): OntologyActionDispatchQueueItem[] {
+  const byDispatch = new Map<string, OntologyActionDispatchQueueItem>()
+  dispatches.forEach((dispatch) => {
+    byDispatch.set(dispatch.dispatch_uri, dispatch)
+  })
+  return [...byDispatch.values()].sort((left, right) => {
+    const timeSort = right.generated_at.localeCompare(left.generated_at)
+    if (timeSort !== 0) return timeSort
+    return left.dispatch_channel.localeCompare(right.dispatch_channel)
+  })
+}
+
+function uniqueAiProposals(proposals: AiProposalItem[]): AiProposalItem[] {
+  const byProposal = new Map<string, AiProposalItem>()
+  proposals.forEach((proposal) => {
+    byProposal.set(proposal.proposal_uri, proposal)
+  })
+  return [...byProposal.values()].sort((left, right) => {
+    const timeSort = right.generated_at.localeCompare(left.generated_at)
+    if (timeSort !== 0) return timeSort
+    return right.confidence_score - left.confidence_score
+  })
+}
+
+type ActionLifecycleTransitionOption = {
+  toState: OntologyActionLifecycleState
+  label: string
+  reason: (item: OntologyActionReviewQueueItem) => string
+}
+
+function uniqueActionReviewQueue(queue: OntologyActionReviewQueueItem[]): OntologyActionReviewQueueItem[] {
+  const byExecution = new Map<string, OntologyActionReviewQueueItem>()
+  queue.forEach((item) => {
+    const existing = byExecution.get(item.execution_uri)
+    if (!existing || item.state_generated_at.localeCompare(existing.state_generated_at) > 0) {
+      byExecution.set(item.execution_uri, item)
+    }
+  })
+  return Array.from(byExecution.values()).sort((left, right) => right.state_generated_at.localeCompare(left.state_generated_at))
+}
+
+function uniqueActionTransitionHistory(history: OntologyActionTransitionHistoryItem[]): OntologyActionTransitionHistoryItem[] {
+  const byTransition = new Map<string, OntologyActionTransitionHistoryItem>()
+  history.forEach((item) => {
+    byTransition.set(item.transition_uri, item)
+  })
+  return Array.from(byTransition.values()).sort((left, right) => right.generated_at.localeCompare(left.generated_at))
+}
+
+function actionTransitionOptions(state: OntologyActionLifecycleState): ActionLifecycleTransitionOption[] {
+  if (state === 'QUEUED') {
+    return [
+      {
+        toState: 'IN_REVIEW',
+        label: 'Start review',
+        reason: (item) => `Local reviewer started internal review for ${item.request_id}.`,
+      },
+      {
+        toState: 'REJECTED',
+        label: 'Reject',
+        reason: (item) => `Local reviewer rejected queued internal action ${item.request_id}.`,
+      },
+    ]
+  }
+  if (state === 'IN_REVIEW') {
+    return [
+      {
+        toState: 'APPROVED',
+        label: 'Approve',
+        reason: (item) => `Local reviewer approved internal action ${item.request_id}.`,
+      },
+      {
+        toState: 'REJECTED',
+        label: 'Reject',
+        reason: (item) => `Local reviewer rejected internal action ${item.request_id}.`,
+      },
+    ]
+  }
+  if (state === 'APPROVED' || state === 'REJECTED') {
+    return [
+      {
+        toState: 'CLOSED',
+        label: 'Close',
+        reason: (item) => `Local reviewer closed internal action ${item.request_id} after ${item.current_state}.`,
+      },
+    ]
+  }
+  return []
+}
+
+function actionStateTone(state: OntologyActionLifecycleState): 'ok' | 'warning' | 'danger' | '' {
+  if (state === 'APPROVED' || state === 'CLOSED') return 'ok'
+  if (state === 'REJECTED') return 'danger'
+  if (state === 'QUEUED' || state === 'IN_REVIEW') return 'warning'
+  return ''
+}
+
+function formatTransitionEdge(fromState: OntologyActionLifecycleState | null, toState: OntologyActionLifecycleState) {
+  return `${fromState ? formatStage(fromState) : 'Created'} -> ${formatStage(toState)}`
+}
+
+function ontologyActionRequestability(action: OntologyActionAffordance): { requestable: boolean; reason: string } {
+  if (!['AcknowledgeRestoreBlocker', 'AssignEvidenceReview', 'RecordValidationReview'].includes(action.action_id)) {
+    return {
+      requestable: false,
+      reason: 'This action is not accepted by the internal action request endpoint.',
+    }
+  }
+  const submission = buildActionSubmission(action, {
+    actorId: 'operator-local-reviewer',
+    reason: defaultActionReason(action),
+    assignedTeam: 'OPS_VALIDATION',
+    assigneeId: '',
+    reviewedStatus: 'NEEDS_REVIEW',
+    reviewSummary: defaultReviewSummary(action),
+  })
+  if (!submission) {
+    return {
+      requestable: false,
+      reason: 'Required semantic target or provenance URI is missing.',
+    }
+  }
+  return {
+    requestable: true,
+    reason: 'Creates an audited local request and notification only.',
+  }
+}
+
+function buildActionSubmission(
+  action: OntologyActionAffordance,
+  values: {
+    actorId: string
+    reason: string
+    assignedTeam: string
+    assigneeId: string
+    reviewedStatus: string
+    reviewSummary: string
+  },
+): OntologyActionSubmission | null {
+  const base = {
+    action_id: action.action_id,
+    actor_id: values.actorId.trim(),
+    action_reason: values.reason.trim(),
+    incident_uri: action.incident_uri,
+    source_record_uri: action.source_record_uri,
+  }
+  if (!base.actor_id || !base.action_reason || !base.incident_uri || !base.source_record_uri) {
+    return null
+  }
+  if (action.action_id === 'AcknowledgeRestoreBlocker') {
+    const restoreReadiness = actionTarget(action, 'RestoreReadinessFinding')
+    if (!restoreReadiness) return null
+    return {
+      ...base,
+      restore_readiness_finding_uri: restoreReadiness.resource_uri,
+      recovery_blocker_uri: actionTarget(action, 'RecoveryBlocker')?.resource_uri,
+    }
+  }
+  if (action.action_id === 'AssignEvidenceReview') {
+    const trustFinding = actionTarget(action, 'TrustFinding')
+    if (!trustFinding || !values.assignedTeam.trim()) return null
+    return {
+      ...base,
+      trust_finding_uri: trustFinding.resource_uri,
+      assigned_team: values.assignedTeam.trim(),
+      assignee_id: values.assigneeId.trim() || undefined,
+    }
+  }
+  if (action.action_id === 'RecordValidationReview') {
+    const validationEvidence = actionTarget(action, 'ValidationEvidence')
+    if (!validationEvidence || !values.reviewedStatus.trim() || !values.reviewSummary.trim()) return null
+    return {
+      ...base,
+      validation_evidence_uri: validationEvidence.resource_uri,
+      reviewed_status: values.reviewedStatus.trim(),
+      review_summary: values.reviewSummary.trim(),
+      supporting_evidence_uri: validationEvidence.resource_uri,
+    }
+  }
+  return null
+}
+
+function defaultActionReason(action: OntologyActionAffordance): string {
+  if (action.action_id === 'AcknowledgeRestoreBlocker') {
+    return 'Operator reviewed the restore-readiness blocker for local follow-up.'
+  }
+  if (action.action_id === 'AssignEvidenceReview') {
+    return 'Assign evidence trust finding to local validation review.'
+  }
+  if (action.action_id === 'RecordValidationReview') {
+    return 'Record local review of validation evidence without changing canonical facts.'
+  }
+  return 'Request local ontology action audit.'
+}
+
+function defaultReviewSummary(action: OntologyActionAffordance): string {
+  if (action.action_id === 'RecordValidationReview') {
+    return 'Validation evidence requires follow-up review before restore decision.'
+  }
+  return ''
+}
+
+function actionTarget(action: OntologyActionAffordance, role: string) {
+  return action.target_objects.find((target) => target.role === role && target.resource_uri.startsWith('urn:dcai:')) ?? null
+}
+
+function primaryActionTarget(action: OntologyActionAffordance) {
+  return actionTarget(action, 'RestoreReadinessFinding') ??
+    actionTarget(action, 'TrustFinding') ??
+    actionTarget(action, 'ValidationEvidence') ??
+    actionTarget(action, 'InfrastructureIncident')
 }
 
 function SemanticExplanationCanvas({ detail, semanticContext, topologyDependencies }: {
@@ -1217,6 +1887,8 @@ function SemanticExplanationCanvas({ detail, semanticContext, topologyDependenci
         )}
       </div>
 
+      <DynamicPlaybackPanel detail={detail} />
+
       <div className="explanation-panel">
         <div className="explanation-panel-header">
           <GitBranch size={17} />
@@ -1241,6 +1913,69 @@ function SemanticExplanationCanvas({ detail, semanticContext, topologyDependenci
         )}
       </div>
     </section>
+  )
+}
+
+function DynamicPlaybackPanel({ detail }: { detail: RequestDetail }) {
+  const timeline = [...detail.dynamic_event_timeline]
+    .sort((left, right) => left.playback_step - right.playback_step || left.occurred_at.localeCompare(right.occurred_at))
+  const latestReasoning = detail.dynamic_reasoning_changes.at(-1)
+  const latestAction = detail.dynamic_action_lifecycle.at(-1)
+  return (
+    <div className="explanation-panel dynamic-playback-panel">
+      <div className="explanation-panel-header">
+        <Activity size={17} />
+        <div>
+          <span>Dynamic ontology playback</span>
+          <strong>{timeline.length ? `${timeline.length} replayed graph event${timeline.length === 1 ? '' : 's'}` : 'No playback events'}</strong>
+        </div>
+      </div>
+      {timeline.length ? (
+        <>
+          <div className="dynamic-state-grid" aria-label="Dynamic playback state summary">
+            <div>
+              <span>Reasoning</span>
+              <strong>{latestReasoning ? formatStage(latestReasoning.after_reasoning_state) : 'No reasoning delta'}</strong>
+              <small>{latestReasoning ? formatStage(latestReasoning.after_trust_state) : 'No trust delta'}</small>
+            </div>
+            <div>
+              <span>Blast radius</span>
+              <strong>{latestReasoning ? `${latestReasoning.before_blast_radius_count} to ${latestReasoning.after_blast_radius_count}` : '0 to 0'}</strong>
+              <small>Inferred downstream exposure</small>
+            </div>
+            <div>
+              <span>Action lifecycle</span>
+              <strong>{latestAction ? formatStage(latestAction.action_lifecycle_state) : 'No action delta'}</strong>
+              <small>{latestAction?.action_audit_release_id ?? 'No playback action audit'}</small>
+            </div>
+          </div>
+          <div className="dynamic-playback-list">
+            {timeline.map((event) => (
+              <div className="dynamic-playback-event" key={event.event_uri}>
+                <div className="dynamic-playback-step">
+                  <span>Step {event.playback_step}</span>
+                  <strong>{formatStage(event.event_kind)}</strong>
+                  <small>{event.occurred_at}</small>
+                </div>
+                <div className="dynamic-playback-change">
+                  <span>{formatStage(event.source_family)}</span>
+                  <strong>{formatStage(event.before_state)} to {formatStage(event.after_state)}</strong>
+                  <small>{event.summary}</small>
+                </div>
+                <div className="dynamic-playback-change">
+                  <span>Reasoning and trust</span>
+                  <strong>{formatStage(event.before_reasoning_state)} to {formatStage(event.after_reasoning_state)}</strong>
+                  <small>{formatStage(event.before_trust_state)} to {formatStage(event.after_trust_state)} · blast radius {event.before_blast_radius_count} to {event.after_blast_radius_count}</small>
+                </div>
+                <code>{event.source_record_uri}</code>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="empty-state compact-empty">No dynamic playback graph facts are attached to this incident</div>
+      )}
+    </div>
   )
 }
 
@@ -1388,9 +2123,10 @@ function ImpactView({ detail, semanticContext }: {
   )
 }
 
-function RequestTrustView({ detail, semanticContext }: {
+function RequestTrustView({ detail, semanticContext, onActionSubmitted }: {
   detail: RequestDetail | null
   semanticContext: RequestSemanticContext | null
+  onActionSubmitted: () => void
 }) {
   if (!detail) {
     return <div className="empty-state">Select a semantic finding to review evidence trust</div>
@@ -1415,7 +2151,7 @@ function RequestTrustView({ detail, semanticContext }: {
         <strong>{detail.restore_readiness.status === 'NOT_READY' ? 'Do not restore until readiness blockers are cleared' : trustNeedsReview ? 'Review evidence before relying on this recommendation' : 'Recommendation evidence is trusted for the latest analysis run'}</strong>
       </div>
 
-      <OntologyActionPanel detail={detail} placement="trust" />
+      <OntologyActionPanel detail={detail} placement="trust" onActionSubmitted={onActionSubmitted} />
 
       <div className="summary-glance-grid" aria-label="Selected incident trust at a glance">
         <SummaryMetric

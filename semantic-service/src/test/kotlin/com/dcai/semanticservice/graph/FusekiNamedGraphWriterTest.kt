@@ -2,6 +2,7 @@ package com.dcai.semanticservice.graph
 
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import org.apache.jena.rdf.model.ModelFactory
 
 class FusekiNamedGraphWriterTest {
@@ -34,5 +35,21 @@ class FusekiNamedGraphWriterTest {
         assertFailsWith<IllegalArgumentException> {
             writer.deleteNamedGraph("urn:dcai:graph:operations:unmanaged")
         }
+    }
+
+    @Test
+    fun allowsManagedAiAuditGraphUriBeforeNetworkWrite() {
+        val writer = FusekiNamedGraphWriter(
+            FusekiGraphStoreConfig(
+                datasetUrl = "http://127.0.0.1:1/infrastructure",
+                graphStoreUrl = "http://127.0.0.1:1/infrastructure/data",
+            ),
+        )
+
+        val failure = runCatching {
+            writer.replaceNamedGraph("urn:dcai:graph:ai-audit:local-ai-governance-v1", ModelFactory.createDefaultModel())
+        }.exceptionOrNull()
+
+        assertFalse(failure is IllegalArgumentException)
     }
 }

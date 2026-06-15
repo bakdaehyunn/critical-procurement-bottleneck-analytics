@@ -116,6 +116,59 @@ class OntologyActionValidationGate(
             return listOf("Action provenance gate failed: ${reportsWithoutExecution.size} validation reports have no generating execution")
         }
 
+        val notifications = model.listSubjectsWithProperty(RDF.type, Dcai.OntologyActionNotification).toList()
+        if (notifications.isEmpty()) {
+            return listOf("Action provenance gate failed: no dcai:OntologyActionNotification")
+        }
+
+        val incompleteNotifications = notifications.filterNot { notification ->
+            model.contains(notification, Dcai.hasActionType) &&
+                model.contains(notification, Dcai.hasNotificationStatus) &&
+                model.contains(notification, Dcai.hasTargetObject) &&
+                model.contains(notification, Prov.wasGeneratedBy) &&
+                model.contains(notification, Prov.generatedAtTime)
+        }
+        if (incompleteNotifications.isNotEmpty()) {
+            return listOf("Action provenance gate failed: ${incompleteNotifications.size} OntologyActionNotification resources are incomplete")
+        }
+
+        val transitions = model.listSubjectsWithProperty(RDF.type, Dcai.OntologyActionStateTransition).toList()
+        if (transitions.isEmpty()) {
+            return listOf("Action provenance gate failed: no dcai:OntologyActionStateTransition")
+        }
+
+        val incompleteTransitions = transitions.filterNot { transition ->
+            model.contains(transition, Dcai.hasIdentifier) &&
+                model.contains(transition, Dcai.hasIdempotencyKey) &&
+                model.contains(transition, Dcai.hasToActionState) &&
+                model.contains(transition, Dcai.hasTransitionReason) &&
+                model.contains(transition, Dcai.hasActorId) &&
+                model.contains(transition, Dcai.hasTargetObject) &&
+                model.contains(transition, Prov.used) &&
+                model.contains(transition, Prov.generatedAtTime)
+        }
+        if (incompleteTransitions.isNotEmpty()) {
+            return listOf("Action provenance gate failed: ${incompleteTransitions.size} OntologyActionStateTransition resources are incomplete")
+        }
+
+        val dispatches = model.listSubjectsWithProperty(RDF.type, Dcai.OntologyActionDispatch).toList()
+        val incompleteDispatches = dispatches.filterNot { dispatch ->
+            model.contains(dispatch, Dcai.hasIdentifier) &&
+                model.contains(dispatch, Dcai.hasIdempotencyKey) &&
+                model.contains(dispatch, Dcai.hasDispatchChannel) &&
+                model.contains(dispatch, Dcai.hasDispatchStatus) &&
+                model.contains(dispatch, Dcai.hasDispatchLifecycleState) &&
+                model.contains(dispatch, Dcai.hasDispatchSummary) &&
+                model.contains(dispatch, Dcai.hasActorId) &&
+                model.contains(dispatch, Dcai.hasTargetObject) &&
+                model.contains(dispatch, Prov.used) &&
+                model.contains(dispatch, Prov.wasGeneratedBy) &&
+                model.contains(dispatch, Prov.generatedAtTime)
+        }
+        if (incompleteDispatches.isNotEmpty()) {
+            return listOf("Action provenance gate failed: ${incompleteDispatches.size} OntologyActionDispatch resources are incomplete")
+        }
+
         return emptyList()
     }
 }

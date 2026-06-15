@@ -13,6 +13,10 @@ import com.dcai.semanticservice.actions.OntologyActionAuditPlan
 import com.dcai.semanticservice.actions.OntologyActionAuditResult
 import com.dcai.semanticservice.actions.OntologyActionSubmitter
 import com.dcai.semanticservice.actions.OntologyActionValidationReport
+import com.dcai.semanticservice.dynamic.DynamicPlaybackPlan
+import com.dcai.semanticservice.dynamic.DynamicPlaybackResult
+import com.dcai.semanticservice.dynamic.DynamicPlaybackRunner
+import com.dcai.semanticservice.dynamic.LocalDynamicPlaybackScenario
 import com.dcai.semanticservice.graph.GraphConnectionCheck
 import com.dcai.semanticservice.graph.ReadOnlyGraphClient
 import com.dcai.semanticservice.ingestion.FileSourceExtractLoader
@@ -544,6 +548,52 @@ class SemanticServiceApplicationTest {
     }
 
     @Test
+    fun canRunControlledDynamicPlaybackCommandBoundary() {
+        val report = SemanticServiceApplication.run(
+            dynamicPlaybackRunner = StaticDynamicPlaybackRunner(
+                DynamicPlaybackResult(
+                    played = true,
+                    scenarioId = LocalDynamicPlaybackScenario.DEFAULT_SCENARIO_ID,
+                    playbackBatchId = LocalDynamicPlaybackScenario.DEFAULT_PLAYBACK_BATCH_ID,
+                    actionAuditGraphUri = "urn:dcai:graph:action-audit:${LocalDynamicPlaybackScenario.DEFAULT_ACTION_AUDIT_RELEASE_ID}",
+                    writtenGraphUris = listOf("urn:dcai:graph:action-audit:${LocalDynamicPlaybackScenario.DEFAULT_ACTION_AUDIT_RELEASE_ID}"),
+                ),
+            ),
+            dynamicPlaybackPlan = DynamicPlaybackPlan(
+                scenario = LocalDynamicPlaybackScenario.scenario(),
+                graphs = com.dcai.semanticservice.actions.OntologyActionGraphUris.forRelease(
+                    sourceReleaseId = LocalDynamicPlaybackScenario.DEFAULT_SCENARIO_ID,
+                    reasoningRunId = "${LocalDynamicPlaybackScenario.DEFAULT_SCENARIO_ID}-reasoning-04",
+                    actionAuditReleaseId = LocalDynamicPlaybackScenario.DEFAULT_ACTION_AUDIT_RELEASE_ID,
+                ),
+            ),
+        )
+
+        assertTrue(report.isReady, report.contractValidation.errors.joinToString(separator = "\n"))
+        assertTrue(report.graphExecutionEnabled)
+        assertTrue(report.dynamicPlaybackEnabled)
+        assertEquals(LocalDynamicPlaybackScenario.DEFAULT_SCENARIO_ID, report.dynamicPlaybackResult?.scenarioId)
+        assertFalse(report.httpEndpointsEnabled)
+    }
+
+    @Test
+    fun parsesControlledDynamicPlaybackOptions() {
+        val options = SemanticServiceRuntimeOptions.fromArgs(
+            arrayOf(
+                "--run-dynamic-playback",
+                "--dynamic-playback-scenario-id=local-dynamic-playback-v1",
+                "--dynamic-playback-batch-id=local-dynamic-playback-batch-v1",
+                "--dynamic-playback-action-audit-release-id=local-dynamic-action-audit-v1",
+            ),
+        )
+
+        assertTrue(options.runDynamicPlayback)
+        assertEquals("local-dynamic-playback-v1", options.dynamicPlaybackScenarioId)
+        assertEquals("local-dynamic-playback-batch-v1", options.dynamicPlaybackBatchId)
+        assertEquals("local-dynamic-action-audit-v1", options.dynamicPlaybackActionAuditReleaseId)
+    }
+
+    @Test
     fun rejectsConflictingSourceExtractInputs() {
         assertFailsWith<IllegalArgumentException> {
             SemanticServiceApplication.loadSourceExtractInput(
@@ -603,6 +653,12 @@ class SemanticServiceApplicationTest {
         private val result: OntologyActionAuditInspectionResult,
     ) : OntologyActionAuditInspector(InMemoryNamedGraphStore()) {
         override fun inspect(plan: OntologyActionAuditInspectionPlan): OntologyActionAuditInspectionResult = result
+    }
+
+    private class StaticDynamicPlaybackRunner(
+        private val result: DynamicPlaybackResult,
+    ) : DynamicPlaybackRunner {
+        override fun run(plan: DynamicPlaybackPlan): DynamicPlaybackResult = result
     }
 
     private object FailingIfCalledReasoningRefresher : ReasoningRefresher {

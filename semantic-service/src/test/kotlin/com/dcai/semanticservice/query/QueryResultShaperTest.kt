@@ -34,6 +34,16 @@ class QueryResultShaperTest {
             "semanticActionAuditHistoryByRelease" to definition("semanticActionAuditHistoryByRelease", "managed action-audit graph"),
             "semanticActionAuditHistoryByIncident" to definition("semanticActionAuditHistoryByIncident", "managed action-audit graph"),
             "semanticActionAuditHistoryByTarget" to definition("semanticActionAuditHistoryByTarget", "managed action-audit graph"),
+            "semanticActionNotificationQueueByIncident" to definition("semanticActionNotificationQueueByIncident", "managed action-audit notification state"),
+            "semanticActionReviewQueueByIncident" to definition("semanticActionReviewQueueByIncident", "managed action-audit lifecycle state"),
+            "semanticActionTransitionHistoryByIncident" to definition("semanticActionTransitionHistoryByIncident", "managed action-audit lifecycle state"),
+            "semanticActionDispatchQueueByIncident" to definition("semanticActionDispatchQueueByIncident", "managed action-audit dispatch simulation state"),
+            "semanticDynamicEventTimelineByIncident" to definition("semanticDynamicEventTimelineByIncident", "managed action-audit dynamic playback state"),
+            "semanticDynamicStateChangesByIncident" to definition("semanticDynamicStateChangesByIncident", "managed action-audit dynamic playback state"),
+            "semanticDynamicReasoningChangesByIncident" to definition("semanticDynamicReasoningChangesByIncident", "managed action-audit dynamic playback state"),
+            "semanticDynamicActionLifecycleByIncident" to definition("semanticDynamicActionLifecycleByIncident", "managed action-audit dynamic playback state"),
+            "semanticAiProposalReviewQueue" to definition("semanticAiProposalReviewQueue", "managed ai-audit graph"),
+            "semanticAiProposalDetailByIncident" to definition("semanticAiProposalDetailByIncident", "managed ai-audit graph"),
         ),
     )
     private val shaper = QueryResultShaper(manifest)
@@ -653,6 +663,145 @@ class QueryResultShaperTest {
     }
 
     @Test
+    fun shapesActionNotificationQueueRows() {
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticActionNotificationQueueByIncident",
+                mode = QueryMode.SELECT,
+                rows = listOf(actionNotificationQueueRow()),
+            ),
+        )
+
+        val typed = assertIs<ActionNotificationQueueEnvelope>(envelope)
+        val record = typed.records.single()
+        assertEquals(QueryResultType.ACTION_NOTIFICATION_QUEUE, typed.resultType)
+        assertEquals("local-action-audit-v1", record.actionAuditReleaseId)
+        assertEquals("QUEUED", record.notificationStatus)
+        assertEquals("AcknowledgeRestoreBlocker", record.actionTypeId)
+        assertEquals("INC-0001", record.incidentId)
+        assertEquals("managed action-audit notification state", typed.provenance.graphScope)
+    }
+
+    @Test
+    fun shapesActionReviewQueueRows() {
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticActionReviewQueueByIncident",
+                mode = QueryMode.SELECT,
+                rows = listOf(actionReviewQueueRow()),
+            ),
+        )
+
+        val typed = assertIs<ActionReviewQueueEnvelope>(envelope)
+        val record = typed.records.single()
+        assertEquals(QueryResultType.ACTION_REVIEW_QUEUE, typed.resultType)
+        assertEquals("local-action-audit-v1", record.actionAuditReleaseId)
+        assertEquals("AcknowledgeRestoreBlocker", record.actionTypeId)
+        assertEquals("QUEUED", record.currentState)
+        assertEquals("INC-0001", record.incidentId)
+        assertEquals("managed action-audit lifecycle state", typed.provenance.graphScope)
+    }
+
+    @Test
+    fun shapesActionTransitionHistoryRows() {
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticActionTransitionHistoryByIncident",
+                mode = QueryMode.SELECT,
+                rows = listOf(actionTransitionHistoryRow()),
+            ),
+        )
+
+        val typed = assertIs<ActionTransitionHistoryEnvelope>(envelope)
+        val record = typed.records.single()
+        assertEquals(QueryResultType.ACTION_TRANSITION_HISTORY, typed.resultType)
+        assertEquals("ACT-TRN-REVIEW-001", record.transitionId)
+        assertEquals("QUEUED", record.fromState)
+        assertEquals("IN_REVIEW", record.toState)
+        assertEquals("managed action-audit lifecycle state", typed.provenance.graphScope)
+    }
+
+    @Test
+    fun shapesActionDispatchQueueRows() {
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticActionDispatchQueueByIncident",
+                mode = QueryMode.SELECT,
+                rows = listOf(actionDispatchQueueRow()),
+            ),
+        )
+
+        val typed = assertIs<ActionDispatchQueueEnvelope>(envelope)
+        val record = typed.records.single()
+        assertEquals(QueryResultType.ACTION_DISPATCH_QUEUE, typed.resultType)
+        assertEquals("ACT-DSP-NOC-001", record.dispatchId)
+        assertEquals("NOC_QUEUE", record.dispatchChannel)
+        assertEquals("SIMULATED_QUEUED", record.dispatchStatus)
+        assertEquals("APPROVED", record.dispatchLifecycleState)
+        assertEquals("ACT-TRN-REVIEW-001", record.transitionId)
+        assertEquals("managed action-audit dispatch simulation state", typed.provenance.graphScope)
+    }
+
+    @Test
+    fun shapesDynamicPlaybackRows() {
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticDynamicEventTimelineByIncident",
+                mode = QueryMode.SELECT,
+                rows = listOf(dynamicPlaybackRow()),
+            ),
+        )
+
+        val typed = assertIs<DynamicPlaybackEnvelope>(envelope)
+        val record = typed.records.single()
+        assertEquals(QueryResultType.DYNAMIC_PLAYBACK, typed.resultType)
+        assertEquals("DYN-EVENT-1", record.eventId)
+        assertEquals(1, record.playbackStep)
+        assertEquals("SOURCE_EXPORT_RECEIVED", record.beforeState)
+        assertEquals("CANONICAL_PROMOTED", record.afterState)
+        assertEquals(0, record.beforeBlastRadiusCount)
+        assertEquals(1, record.afterBlastRadiusCount)
+        assertEquals("managed action-audit dynamic playback state", typed.provenance.graphScope)
+    }
+
+    @Test
+    fun shapesAiProposalReviewQueueRows() {
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticAiProposalReviewQueue",
+                mode = QueryMode.SELECT,
+                rows = listOf(aiProposalRow()),
+            ),
+        )
+
+        val typed = assertIs<AiProposalReviewQueueEnvelope>(envelope)
+        val record = typed.records.single()
+        assertEquals(QueryResultType.AI_PROPOSAL_REVIEW_QUEUE, typed.resultType)
+        assertEquals("AI-PROP-LOCAL-001", record.proposalId)
+        assertEquals("ACTION_RECOMMENDATION", record.proposalType)
+        assertEquals(0.82, record.confidenceScore)
+        assertEquals("PENDING_HUMAN_REVIEW", record.reviewStatus)
+        assertEquals("managed ai-audit graph", typed.provenance.graphScope)
+    }
+
+    @Test
+    fun shapesAiProposalDetailRows() {
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticAiProposalDetailByIncident",
+                mode = QueryMode.SELECT,
+                rows = listOf(aiProposalRow()),
+            ),
+        )
+
+        val typed = assertIs<AiProposalDetailEnvelope>(envelope)
+        val record = typed.records.single()
+        assertEquals(QueryResultType.AI_PROPOSAL_DETAIL, typed.resultType)
+        assertEquals("INC-001", record.incidentId)
+        assertEquals("HIGH", record.riskLevel)
+    }
+
+    @Test
     fun shapesOntologyReviewQueueRows() {
         val envelope = shaper.shape(
             QueryExecutionReport(
@@ -767,7 +916,7 @@ class QueryResultShaperTest {
             "idempotencyKey" to "ack-restore-001",
             "actorId" to "operator-001",
             "actionReason" to "Reviewed restore blocker before shift handoff.",
-            "actionStatus" to "AUDITED",
+            "actionStatus" to "QUEUED",
             "requestedAt" to "2026-06-14T10:15:30Z",
             "executedAt" to "2026-06-14T10:15:30Z",
             "targetObject" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",
@@ -779,6 +928,168 @@ class QueryResultShaperTest {
             "reviewedStatus" to "ACKNOWLEDGED",
             "reviewSummary" to "Blocker reviewed.",
             "supportingEvidence" to "urn:dcai:fixture:valid:reasoning-output:evidence-0001",
+        )
+    }
+
+    private fun actionNotificationQueueRow(): Map<String, String> {
+        return mapOf(
+            "graph" to "urn:dcai:graph:action-audit:local-action-audit-v1",
+            "actionAuditReleaseId" to "local-action-audit-v1",
+            "notification" to "urn:dcai:ontology-action-notification:ack-restore-001",
+            "notificationId" to "REQ-ACTION-001:notification",
+            "notificationStatus" to "QUEUED",
+            "notificationSummary" to "Internal AcknowledgeRestoreBlocker request was audited and queued for local review.",
+            "execution" to "urn:dcai:ontology-action-execution:ack-restore-001",
+            "executionId" to "ack-restore-001",
+            "request" to "urn:dcai:ontology-action-request:ack-restore-001",
+            "requestId" to "REQ-ACTION-001",
+            "actionType" to "urn:dcai:ontology-action-type:AcknowledgeRestoreBlocker",
+            "actionTypeId" to "AcknowledgeRestoreBlocker",
+            "actorId" to "operator-001",
+            "actionReason" to "Reviewed restore blocker before shift handoff.",
+            "requestedAt" to "2026-06-14T10:15:30Z",
+            "generatedAt" to "2026-06-14T10:15:30Z",
+            "incident" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+            "incidentId" to "INC-0001",
+            "targetObject" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+            "sourceRecord" to "urn:dcai:fixture:valid:reasoning-output:source-record-0001",
+            "assignedTeam" to "DC_FACILITY_OPS",
+            "assigneeId" to "engineer-017",
+            "reviewedStatus" to "ACKNOWLEDGED",
+            "reviewSummary" to "Blocker reviewed.",
+        )
+    }
+
+    private fun actionReviewQueueRow(): Map<String, String> {
+        return mapOf(
+            "graph" to "urn:dcai:graph:action-audit:local-action-audit-v1",
+            "actionAuditReleaseId" to "local-action-audit-v1",
+            "notification" to "urn:dcai:ontology-action-notification:ack-restore-001",
+            "notificationId" to "REQ-ACTION-001:notification",
+            "execution" to "urn:dcai:ontology-action-execution:ack-restore-001",
+            "executionId" to "ack-restore-001",
+            "request" to "urn:dcai:ontology-action-request:ack-restore-001",
+            "requestId" to "REQ-ACTION-001",
+            "actionType" to "urn:dcai:ontology-action-type:AcknowledgeRestoreBlocker",
+            "actionTypeId" to "AcknowledgeRestoreBlocker",
+            "actorId" to "operator-001",
+            "actionReason" to "Reviewed restore blocker before shift handoff.",
+            "currentState" to "QUEUED",
+            "stateGeneratedAt" to "2026-06-14T10:15:33Z",
+            "incident" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+            "incidentId" to "INC-0001",
+            "sourceRecord" to "urn:dcai:fixture:valid:reasoning-output:source-record-0001",
+        )
+    }
+
+    private fun actionTransitionHistoryRow(): Map<String, String> {
+        return mapOf(
+            "graph" to "urn:dcai:graph:action-audit:local-action-audit-v1",
+            "actionAuditReleaseId" to "local-action-audit-v1",
+            "transition" to "urn:dcai:ontology-action-transition:review-start-001",
+            "transitionId" to "ACT-TRN-REVIEW-001",
+            "execution" to "urn:dcai:ontology-action-execution:ack-restore-001",
+            "executionId" to "ack-restore-001",
+            "request" to "urn:dcai:ontology-action-request:ack-restore-001",
+            "requestId" to "REQ-ACTION-001",
+            "actionType" to "urn:dcai:ontology-action-type:AcknowledgeRestoreBlocker",
+            "actionTypeId" to "AcknowledgeRestoreBlocker",
+            "actorId" to "operator-001",
+            "transitionReason" to "Local reviewer started internal action review.",
+            "fromState" to "QUEUED",
+            "toState" to "IN_REVIEW",
+            "generatedAt" to "2026-06-14T10:20:30Z",
+            "incident" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+            "incidentId" to "INC-0001",
+        )
+    }
+
+    private fun actionDispatchQueueRow(): Map<String, String> {
+        return mapOf(
+            "graph" to "urn:dcai:graph:action-audit:local-action-audit-v1",
+            "actionAuditReleaseId" to "local-action-audit-v1",
+            "dispatch" to "urn:dcai:ontology-action-dispatch:noc-queue-001",
+            "dispatchId" to "ACT-DSP-NOC-001",
+            "dispatchChannel" to "NOC_QUEUE",
+            "dispatchStatus" to "SIMULATED_QUEUED",
+            "dispatchLifecycleState" to "APPROVED",
+            "dispatchSummary" to "Simulated NOC queue dispatch for approved ontology action.",
+            "execution" to "urn:dcai:ontology-action-execution:ack-restore-001",
+            "executionId" to "ack-restore-001",
+            "request" to "urn:dcai:ontology-action-request:ack-restore-001",
+            "requestId" to "REQ-ACTION-001",
+            "actionType" to "urn:dcai:ontology-action-type:AcknowledgeRestoreBlocker",
+            "actionTypeId" to "AcknowledgeRestoreBlocker",
+            "transition" to "urn:dcai:ontology-action-transition:review-start-001",
+            "transitionId" to "ACT-TRN-REVIEW-001",
+            "actorId" to "operator-001",
+            "generatedAt" to "2026-06-14T10:20:30Z",
+            "incident" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+            "incidentId" to "INC-0001",
+            "sourceRecord" to "urn:dcai:fixture:valid:reasoning-output:source-record-0001",
+        )
+    }
+
+    private fun dynamicPlaybackRow(): Map<String, String> {
+        return mapOf(
+            "graph" to "urn:dcai:graph:action-audit:local-dynamic-action-audit-v1",
+            "actionAuditReleaseId" to "local-dynamic-action-audit-v1",
+            "event" to "urn:dcai:dynamic-playback-event:DYN-EVENT-1",
+            "eventId" to "DYN-EVENT-1",
+            "scenarioId" to "local-dynamic-playback-v1",
+            "playbackBatchId" to "local-dynamic-playback-batch-v1",
+            "playbackStep" to "1",
+            "incident" to "urn:dcai:incident:INC-DYN-001",
+            "incidentId" to "INC-DYN-001",
+            "eventKind" to "TELEMETRY_IMPACT_CHANGE",
+            "sourceFamily" to "telemetry-impact",
+            "occurredAt" to "2026-06-10T00:05:00Z",
+            "summary" to "Telemetry export shows UPS degradation.",
+            "sourceRecord" to "urn:dcai:source-record:local-dynamic-source-systems:SRC-DYN-IMPACT-001",
+            "beforeState" to "SOURCE_EXPORT_RECEIVED",
+            "afterState" to "CANONICAL_PROMOTED",
+            "beforeReasoningState" to "NO_REASONING_OUTPUT",
+            "afterReasoningState" to "DEPENDENCY_EXPOSURE_INFERRED",
+            "beforeTrustState" to "UNKNOWN",
+            "afterTrustState" to "TRUSTED_TELEMETRY",
+            "beforeBlastRadiusCount" to "0",
+            "afterBlastRadiusCount" to "1",
+            "actionLifecycleState" to "NONE",
+            "canonicalGraph" to "urn:dcai:graph:canonical:local-dynamic-playback-v1-step-01",
+            "provenanceGraph" to "urn:dcai:graph:provenance:local-dynamic-playback-v1-step-01",
+            "reasoningGraph" to "urn:dcai:graph:reasoning:local-dynamic-playback-v1-reasoning-01",
+        )
+    }
+
+    private fun aiProposalRow(): Map<String, String> {
+        return mapOf(
+            "graph" to "urn:dcai:graph:ai-audit:local-ai-governance-v1",
+            "aiAuditReleaseId" to "local-ai-governance-v1",
+            "proposal" to "urn:dcai:ai-proposal:local-ai-governance-v1",
+            "proposalId" to "AI-PROP-LOCAL-001",
+            "proposalType" to "ACTION_RECOMMENDATION",
+            "proposalStatus" to "PENDING_REVIEW",
+            "reviewStatus" to "PENDING_HUMAN_REVIEW",
+            "disabledReason" to "AI proposal review is read-only.",
+            "summary" to "AI proposal recommends a governed action.",
+            "rationale" to "Evidence and reasoning support human review.",
+            "confidenceScore" to "0.82",
+            "riskLevel" to "HIGH",
+            "modelId" to "local-governance-model-placeholder",
+            "promptId" to "ai-governance-proposal-v1",
+            "promptHash" to "sha256-local-placeholder-001",
+            "actorId" to "local-ai-governance-simulator",
+            "generatedAt" to "2026-06-09T02:45:00Z",
+            "batch" to "urn:dcai:ai-proposal-batch:local-ai-governance-v1",
+            "batchId" to "local-ai-governance-v1",
+            "validationReport" to "urn:dcai:ai-proposal-validation-report:local-ai-governance-v1",
+            "validationStatus" to "CONFORMS",
+            "validationSummary" to "AI proposal passed policy.",
+            "incident" to "urn:dcai:incident:INC-001",
+            "incidentId" to "INC-001",
+            "targetObject" to "urn:dcai:incident:INC-001",
+            "sourceRecord" to "urn:dcai:source-record:local-controlled-facility-ops-file:SRC-INC-001",
+            "supportingEvidence" to "urn:dcai:reasoning:restore-readiness:urn%3Adcai%3Aincident%3AINC-001",
         )
     }
 

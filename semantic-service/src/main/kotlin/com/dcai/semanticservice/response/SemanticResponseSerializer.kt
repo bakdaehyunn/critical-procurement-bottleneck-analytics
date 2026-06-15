@@ -2,10 +2,18 @@ package com.dcai.semanticservice.response
 
 import com.dcai.semanticservice.query.AssetDelaySummaryEnvelope
 import com.dcai.semanticservice.query.ActionAuditHistoryEnvelope
+import com.dcai.semanticservice.query.ActionNotificationQueueEnvelope
+import com.dcai.semanticservice.query.ActionReviewQueueEnvelope
+import com.dcai.semanticservice.query.ActionTransitionHistoryEnvelope
+import com.dcai.semanticservice.query.ActionDispatchQueueEnvelope
 import com.dcai.semanticservice.query.ActionAvailabilityEnvelope
+import com.dcai.semanticservice.query.AiProposalDetailEnvelope
+import com.dcai.semanticservice.query.AiProposalRecord
+import com.dcai.semanticservice.query.AiProposalReviewQueueEnvelope
 import com.dcai.semanticservice.query.BlastRadiusEnvelope
 import com.dcai.semanticservice.query.DashboardOverviewEnvelope
 import com.dcai.semanticservice.query.DependencyImpactEnvelope
+import com.dcai.semanticservice.query.DynamicPlaybackEnvelope
 import com.dcai.semanticservice.query.FilterMetadataEnvelope
 import com.dcai.semanticservice.query.FollowUpDetailEnvelope
 import com.dcai.semanticservice.query.IncidentSummaryEnvelope
@@ -459,6 +467,133 @@ class SemanticResponseSerializer {
                     record.supportingEvidenceUri?.let { put("supportingEvidenceUri", it) }
                 }
             }
+            is ActionNotificationQueueEnvelope -> envelope.records.map { record ->
+                buildMap {
+                    put("graphUri", record.graphUri)
+                    put("actionAuditReleaseId", record.actionAuditReleaseId)
+                    put("notificationUri", record.notificationUri)
+                    put("notificationId", record.notificationId)
+                    put("notificationStatus", record.notificationStatus)
+                    put("notificationSummary", record.notificationSummary)
+                    put("executionUri", record.executionUri)
+                    put("executionId", record.executionId)
+                    put("requestUri", record.requestUri)
+                    put("requestId", record.requestId)
+                    put("actionTypeUri", record.actionTypeUri)
+                    put("actionTypeId", record.actionTypeId)
+                    put("actorId", record.actorId)
+                    put("actionReason", record.actionReason)
+                    put("requestedAt", record.requestedAt)
+                    put("generatedAt", record.generatedAt)
+                    put("incidentUri", record.incidentUri)
+                    put("incidentId", record.incidentId)
+                    record.targetObjectUri?.let { put("targetObjectUri", it) }
+                    record.sourceRecordUri?.let { put("sourceRecordUri", it) }
+                    record.assignedTeam?.let { put("assignedTeam", it) }
+                    record.assigneeId?.let { put("assigneeId", it) }
+                    record.reviewedStatus?.let { put("reviewedStatus", it) }
+                    record.reviewSummary?.let { put("reviewSummary", it) }
+                }
+            }
+            is ActionReviewQueueEnvelope -> envelope.records.map { record ->
+                buildMap {
+                    put("graphUri", record.graphUri)
+                    put("actionAuditReleaseId", record.actionAuditReleaseId)
+                    put("notificationUri", record.notificationUri)
+                    put("notificationId", record.notificationId)
+                    put("executionUri", record.executionUri)
+                    put("executionId", record.executionId)
+                    put("requestUri", record.requestUri)
+                    put("requestId", record.requestId)
+                    put("actionTypeUri", record.actionTypeUri)
+                    put("actionTypeId", record.actionTypeId)
+                    put("actorId", record.actorId)
+                    put("actionReason", record.actionReason)
+                    put("currentState", record.currentState)
+                    put("stateGeneratedAt", record.stateGeneratedAt)
+                    put("incidentUri", record.incidentUri)
+                    put("incidentId", record.incidentId)
+                    record.sourceRecordUri?.let { put("sourceRecordUri", it) }
+                }
+            }
+            is ActionTransitionHistoryEnvelope -> envelope.records.map { record ->
+                buildMap {
+                    put("graphUri", record.graphUri)
+                    put("actionAuditReleaseId", record.actionAuditReleaseId)
+                    put("transitionUri", record.transitionUri)
+                    put("transitionId", record.transitionId)
+                    put("executionUri", record.executionUri)
+                    put("executionId", record.executionId)
+                    put("requestUri", record.requestUri)
+                    put("requestId", record.requestId)
+                    put("actionTypeUri", record.actionTypeUri)
+                    put("actionTypeId", record.actionTypeId)
+                    put("actorId", record.actorId)
+                    put("transitionReason", record.transitionReason)
+                    record.fromState?.let { put("fromState", it) }
+                    put("toState", record.toState)
+                    put("generatedAt", record.generatedAt)
+                    put("incidentUri", record.incidentUri)
+                    put("incidentId", record.incidentId)
+                }
+            }
+            is ActionDispatchQueueEnvelope -> envelope.records.map { record ->
+                buildMap {
+                    put("graphUri", record.graphUri)
+                    put("actionAuditReleaseId", record.actionAuditReleaseId)
+                    put("dispatchUri", record.dispatchUri)
+                    put("dispatchId", record.dispatchId)
+                    put("dispatchChannel", record.dispatchChannel)
+                    put("dispatchStatus", record.dispatchStatus)
+                    put("dispatchLifecycleState", record.dispatchLifecycleState)
+                    put("dispatchSummary", record.dispatchSummary)
+                    put("executionUri", record.executionUri)
+                    put("executionId", record.executionId)
+                    put("requestUri", record.requestUri)
+                    put("requestId", record.requestId)
+                    put("actionTypeUri", record.actionTypeUri)
+                    put("actionTypeId", record.actionTypeId)
+                    put("transitionUri", record.transitionUri)
+                    put("transitionId", record.transitionId)
+                    put("actorId", record.actorId)
+                    put("generatedAt", record.generatedAt)
+                    put("incidentUri", record.incidentUri)
+                    put("incidentId", record.incidentId)
+                    record.sourceRecordUri?.let { put("sourceRecordUri", it) }
+                }
+            }
+            is DynamicPlaybackEnvelope -> envelope.records.map { record ->
+                buildMap {
+                    put("graphUri", record.graphUri)
+                    put("actionAuditReleaseId", record.actionAuditReleaseId)
+                    put("eventUri", record.eventUri)
+                    put("eventId", record.eventId)
+                    put("scenarioId", record.scenarioId)
+                    put("playbackBatchId", record.playbackBatchId)
+                    put("playbackStep", record.playbackStep)
+                    put("incidentUri", record.incidentUri)
+                    put("incidentId", record.incidentId)
+                    put("eventKind", record.eventKind)
+                    put("sourceFamily", record.sourceFamily)
+                    put("occurredAt", record.occurredAt)
+                    put("summary", record.summary)
+                    put("sourceRecordUri", record.sourceRecordUri)
+                    put("beforeState", record.beforeState)
+                    put("afterState", record.afterState)
+                    put("beforeReasoningState", record.beforeReasoningState)
+                    put("afterReasoningState", record.afterReasoningState)
+                    put("beforeTrustState", record.beforeTrustState)
+                    put("afterTrustState", record.afterTrustState)
+                    put("beforeBlastRadiusCount", record.beforeBlastRadiusCount)
+                    put("afterBlastRadiusCount", record.afterBlastRadiusCount)
+                    put("actionLifecycleState", record.actionLifecycleState)
+                    record.canonicalGraphUri?.let { put("canonicalGraphUri", it) }
+                    record.provenanceGraphUri?.let { put("provenanceGraphUri", it) }
+                    record.reasoningGraphUri?.let { put("reasoningGraphUri", it) }
+                }
+            }
+            is AiProposalReviewQueueEnvelope -> envelope.records.map { aiProposalPayload(it) }
+            is AiProposalDetailEnvelope -> envelope.records.map { aiProposalPayload(it) }
         }
 
         return mapOf(
@@ -492,6 +627,38 @@ class SemanticResponseSerializer {
             "queryId" to queryId,
             "graphScope" to graphScope,
             "contractVersion" to contractVersion,
+        )
+    }
+
+    private fun aiProposalPayload(record: AiProposalRecord): Map<String, Any> {
+        return mapOf(
+            "graphUri" to record.graphUri,
+            "aiAuditReleaseId" to record.aiAuditReleaseId,
+            "proposalUri" to record.proposalUri,
+            "proposalId" to record.proposalId,
+            "proposalType" to record.proposalType,
+            "proposalStatus" to record.proposalStatus,
+            "reviewStatus" to record.reviewStatus,
+            "disabledReason" to record.disabledReason,
+            "summary" to record.summary,
+            "rationale" to record.rationale,
+            "confidenceScore" to record.confidenceScore,
+            "riskLevel" to record.riskLevel,
+            "modelId" to record.modelId,
+            "promptId" to record.promptId,
+            "promptHash" to record.promptHash,
+            "actorId" to record.actorId,
+            "generatedAt" to record.generatedAt,
+            "batchUri" to record.batchUri,
+            "batchId" to record.batchId,
+            "validationReportUri" to record.validationReportUri,
+            "validationStatus" to record.validationStatus,
+            "validationSummary" to record.validationSummary,
+            "incidentUri" to record.incidentUri,
+            "incidentId" to record.incidentId,
+            "targetObjectUri" to record.targetObjectUri,
+            "sourceRecordUri" to record.sourceRecordUri,
+            "supportingEvidenceUri" to record.supportingEvidenceUri,
         )
     }
 }

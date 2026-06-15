@@ -1,0 +1,79 @@
+PREFIX dcai: <urn:dcai:ontology:>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT
+  ?graph
+  ?aiAuditReleaseId
+  ?proposal
+  ?proposalId
+  ?proposalType
+  ?proposalStatus
+  ?reviewStatus
+  ?disabledReason
+  ?summary
+  ?rationale
+  ?confidenceScore
+  ?riskLevel
+  ?modelId
+  ?promptId
+  ?promptHash
+  ?actorId
+  ?generatedAt
+  ?batch
+  ?batchId
+  ?validationReport
+  ?validationStatus
+  ?validationSummary
+  ?incident
+  ?incidentId
+  ?targetObject
+  ?sourceRecord
+  ?supportingEvidence
+WHERE {
+  GRAPH ?graph {
+    ?proposal rdf:type dcai:AIProposal ;
+      dcai:hasIdentifier ?proposalId ;
+      dcai:hasProposalType ?proposalType ;
+      dcai:hasProposalStatus ?proposalStatus ;
+      dcai:hasAIGovernanceReviewStatus ?reviewStatus ;
+      dcai:hasAIGovernanceDisabledReason ?disabledReason ;
+      dcai:hasProposalSummary ?summary ;
+      dcai:hasProposalRationale ?rationale ;
+      dcai:hasConfidenceScore ?confidenceScore ;
+      dcai:hasRiskLevel ?riskLevel ;
+      dcai:hasModelId ?modelId ;
+      dcai:hasPromptId ?promptId ;
+      dcai:hasPromptHash ?promptHash ;
+      dcai:hasActorId ?actorId ;
+      dcai:hasTargetObject ?incident ;
+      dcai:hasTargetObject ?targetObject ;
+      prov:used ?sourceRecord ;
+      prov:used ?supportingEvidence ;
+      prov:wasGeneratedBy ?batch ;
+      prov:generated ?validationReport ;
+      prov:generatedAtTime ?generatedAt .
+
+    ?batch rdf:type dcai:AIProposalBatch ;
+      dcai:hasIdentifier ?batchId .
+
+    ?validationReport rdf:type dcai:AIProposalValidationReport ;
+      dcai:hasAIValidationStatus ?validationStatus ;
+      dcai:hasAIValidationSummary ?validationSummary .
+
+    FILTER(?sourceRecord != ?supportingEvidence)
+    FILTER(?incident != ?targetObject || ?proposalType = "ACTION_RECOMMENDATION")
+  }
+  GRAPH ?canonicalGraph {
+    ?incident rdf:type dcai:InfrastructureIncident ;
+      dcai:hasIdentifier ?incidentId .
+  }
+  GRAPH ?provenanceGraph {
+    ?sourceRecord rdf:type dcai:SourceRecord .
+  }
+  FILTER(STRSTARTS(STR(?graph), "urn:dcai:graph:ai-audit:"))
+  FILTER(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:"))
+  FILTER(STRSTARTS(STR(?provenanceGraph), "urn:dcai:graph:provenance:"))
+  BIND(STRAFTER(STR(?graph), "urn:dcai:graph:ai-audit:") AS ?aiAuditReleaseId)
+}
+ORDER BY DESC(?generatedAt) DESC(?confidenceScore) ?proposal

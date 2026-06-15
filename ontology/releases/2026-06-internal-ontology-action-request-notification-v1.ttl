@@ -1,0 +1,29 @@
+@prefix dcai-release: <urn:dcai:release:> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+dcai-release:2026-06-internal-ontology-action-request-notification-v1
+  rdf:type owl:Ontology ;
+  dcterms:title "Internal ontology action request and notification v1 release" ;
+  dcterms:description "Internal loopback action request and notification release for selected ontology operator actions. It adds controlled UI submission for AcknowledgeRestoreBlocker, AssignEvidenceReview, and RecordValidationReview; a private /semantic/internal/action-request handler; action-audit graph notification facts; SHACL/provenance validation for notifications; an approved semanticActionNotificationQueueByIncident read model; frontend confirmation modal and notification visibility; focused tests; and docs. This release writes only managed action-audit graph state and does not expose public endpoints, add authentication, mutate canonical/reasoning/provenance/operations/source graphs, add source-system writeback, implement AI governance, commit, or push." ;
+  dcterms:created "2026-06-14"^^xsd:date ;
+  dcterms:requires dcai-release:2026-06-read-only-action-audit-history-v1 ;
+  dcterms:hasPart
+    <../../ontology/modules/operations.ttl>,
+    <../../shapes/action-audit.ttl>,
+    <../../queries/manifest.ttl>,
+    <../../queries/read-model/semantic_action_notification_queue_by_incident.select.rq>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/api/PrivateOntologyActionEndpoint.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/api/PrivateSemanticQueryEndpoint.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/actions/OntologyActionRdfMapper.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/actions/OntologyActionValidationGate.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/query/QueryResultEnvelope.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/query/QueryResultShaper.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/response/SemanticResponseSerializer.kt>,
+    <../../frontend/src/api.ts>,
+    <../../frontend/src/App.tsx>,
+    <../../frontend/src/App.css>,
+    <../../README.md>,
+    <../../semantic-service/README.md> .

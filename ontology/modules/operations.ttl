@@ -28,7 +28,17 @@ dcai:OntologyActionRequest rdf:type owl:Class ;
   rdfs:subClassOf prov:Entity .
 dcai:OntologyActionExecution rdf:type owl:Class ;
   rdfs:subClassOf prov:Activity .
+dcai:OntologyActionNotification rdf:type owl:Class ;
+  rdfs:subClassOf prov:Entity .
+dcai:OntologyActionStateTransition rdf:type owl:Class ;
+  rdfs:subClassOf prov:Activity .
+dcai:OntologyActionDispatch rdf:type owl:Class ;
+  rdfs:subClassOf prov:Entity .
 dcai:ActionValidationReport rdf:type owl:Class ;
+  rdfs:subClassOf prov:Entity .
+dcai:DynamicPlaybackBatch rdf:type owl:Class ;
+  rdfs:subClassOf prov:Activity .
+dcai:DynamicPlaybackEvent rdf:type owl:Class ;
   rdfs:subClassOf prov:Entity .
 
 dcai:queueItemForIncident rdf:type owl:ObjectProperty ;
@@ -109,6 +119,30 @@ dcai:hasActionType rdf:type owl:ObjectProperty ;
 dcai:hasActionStatus rdf:type owl:DatatypeProperty ;
   rdfs:domain dcai:OntologyActionExecution ;
   rdfs:range xsd:string .
+dcai:hasNotificationStatus rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:OntologyActionNotification ;
+  rdfs:range xsd:string .
+dcai:hasFromActionState rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:OntologyActionStateTransition ;
+  rdfs:range xsd:string .
+dcai:hasToActionState rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:OntologyActionStateTransition ;
+  rdfs:range xsd:string .
+dcai:hasTransitionReason rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:OntologyActionStateTransition ;
+  rdfs:range xsd:string .
+dcai:hasDispatchChannel rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:OntologyActionDispatch ;
+  rdfs:range xsd:string .
+dcai:hasDispatchStatus rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:OntologyActionDispatch ;
+  rdfs:range xsd:string .
+dcai:hasDispatchSummary rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:OntologyActionDispatch ;
+  rdfs:range xsd:string .
+dcai:hasDispatchLifecycleState rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:OntologyActionDispatch ;
+  rdfs:range xsd:string .
 dcai:hasActionReason rdf:type owl:DatatypeProperty ;
   rdfs:range xsd:string .
 dcai:hasActorId rdf:type owl:DatatypeProperty ;
@@ -133,3 +167,43 @@ dcai:hasReviewSummary rdf:type owl:DatatypeProperty ;
 dcai:hasSupportingEvidence rdf:type owl:ObjectProperty ;
   rdfs:domain dcai:OntologyActionExecution ;
   rdfs:range dcai:EvidenceRecord .
+dcai:hasScenarioId rdf:type owl:DatatypeProperty ;
+  rdfs:range xsd:string .
+dcai:hasPlaybackBatchId rdf:type owl:DatatypeProperty ;
+  rdfs:range xsd:string .
+dcai:hasPlaybackStep rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:DynamicPlaybackEvent ;
+  rdfs:range xsd:integer .
+dcai:hasEventKind rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:DynamicPlaybackEvent ;
+  rdfs:range xsd:string .
+dcai:hasSourceFamily rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:DynamicPlaybackEvent ;
+  rdfs:range xsd:string .
+dcai:hasBeforeState rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:DynamicPlaybackEvent ;
+  rdfs:range xsd:string .
+dcai:hasAfterState rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:DynamicPlaybackEvent ;
+  rdfs:range xsd:string .
+dcai:hasBeforeReasoningState rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:DynamicPlaybackEvent ;
+  rdfs:range xsd:string .
+dcai:hasAfterReasoningState rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:DynamicPlaybackEvent ;
+  rdfs:range xsd:string .
+dcai:hasBeforeTrustState rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:DynamicPlaybackEvent ;
+  rdfs:range xsd:string .
+dcai:hasAfterTrustState rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:DynamicPlaybackEvent ;
+  rdfs:range xsd:string .
+dcai:hasBeforeBlastRadiusCount rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:DynamicPlaybackEvent ;
+  rdfs:range xsd:integer .
+dcai:hasAfterBlastRadiusCount rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:DynamicPlaybackEvent ;
+  rdfs:range xsd:integer .
+dcai:hasActionLifecycleState rdf:type owl:DatatypeProperty ;
+  rdfs:domain dcai:DynamicPlaybackEvent ;
+  rdfs:range xsd:string .

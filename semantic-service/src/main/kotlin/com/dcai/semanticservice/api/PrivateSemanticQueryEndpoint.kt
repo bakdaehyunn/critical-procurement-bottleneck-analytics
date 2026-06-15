@@ -1,6 +1,15 @@
 package com.dcai.semanticservice.api
 
 import com.dcai.semanticservice.graph.FusekiReadOnlyConfig
+import com.dcai.semanticservice.actions.OntologyActionAuditService
+import com.dcai.semanticservice.actions.OntologyActionPreconditionValidator
+import com.dcai.semanticservice.actions.OntologyActionRdfMapper
+import com.dcai.semanticservice.actions.OntologyActionTransitionService
+import com.dcai.semanticservice.actions.OntologyActionValidationGate
+import com.dcai.semanticservice.graph.FusekiGraphStoreConfig
+import com.dcai.semanticservice.graph.FusekiNamedGraphWriter
+import com.dcai.semanticservice.governance.AiGovernanceProposalValidationGate
+import com.dcai.semanticservice.governance.AiGovernanceReviewService
 import com.dcai.semanticservice.query.ApprovedQueryCatalog
 import com.dcai.semanticservice.query.JenaFusekiReadOnlyQueryExecutor
 import com.dcai.semanticservice.query.QueryResultShaper
@@ -199,6 +208,16 @@ class PrivateSemanticQueryEndpoint(
             "semanticActionAuditHistoryByRelease",
             "semanticActionAuditHistoryByIncident",
             "semanticActionAuditHistoryByTarget",
+            "semanticActionNotificationQueueByIncident",
+            "semanticActionReviewQueueByIncident",
+            "semanticActionTransitionHistoryByIncident",
+            "semanticActionDispatchQueueByIncident",
+            "semanticDynamicEventTimelineByIncident",
+            "semanticDynamicStateChangesByIncident",
+            "semanticDynamicReasoningChangesByIncident",
+            "semanticDynamicActionLifecycleByIncident",
+            "semanticAiProposalReviewQueue",
+            "semanticAiProposalDetailByIncident",
         )
     }
 }
@@ -219,6 +238,8 @@ data class PrivateSemanticQueryResponse(
 
 class PrivateSemanticQueryEndpointServer(
     private val endpoint: PrivateSemanticQueryEndpoint,
+    private val actionEndpoint: PrivateOntologyActionEndpoint? = null,
+    private val aiGovernanceEndpoint: PrivateAiGovernanceEndpoint? = null,
     private val config: PrivateSemanticQueryEndpointServerConfig = PrivateSemanticQueryEndpointServerConfig(),
 ) : AutoCloseable {
     private val server: HttpServer = HttpServer.create(InetSocketAddress(config.host, config.port), 0)
@@ -228,6 +249,13 @@ class PrivateSemanticQueryEndpointServer(
 
     fun start(): PrivateSemanticQueryEndpointServer {
         server.createContext("/semantic/query") { exchange -> handle(exchange) }
+        actionEndpoint?.let {
+            server.createContext(PrivateOntologyActionEndpoint.ACTION_REQUEST_PATH) { exchange -> handleAction(exchange, it) }
+            server.createContext(PrivateOntologyActionEndpoint.ACTION_TRANSITION_PATH) { exchange -> handleAction(exchange, it) }
+        }
+        aiGovernanceEndpoint?.let {
+            server.createContext(PrivateAiGovernanceEndpoint.AI_PROPOSAL_REVIEW_PATH) { exchange -> handleAiGovernance(exchange, it) }
+        }
         server.executor = null
         server.start()
         return this
@@ -269,6 +297,76 @@ class PrivateSemanticQueryEndpointServer(
         }
     }
 
+    private fun handleAction(
+        exchange: HttpExchange,
+        actionEndpoint: PrivateOntologyActionEndpoint,
+    ) {
+        try {
+            exchange.responseHeaders.set("Access-Control-Allow-Origin", config.corsAllowOrigin)
+            exchange.responseHeaders.set("Access-Control-Allow-Methods", "POST, OPTIONS")
+            exchange.responseHeaders.set("Access-Control-Allow-Headers", "Content-Type")
+            if (exchange.requestMethod == "OPTIONS") {
+                exchange.sendResponseHeaders(204, -1)
+                exchange.close()
+                return
+            }
+
+            val response = actionEndpoint.handle(
+                PrivateSemanticQueryRequest(
+                    method = exchange.requestMethod,
+                    path = exchange.requestURI.path,
+                    body = exchange.requestBody.bufferedReader(StandardCharsets.UTF_8).use { it.readText() },
+                ),
+            )
+            writeResponse(exchange, response)
+        } catch (error: RuntimeException) {
+            val response = PrivateSemanticQueryResponse(
+                statusCode = 500,
+                payload = SemanticResponseSerializer().error(
+                    code = SemanticErrorCode.INTERNAL_SEMANTIC_SERVICE_ERROR,
+                    message = "Private ontology action endpoint failed before a response could be written.",
+                    detail = error.message,
+                ),
+            )
+            writeResponse(exchange, response)
+        }
+    }
+
+    private fun handleAiGovernance(
+        exchange: HttpExchange,
+        aiGovernanceEndpoint: PrivateAiGovernanceEndpoint,
+    ) {
+        try {
+            exchange.responseHeaders.set("Access-Control-Allow-Origin", config.corsAllowOrigin)
+            exchange.responseHeaders.set("Access-Control-Allow-Methods", "POST, OPTIONS")
+            exchange.responseHeaders.set("Access-Control-Allow-Headers", "Content-Type")
+            if (exchange.requestMethod == "OPTIONS") {
+                exchange.sendResponseHeaders(204, -1)
+                exchange.close()
+                return
+            }
+
+            val response = aiGovernanceEndpoint.handle(
+                PrivateSemanticQueryRequest(
+                    method = exchange.requestMethod,
+                    path = exchange.requestURI.path,
+                    body = exchange.requestBody.bufferedReader(StandardCharsets.UTF_8).use { it.readText() },
+                ),
+            )
+            writeResponse(exchange, response)
+        } catch (error: RuntimeException) {
+            val response = PrivateSemanticQueryResponse(
+                statusCode = 500,
+                payload = SemanticResponseSerializer().error(
+                    code = SemanticErrorCode.INTERNAL_SEMANTIC_SERVICE_ERROR,
+                    message = "Private AI governance endpoint failed before a response could be written.",
+                    detail = error.message,
+                ),
+            )
+            writeResponse(exchange, response)
+        }
+    }
+
     private fun writeResponse(exchange: HttpExchange, response: PrivateSemanticQueryResponse) {
         val bytes = response.jsonBody().toByteArray(StandardCharsets.UTF_8)
         exchange.responseHeaders.set("Content-Type", response.contentType)
@@ -281,6 +379,7 @@ class PrivateSemanticQueryEndpointServer(
             repoRoot: Path,
             config: PrivateSemanticQueryEndpointServerConfig = PrivateSemanticQueryEndpointServerConfig(),
             fusekiConfig: FusekiReadOnlyConfig = FusekiReadOnlyConfig.fromEnvironment(),
+            graphStoreConfig: FusekiGraphStoreConfig = FusekiGraphStoreConfig.fromEnvironment(),
         ): PrivateSemanticQueryEndpointServer {
             val manifest = ApprovedQueryCatalog(repoRoot).load()
             val endpoint = PrivateSemanticQueryEndpoint(
@@ -290,7 +389,31 @@ class PrivateSemanticQueryEndpointServer(
                 ),
                 queryResultShaper = QueryResultShaper(manifest),
             )
-            return PrivateSemanticQueryEndpointServer(endpoint, config)
+            val actionEndpoint = PrivateOntologyActionEndpoint(
+                actionSubmitter = OntologyActionAuditService(
+                    mapper = OntologyActionRdfMapper(),
+                    preconditionValidator = OntologyActionPreconditionValidator(),
+                    validationGate = OntologyActionValidationGate(repoRoot),
+                    graphStore = FusekiNamedGraphWriter(graphStoreConfig),
+                ),
+                transitionSubmitter = OntologyActionTransitionService(
+                    validationGate = OntologyActionValidationGate(repoRoot),
+                    graphStore = FusekiNamedGraphWriter(graphStoreConfig),
+                ),
+            )
+            val aiGovernanceEndpoint = PrivateAiGovernanceEndpoint(
+                reviewSubmitter = AiGovernanceReviewService(
+                    validationGate = AiGovernanceProposalValidationGate(repoRoot),
+                    graphStore = FusekiNamedGraphWriter(graphStoreConfig),
+                    actionSubmitter = OntologyActionAuditService(
+                        mapper = OntologyActionRdfMapper(),
+                        preconditionValidator = OntologyActionPreconditionValidator(),
+                        validationGate = OntologyActionValidationGate(repoRoot),
+                        graphStore = FusekiNamedGraphWriter(graphStoreConfig),
+                    ),
+                ),
+            )
+            return PrivateSemanticQueryEndpointServer(endpoint, actionEndpoint, aiGovernanceEndpoint, config)
         }
     }
 }

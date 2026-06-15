@@ -1,0 +1,73 @@
+PREFIX dcai: <urn:dcai:ontology:>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+
+SELECT
+  ?graph
+  ?actionAuditReleaseId
+  ?event
+  ?eventId
+  ?scenarioId
+  ?playbackBatchId
+  ?playbackStep
+  ?incident
+  ?incidentId
+  ?eventKind
+  ?sourceFamily
+  ?occurredAt
+  ?summary
+  ?sourceRecord
+  ?beforeState
+  ?afterState
+  ?beforeReasoningState
+  ?afterReasoningState
+  ?beforeTrustState
+  ?afterTrustState
+  ?beforeBlastRadiusCount
+  ?afterBlastRadiusCount
+  ?actionLifecycleState
+  ?canonicalGraph
+  ?provenanceGraph
+  ?reasoningGraph
+WHERE {
+  GRAPH ?graph {
+    ?event a dcai:DynamicPlaybackEvent ;
+      dcai:hasIdentifier ?eventId ;
+      dcai:hasScenarioId ?scenarioId ;
+      dcai:hasPlaybackBatchId ?playbackBatchId ;
+      dcai:hasPlaybackStep ?playbackStep ;
+      dcai:hasEventKind ?eventKind ;
+      dcai:hasSourceFamily ?sourceFamily ;
+      dcai:hasTargetObject ?incident ;
+      dcai:hasFindingSummary ?summary ;
+      dcai:hasBeforeState ?beforeState ;
+      dcai:hasAfterState ?afterState ;
+      dcai:hasBeforeReasoningState ?beforeReasoningState ;
+      dcai:hasAfterReasoningState ?afterReasoningState ;
+      dcai:hasBeforeTrustState ?beforeTrustState ;
+      dcai:hasAfterTrustState ?afterTrustState ;
+      dcai:hasBeforeBlastRadiusCount ?beforeBlastRadiusCount ;
+      dcai:hasAfterBlastRadiusCount ?afterBlastRadiusCount ;
+      dcai:hasActionLifecycleState ?actionLifecycleState ;
+      prov:generatedAtTime ?occurredAt .
+    ?event prov:used ?sourceRecord .
+    FILTER(STRSTARTS(STR(?sourceRecord), "urn:dcai:source-record:"))
+    OPTIONAL {
+      ?event prov:used ?canonicalGraph .
+      FILTER(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:"))
+    }
+    OPTIONAL {
+      ?event prov:used ?provenanceGraph .
+      FILTER(STRSTARTS(STR(?provenanceGraph), "urn:dcai:graph:provenance:"))
+    }
+    OPTIONAL {
+      ?event prov:used ?reasoningGraph .
+      FILTER(STRSTARTS(STR(?reasoningGraph), "urn:dcai:graph:reasoning:"))
+    }
+  }
+  BIND(STRAFTER(STR(?graph), "urn:dcai:graph:action-audit:") AS ?actionAuditReleaseId)
+  BIND(STRAFTER(STR(?incident), "urn:dcai:incident:") AS ?incidentId)
+  FILTER(STRSTARTS(STR(?graph), "urn:dcai:graph:action-audit:"))
+  FILTER(?incidentId = COALESCE(?incidentIdParam, ?incidentId))
+  FILTER(?beforeState != ?afterState)
+}
+ORDER BY ?playbackStep ?occurredAt ?event

@@ -1,0 +1,121 @@
+@prefix dcai: <urn:dcai:ontology:> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+dcai:DynamicPlaybackBatchShape
+  a sh:NodeShape ;
+  sh:targetClass dcai:DynamicPlaybackBatch ;
+  sh:property [
+    sh:path dcai:hasScenarioId ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasPlaybackBatchId ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path prov:generatedAtTime ;
+    sh:minCount 1 ;
+    sh:datatype xsd:dateTime
+  ] .
+
+dcai:DynamicPlaybackEventShape
+  a sh:NodeShape ;
+  sh:targetClass dcai:DynamicPlaybackEvent ;
+  sh:property [
+    sh:path dcai:hasIdentifier ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasScenarioId ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasPlaybackBatchId ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasPlaybackStep ;
+    sh:minCount 1 ;
+    sh:datatype xsd:integer
+  ] ;
+  sh:property [
+    sh:path dcai:hasEventKind ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasSourceFamily ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasBeforeState ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasAfterState ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasBeforeReasoningState ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasAfterReasoningState ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasBeforeTrustState ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasAfterTrustState ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasBeforeBlastRadiusCount ;
+    sh:minCount 1 ;
+    sh:datatype xsd:integer
+  ] ;
+  sh:property [
+    sh:path dcai:hasAfterBlastRadiusCount ;
+    sh:minCount 1 ;
+    sh:datatype xsd:integer
+  ] ;
+  sh:property [
+    sh:path dcai:hasActionLifecycleState ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasFindingSummary ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path prov:used ;
+    sh:minCount 1
+  ] ;
+  sh:property [
+    sh:path prov:wasGeneratedBy ;
+    sh:minCount 1 ;
+    sh:class dcai:DynamicPlaybackBatch
+  ] ;
+  sh:property [
+    sh:path prov:generatedAtTime ;
+    sh:minCount 1 ;
+    sh:datatype xsd:dateTime
+  ] .

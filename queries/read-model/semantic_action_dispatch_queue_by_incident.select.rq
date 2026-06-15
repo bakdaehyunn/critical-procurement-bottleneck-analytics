@@ -1,0 +1,65 @@
+PREFIX dcai: <urn:dcai:ontology:>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT
+  ?graph
+  ?actionAuditReleaseId
+  ?dispatch
+  ?dispatchId
+  ?dispatchChannel
+  ?dispatchStatus
+  ?dispatchLifecycleState
+  ?dispatchSummary
+  ?execution
+  ?executionId
+  ?request
+  ?requestId
+  ?actionType
+  ?actionTypeId
+  ?transition
+  ?transitionId
+  ?actorId
+  ?generatedAt
+  ?incident
+  ?incidentId
+  ?sourceRecord
+WHERE {
+  GRAPH ?canonicalGraph {
+    ?incident rdf:type dcai:InfrastructureIncident ;
+      dcai:hasIdentifier ?incidentId .
+  }
+  GRAPH ?graph {
+    ?dispatch rdf:type dcai:OntologyActionDispatch ;
+      dcai:hasIdentifier ?dispatchId ;
+      dcai:hasDispatchChannel ?dispatchChannel ;
+      dcai:hasDispatchStatus ?dispatchStatus ;
+      dcai:hasDispatchLifecycleState ?dispatchLifecycleState ;
+      dcai:hasDispatchSummary ?dispatchSummary ;
+      dcai:hasActorId ?actorId ;
+      dcai:hasTargetObject ?execution ;
+      prov:wasGeneratedBy ?transition ;
+      prov:generatedAtTime ?generatedAt .
+
+    ?transition rdf:type dcai:OntologyActionStateTransition ;
+      dcai:hasIdentifier ?transitionId .
+
+    ?execution rdf:type dcai:OntologyActionExecution ;
+      dcai:hasIdentifier ?executionId ;
+      dcai:hasTargetObject ?incident ;
+      dcai:hasActionType ?actionType ;
+      prov:used ?request .
+
+    ?request rdf:type dcai:OntologyActionRequest ;
+      dcai:hasIdentifier ?requestId .
+
+    ?actionType dcai:hasIdentifier ?actionTypeId .
+
+    OPTIONAL { ?execution prov:wasDerivedFrom ?sourceRecord . }
+  }
+  FILTER(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:"))
+  FILTER(STRSTARTS(STR(?graph), "urn:dcai:graph:action-audit:"))
+  BIND(STRAFTER(STR(?graph), "urn:dcai:graph:action-audit:") AS ?actionAuditReleaseId)
+  FILTER(?incidentId = COALESCE(?incidentIdParam, ?incidentId))
+}
+ORDER BY DESC(?generatedAt) ?dispatchChannel ?dispatch

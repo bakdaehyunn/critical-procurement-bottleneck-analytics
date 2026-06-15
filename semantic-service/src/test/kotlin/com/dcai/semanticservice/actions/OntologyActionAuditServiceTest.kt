@@ -52,7 +52,13 @@ class OntologyActionAuditServiceTest {
         )
         val auditGraph = store.graph(graphs.actionAuditGraphUri)!!
         assertEquals(3, auditGraph.countType(Dcai.OntologyActionExecution))
+        assertEquals(3, auditGraph.countType(Dcai.OntologyActionNotification))
+        assertEquals(9, auditGraph.countType(Dcai.OntologyActionStateTransition))
         assertTrue(auditGraph.contains(null, Dcai.hasActionReason, acknowledgeRequest().actionReason))
+        assertTrue(auditGraph.contains(null, Dcai.hasNotificationStatus, OntologyActionLifecycleState.QUEUED.id))
+        assertTrue(auditGraph.contains(null, Dcai.hasToActionState, OntologyActionLifecycleState.REQUESTED.id))
+        assertTrue(auditGraph.contains(null, Dcai.hasToActionState, OntologyActionLifecycleState.VALIDATED.id))
+        assertTrue(auditGraph.contains(null, Dcai.hasToActionState, OntologyActionLifecycleState.QUEUED.id))
     }
 
     @Test
@@ -93,6 +99,7 @@ class OntologyActionAuditServiceTest {
         assertTrue(second.audited, second.errors.joinToString(separator = "\n"))
         assertTrue(second.idempotentReplay)
         assertEquals(1, store.graph(graphs.actionAuditGraphUri)!!.countType(Dcai.OntologyActionExecution))
+        assertEquals(1, store.graph(graphs.actionAuditGraphUri)!!.countType(Dcai.OntologyActionNotification))
         assertEquals(listOf(graphs.actionAuditGraphUri), store.writeOrder)
     }
 
@@ -140,7 +147,8 @@ class OntologyActionAuditServiceTest {
         assertEquals(2, result.executionCount)
         assertEquals(2, result.requestCount)
         assertEquals(2, result.validationReportCount)
-        assertEquals(2, result.idempotencyKeyCount)
+        assertEquals(2, result.notificationCount)
+        assertEquals(8, result.idempotencyKeyCount)
         assertEquals(1, result.actionTypeCounts.getValue("AcknowledgeRestoreBlocker"))
         assertEquals(1, result.actionTypeCounts.getValue("AssignEvidenceReview"))
     }

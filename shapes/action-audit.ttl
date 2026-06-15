@@ -91,3 +91,147 @@ dcai:ActionValidationReportShape
     sh:class dcai:OntologyActionExecution
   ] .
 
+dcai:OntologyActionNotificationShape
+  a sh:NodeShape ;
+  sh:targetClass dcai:OntologyActionNotification ;
+  sh:property [
+    sh:path dcai:hasIdentifier ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasActionType ;
+    sh:minCount 1 ;
+    sh:class dcai:OntologyActionType
+  ] ;
+  sh:property [
+    sh:path dcai:hasTargetObject ;
+    sh:minCount 1
+  ] ;
+  sh:property [
+    sh:path dcai:hasNotificationStatus ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasFindingSummary ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path prov:wasGeneratedBy ;
+    sh:minCount 1 ;
+    sh:class dcai:OntologyActionExecution
+  ] ;
+  sh:property [
+    sh:path prov:generatedAtTime ;
+    sh:minCount 1 ;
+    sh:datatype xsd:dateTime
+  ] .
+
+dcai:OntologyActionStateTransitionShape
+  a sh:NodeShape ;
+  sh:targetClass dcai:OntologyActionStateTransition ;
+  sh:property [
+    sh:path dcai:hasIdentifier ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasIdempotencyKey ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasToActionState ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string ;
+    sh:in ( "REQUESTED" "VALIDATED" "QUEUED" "IN_REVIEW" "APPROVED" "REJECTED" "CLOSED" )
+  ] ;
+  sh:property [
+    sh:path dcai:hasTransitionReason ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasActorId ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasTargetObject ;
+    sh:minCount 1 ;
+    sh:class dcai:OntologyActionExecution
+  ] ;
+  sh:property [
+    sh:path prov:used ;
+    sh:minCount 1 ;
+    sh:class dcai:OntologyActionExecution
+  ] ;
+  sh:property [
+    sh:path prov:generatedAtTime ;
+    sh:minCount 1 ;
+    sh:datatype xsd:dateTime
+  ] .
+
+dcai:OntologyActionDispatchShape
+  a sh:NodeShape ;
+  sh:targetClass dcai:OntologyActionDispatch ;
+  sh:property [
+    sh:path dcai:hasIdentifier ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasIdempotencyKey ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasDispatchChannel ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string ;
+    sh:in ( "NOC_QUEUE" "WORK_ORDER_QUEUE" "VALIDATION_REVIEW_QUEUE" )
+  ] ;
+  sh:property [
+    sh:path dcai:hasDispatchStatus ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string ;
+    sh:in ( "SIMULATED_QUEUED" "SIMULATED_ACKNOWLEDGED" "SIMULATED_CLOSED" )
+  ] ;
+  sh:property [
+    sh:path dcai:hasDispatchLifecycleState ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string ;
+    sh:in ( "APPROVED" )
+  ] ;
+  sh:property [
+    sh:path dcai:hasDispatchSummary ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasActorId ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:path dcai:hasTargetObject ;
+    sh:minCount 1 ;
+    sh:class dcai:OntologyActionExecution
+  ] ;
+  sh:property [
+    sh:path prov:used ;
+    sh:minCount 1 ;
+    sh:class dcai:OntologyActionExecution
+  ] ;
+  sh:property [
+    sh:path prov:wasGeneratedBy ;
+    sh:minCount 1 ;
+    sh:class dcai:OntologyActionStateTransition
+  ] ;
+  sh:property [
+    sh:path prov:generatedAtTime ;
+    sh:minCount 1 ;
+    sh:datatype xsd:dateTime
+  ] .

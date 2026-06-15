@@ -4,10 +4,22 @@ import com.dcai.semanticservice.query.AssetDelaySummaryEnvelope
 import com.dcai.semanticservice.query.AssetDelaySummaryRecord
 import com.dcai.semanticservice.query.ActionAuditHistoryEnvelope
 import com.dcai.semanticservice.query.ActionAuditHistoryRecord
+import com.dcai.semanticservice.query.ActionNotificationQueueEnvelope
+import com.dcai.semanticservice.query.ActionNotificationQueueRecord
+import com.dcai.semanticservice.query.ActionReviewQueueEnvelope
+import com.dcai.semanticservice.query.ActionReviewQueueRecord
+import com.dcai.semanticservice.query.ActionTransitionHistoryEnvelope
+import com.dcai.semanticservice.query.ActionTransitionHistoryRecord
+import com.dcai.semanticservice.query.ActionDispatchQueueEnvelope
+import com.dcai.semanticservice.query.ActionDispatchQueueRecord
 import com.dcai.semanticservice.query.ActionAvailabilityEnvelope
 import com.dcai.semanticservice.query.ActionAvailabilityRecord
+import com.dcai.semanticservice.query.AiProposalRecord
+import com.dcai.semanticservice.query.AiProposalReviewQueueEnvelope
 import com.dcai.semanticservice.query.DashboardOverviewEnvelope
 import com.dcai.semanticservice.query.DashboardOverviewRecord
+import com.dcai.semanticservice.query.DynamicPlaybackEnvelope
+import com.dcai.semanticservice.query.DynamicPlaybackRecord
 import com.dcai.semanticservice.query.FilterMetadataEnvelope
 import com.dcai.semanticservice.query.FilterMetadataRecord
 import com.dcai.semanticservice.query.FollowUpDetailEnvelope
@@ -159,7 +171,7 @@ class SemanticResponseSerializerTest {
                         idempotencyKey = "ack-restore-001",
                         actorId = "operator-001",
                         actionReason = "Reviewed restore blocker before shift handoff.",
-                        actionStatus = "AUDITED",
+                        actionStatus = "QUEUED",
                         requestedAt = "2026-06-14T10:15:30Z",
                         executedAt = "2026-06-14T10:15:30Z",
                         targetObjectUri = "urn:dcai:fixture:valid:reasoning-output:incident-0001",
@@ -186,7 +198,7 @@ class SemanticResponseSerializerTest {
                     "idempotencyKey" to "ack-restore-001",
                     "actorId" to "operator-001",
                     "actionReason" to "Reviewed restore blocker before shift handoff.",
-                    "actionStatus" to "AUDITED",
+                    "actionStatus" to "QUEUED",
                     "requestedAt" to "2026-06-14T10:15:30Z",
                     "executedAt" to "2026-06-14T10:15:30Z",
                     "targetObjectUri" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",
@@ -250,6 +262,191 @@ class SemanticResponseSerializerTest {
             ),
             payload["records"],
         )
+    }
+
+    @Test
+    fun serializesActionNotificationQueueEnvelope() {
+        val payload = serializer.serialize(
+            ActionNotificationQueueEnvelope(
+                queryId = "semanticActionNotificationQueueByIncident",
+                records = listOf(
+                    ActionNotificationQueueRecord(
+                        graphUri = "urn:dcai:graph:action-audit:local-action-audit-v1",
+                        actionAuditReleaseId = "local-action-audit-v1",
+                        notificationUri = "urn:dcai:ontology-action-notification:ack-restore-001",
+                        notificationId = "REQ-ACTION-001:notification",
+                        notificationStatus = "QUEUED",
+                        notificationSummary = "Internal action request was queued.",
+                        executionUri = "urn:dcai:ontology-action-execution:ack-restore-001",
+                        executionId = "ack-restore-001",
+                        requestUri = "urn:dcai:ontology-action-request:ack-restore-001",
+                        requestId = "REQ-ACTION-001",
+                        actionTypeUri = "urn:dcai:ontology-action-type:AcknowledgeRestoreBlocker",
+                        actionTypeId = "AcknowledgeRestoreBlocker",
+                        actorId = "operator-001",
+                        actionReason = "Reviewed restore blocker.",
+                        requestedAt = "2026-06-14T10:15:30Z",
+                        generatedAt = "2026-06-14T10:15:30Z",
+                        incidentUri = "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+                        incidentId = "INC-0001",
+                    ),
+                ),
+                provenance = provenance("semanticActionNotificationQueueByIncident"),
+            ),
+        )
+
+        assertEquals("action-notification-queue", payload["resultType"])
+        assertEquals(
+            listOf(
+                mapOf(
+                    "graphUri" to "urn:dcai:graph:action-audit:local-action-audit-v1",
+                    "actionAuditReleaseId" to "local-action-audit-v1",
+                    "notificationUri" to "urn:dcai:ontology-action-notification:ack-restore-001",
+                    "notificationId" to "REQ-ACTION-001:notification",
+                    "notificationStatus" to "QUEUED",
+                    "notificationSummary" to "Internal action request was queued.",
+                    "executionUri" to "urn:dcai:ontology-action-execution:ack-restore-001",
+                    "executionId" to "ack-restore-001",
+                    "requestUri" to "urn:dcai:ontology-action-request:ack-restore-001",
+                    "requestId" to "REQ-ACTION-001",
+                    "actionTypeUri" to "urn:dcai:ontology-action-type:AcknowledgeRestoreBlocker",
+                    "actionTypeId" to "AcknowledgeRestoreBlocker",
+                    "actorId" to "operator-001",
+                    "actionReason" to "Reviewed restore blocker.",
+                    "requestedAt" to "2026-06-14T10:15:30Z",
+                    "generatedAt" to "2026-06-14T10:15:30Z",
+                    "incidentUri" to "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+                    "incidentId" to "INC-0001",
+                ),
+            ),
+            payload["records"],
+        )
+    }
+
+    @Test
+    fun serializesActionReviewQueueEnvelope() {
+        val payload = serializer.serialize(
+            ActionReviewQueueEnvelope(
+                queryId = "semanticActionReviewQueueByIncident",
+                records = listOf(
+                    ActionReviewQueueRecord(
+                        graphUri = "urn:dcai:graph:action-audit:local-action-audit-v1",
+                        actionAuditReleaseId = "local-action-audit-v1",
+                        notificationUri = "urn:dcai:ontology-action-notification:ack-restore-001",
+                        notificationId = "REQ-ACTION-001:notification",
+                        executionUri = "urn:dcai:ontology-action-execution:ack-restore-001",
+                        executionId = "ack-restore-001",
+                        requestUri = "urn:dcai:ontology-action-request:ack-restore-001",
+                        requestId = "REQ-ACTION-001",
+                        actionTypeUri = "urn:dcai:ontology-action-type:AcknowledgeRestoreBlocker",
+                        actionTypeId = "AcknowledgeRestoreBlocker",
+                        actorId = "operator-001",
+                        actionReason = "Reviewed restore blocker.",
+                        currentState = "QUEUED",
+                        stateGeneratedAt = "2026-06-14T10:15:33Z",
+                        incidentUri = "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+                        incidentId = "INC-0001",
+                    ),
+                ),
+                provenance = provenance("semanticActionReviewQueueByIncident"),
+            ),
+        )
+
+        assertEquals("action-review-queue", payload["resultType"])
+        assertEquals("QUEUED", firstRecord(payload)["currentState"])
+        assertEquals("urn:dcai:ontology-action-execution:ack-restore-001", firstRecord(payload)["executionUri"])
+    }
+
+    @Test
+    fun serializesActionTransitionHistoryEnvelope() {
+        val payload = serializer.serialize(
+            ActionTransitionHistoryEnvelope(
+                queryId = "semanticActionTransitionHistoryByIncident",
+                records = listOf(
+                    ActionTransitionHistoryRecord(
+                        graphUri = "urn:dcai:graph:action-audit:local-action-audit-v1",
+                        actionAuditReleaseId = "local-action-audit-v1",
+                        transitionUri = "urn:dcai:ontology-action-transition:review-start-001",
+                        transitionId = "ACT-TRN-REVIEW-001",
+                        executionUri = "urn:dcai:ontology-action-execution:ack-restore-001",
+                        executionId = "ack-restore-001",
+                        requestUri = "urn:dcai:ontology-action-request:ack-restore-001",
+                        requestId = "REQ-ACTION-001",
+                        actionTypeUri = "urn:dcai:ontology-action-type:AcknowledgeRestoreBlocker",
+                        actionTypeId = "AcknowledgeRestoreBlocker",
+                        actorId = "operator-001",
+                        transitionReason = "Local reviewer started internal action review.",
+                        fromState = "QUEUED",
+                        toState = "IN_REVIEW",
+                        generatedAt = "2026-06-14T10:20:30Z",
+                        incidentUri = "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+                        incidentId = "INC-0001",
+                    ),
+                ),
+                provenance = provenance("semanticActionTransitionHistoryByIncident"),
+            ),
+        )
+
+        assertEquals("action-transition-history", payload["resultType"])
+        assertEquals("QUEUED", firstRecord(payload)["fromState"])
+        assertEquals("IN_REVIEW", firstRecord(payload)["toState"])
+    }
+
+    @Test
+    fun serializesActionDispatchQueueEnvelope() {
+        val payload = serializer.serialize(
+            ActionDispatchQueueEnvelope(
+                queryId = "semanticActionDispatchQueueByIncident",
+                records = listOf(
+                    ActionDispatchQueueRecord(
+                        graphUri = "urn:dcai:graph:action-audit:local-action-audit-v1",
+                        actionAuditReleaseId = "local-action-audit-v1",
+                        dispatchUri = "urn:dcai:ontology-action-dispatch:noc-queue-001",
+                        dispatchId = "ACT-DSP-NOC-001",
+                        dispatchChannel = "NOC_QUEUE",
+                        dispatchStatus = "SIMULATED_QUEUED",
+                        dispatchLifecycleState = "APPROVED",
+                        dispatchSummary = "Simulated NOC queue dispatch for approved ontology action.",
+                        executionUri = "urn:dcai:ontology-action-execution:ack-restore-001",
+                        executionId = "ack-restore-001",
+                        requestUri = "urn:dcai:ontology-action-request:ack-restore-001",
+                        requestId = "REQ-ACTION-001",
+                        actionTypeUri = "urn:dcai:ontology-action-type:AcknowledgeRestoreBlocker",
+                        actionTypeId = "AcknowledgeRestoreBlocker",
+                        transitionUri = "urn:dcai:ontology-action-transition:review-start-001",
+                        transitionId = "ACT-TRN-REVIEW-001",
+                        actorId = "operator-001",
+                        generatedAt = "2026-06-14T10:20:30Z",
+                        incidentUri = "urn:dcai:fixture:valid:reasoning-output:incident-0001",
+                        incidentId = "INC-0001",
+                    ),
+                ),
+                provenance = provenance("semanticActionDispatchQueueByIncident"),
+            ),
+        )
+
+        assertEquals("action-dispatch-queue", payload["resultType"])
+        assertEquals("NOC_QUEUE", firstRecord(payload)["dispatchChannel"])
+        assertEquals("SIMULATED_QUEUED", firstRecord(payload)["dispatchStatus"])
+        assertEquals("APPROVED", firstRecord(payload)["dispatchLifecycleState"])
+        assertEquals("ACT-TRN-REVIEW-001", firstRecord(payload)["transitionId"])
+    }
+
+    @Test
+    fun serializesAiProposalReviewQueueEnvelope() {
+        val payload = serializer.serialize(
+            AiProposalReviewQueueEnvelope(
+                queryId = "semanticAiProposalReviewQueue",
+                records = listOf(aiProposalRecord()),
+                provenance = provenance("semanticAiProposalReviewQueue"),
+            ),
+        )
+
+        assertEquals("ai-proposal-review-queue", payload["resultType"])
+        assertEquals("AI-PROP-LOCAL-001", firstRecord(payload)["proposalId"])
+        assertEquals("ACTION_RECOMMENDATION", firstRecord(payload)["proposalType"])
+        assertEquals(0.82, firstRecord(payload)["confidenceScore"])
+        assertEquals("PENDING_HUMAN_REVIEW", firstRecord(payload)["reviewStatus"])
     }
 
     @Test
@@ -616,6 +813,50 @@ class SemanticResponseSerializerTest {
     }
 
     @Test
+    fun serializesDynamicPlaybackEnvelope() {
+        val payload = serializer.serialize(
+            DynamicPlaybackEnvelope(
+                queryId = "semanticDynamicEventTimelineByIncident",
+                records = listOf(
+                    DynamicPlaybackRecord(
+                        graphUri = "urn:dcai:graph:action-audit:local-dynamic-action-audit-v1",
+                        actionAuditReleaseId = "local-dynamic-action-audit-v1",
+                        eventUri = "urn:dcai:dynamic-playback-event:DYN-EVENT-1",
+                        eventId = "DYN-EVENT-1",
+                        scenarioId = "local-dynamic-playback-v1",
+                        playbackBatchId = "local-dynamic-playback-batch-v1",
+                        playbackStep = 1,
+                        incidentUri = "urn:dcai:incident:INC-DYN-001",
+                        incidentId = "INC-DYN-001",
+                        eventKind = "TELEMETRY_IMPACT_CHANGE",
+                        sourceFamily = "telemetry-impact",
+                        occurredAt = "2026-06-10T00:05:00Z",
+                        summary = "Telemetry export shows UPS degradation.",
+                        sourceRecordUri = "urn:dcai:source-record:local-dynamic-source-systems:SRC-DYN-IMPACT-001",
+                        beforeState = "SOURCE_EXPORT_RECEIVED",
+                        afterState = "CANONICAL_PROMOTED",
+                        beforeReasoningState = "NO_REASONING_OUTPUT",
+                        afterReasoningState = "DEPENDENCY_EXPOSURE_INFERRED",
+                        beforeTrustState = "UNKNOWN",
+                        afterTrustState = "TRUSTED_TELEMETRY",
+                        beforeBlastRadiusCount = 0,
+                        afterBlastRadiusCount = 1,
+                        actionLifecycleState = "NONE",
+                        canonicalGraphUri = "urn:dcai:graph:canonical:local-dynamic-playback-v1-step-01",
+                    ),
+                ),
+                provenance = provenance("semanticDynamicEventTimelineByIncident"),
+            ),
+        )
+
+        assertEquals("dynamic-playback", payload["resultType"])
+        assertEquals("DYN-EVENT-1", firstRecord(payload)["eventId"])
+        assertEquals(1, firstRecord(payload)["playbackStep"])
+        assertEquals("CANONICAL_PROMOTED", firstRecord(payload)["afterState"])
+        assertEquals("DEPENDENCY_EXPOSURE_INFERRED", firstRecord(payload)["afterReasoningState"])
+    }
+
+    @Test
     fun semanticErrorCodesMatchPhaseEighteenContractNames() {
         assertEquals(
             setOf(
@@ -642,6 +883,38 @@ class SemanticResponseSerializerTest {
             "queryId" to queryId,
             "graphScope" to "fixture canonical graph",
             "contractVersion" to QueryResultEnvelopeProvenance.CONTRACT_VERSION,
+        )
+    }
+
+    private fun aiProposalRecord(): AiProposalRecord {
+        return AiProposalRecord(
+            graphUri = "urn:dcai:graph:ai-audit:local-ai-governance-v1",
+            aiAuditReleaseId = "local-ai-governance-v1",
+            proposalUri = "urn:dcai:ai-proposal:local-ai-governance-v1",
+            proposalId = "AI-PROP-LOCAL-001",
+            proposalType = "ACTION_RECOMMENDATION",
+            proposalStatus = "PENDING_REVIEW",
+            reviewStatus = "PENDING_HUMAN_REVIEW",
+            disabledReason = "AI proposal review is read-only.",
+            summary = "AI proposal recommends a governed action.",
+            rationale = "Evidence and reasoning support human review.",
+            confidenceScore = 0.82,
+            riskLevel = "HIGH",
+            modelId = "local-governance-model-placeholder",
+            promptId = "ai-governance-proposal-v1",
+            promptHash = "sha256-local-placeholder-001",
+            actorId = "local-ai-governance-simulator",
+            generatedAt = "2026-06-09T02:45:00Z",
+            batchUri = "urn:dcai:ai-proposal-batch:local-ai-governance-v1",
+            batchId = "local-ai-governance-v1",
+            validationReportUri = "urn:dcai:ai-proposal-validation-report:local-ai-governance-v1",
+            validationStatus = "CONFORMS",
+            validationSummary = "AI proposal passed policy.",
+            incidentUri = "urn:dcai:incident:INC-001",
+            incidentId = "INC-001",
+            targetObjectUri = "urn:dcai:incident:INC-001",
+            sourceRecordUri = "urn:dcai:source-record:local-controlled-facility-ops-file:SRC-INC-001",
+            supportingEvidenceUri = "urn:dcai:reasoning:restore-readiness:urn%3Adcai%3Aincident%3AINC-001",
         )
     }
 

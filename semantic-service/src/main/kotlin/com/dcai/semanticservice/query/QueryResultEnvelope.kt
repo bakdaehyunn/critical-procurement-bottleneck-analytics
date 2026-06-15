@@ -42,6 +42,13 @@ enum class QueryResultType(
     ONTOLOGY_REVIEW_QUEUE("ontology-review-queue"),
     ACTION_AVAILABILITY("action-availability"),
     ACTION_AUDIT_HISTORY("action-audit-history"),
+    ACTION_NOTIFICATION_QUEUE("action-notification-queue"),
+    ACTION_REVIEW_QUEUE("action-review-queue"),
+    ACTION_TRANSITION_HISTORY("action-transition-history"),
+    ACTION_DISPATCH_QUEUE("action-dispatch-queue"),
+    DYNAMIC_PLAYBACK("dynamic-playback"),
+    AI_PROPOSAL_REVIEW_QUEUE("ai-proposal-review-queue"),
+    AI_PROPOSAL_DETAIL("ai-proposal-detail"),
 }
 
 data class NamedGraphInventoryEnvelope(
@@ -621,6 +628,219 @@ data class ActionAuditHistoryRecord(
     val reviewedStatus: String? = null,
     val reviewSummary: String? = null,
     val supportingEvidenceUri: String? = null,
+)
+
+data class ActionNotificationQueueEnvelope(
+    override val queryId: String,
+    val records: List<ActionNotificationQueueRecord>,
+    override val provenance: QueryResultEnvelopeProvenance,
+) : QueryResultEnvelope {
+    override val resultType: QueryResultType = QueryResultType.ACTION_NOTIFICATION_QUEUE
+    override val recordCount: Int = records.size
+}
+
+data class ActionNotificationQueueRecord(
+    val graphUri: String,
+    val actionAuditReleaseId: String,
+    val notificationUri: String,
+    val notificationId: String,
+    val notificationStatus: String,
+    val notificationSummary: String,
+    val executionUri: String,
+    val executionId: String,
+    val requestUri: String,
+    val requestId: String,
+    val actionTypeUri: String,
+    val actionTypeId: String,
+    val actorId: String,
+    val actionReason: String,
+    val requestedAt: String,
+    val generatedAt: String,
+    val incidentUri: String,
+    val incidentId: String,
+    val targetObjectUri: String? = null,
+    val sourceRecordUri: String? = null,
+    val assignedTeam: String? = null,
+    val assigneeId: String? = null,
+    val reviewedStatus: String? = null,
+    val reviewSummary: String? = null,
+)
+
+data class ActionReviewQueueEnvelope(
+    override val queryId: String,
+    val records: List<ActionReviewQueueRecord>,
+    override val provenance: QueryResultEnvelopeProvenance,
+) : QueryResultEnvelope {
+    override val resultType: QueryResultType = QueryResultType.ACTION_REVIEW_QUEUE
+    override val recordCount: Int = records.size
+}
+
+data class ActionReviewQueueRecord(
+    val graphUri: String,
+    val actionAuditReleaseId: String,
+    val notificationUri: String,
+    val notificationId: String,
+    val executionUri: String,
+    val executionId: String,
+    val requestUri: String,
+    val requestId: String,
+    val actionTypeUri: String,
+    val actionTypeId: String,
+    val actorId: String,
+    val actionReason: String,
+    val currentState: String,
+    val stateGeneratedAt: String,
+    val incidentUri: String,
+    val incidentId: String,
+    val sourceRecordUri: String? = null,
+)
+
+data class ActionTransitionHistoryEnvelope(
+    override val queryId: String,
+    val records: List<ActionTransitionHistoryRecord>,
+    override val provenance: QueryResultEnvelopeProvenance,
+) : QueryResultEnvelope {
+    override val resultType: QueryResultType = QueryResultType.ACTION_TRANSITION_HISTORY
+    override val recordCount: Int = records.size
+}
+
+data class ActionTransitionHistoryRecord(
+    val graphUri: String,
+    val actionAuditReleaseId: String,
+    val transitionUri: String,
+    val transitionId: String,
+    val executionUri: String,
+    val executionId: String,
+    val requestUri: String,
+    val requestId: String,
+    val actionTypeUri: String,
+    val actionTypeId: String,
+    val actorId: String,
+    val transitionReason: String,
+    val fromState: String? = null,
+    val toState: String,
+    val generatedAt: String,
+    val incidentUri: String,
+    val incidentId: String,
+)
+
+data class ActionDispatchQueueEnvelope(
+    override val queryId: String,
+    val records: List<ActionDispatchQueueRecord>,
+    override val provenance: QueryResultEnvelopeProvenance,
+) : QueryResultEnvelope {
+    override val resultType: QueryResultType = QueryResultType.ACTION_DISPATCH_QUEUE
+    override val recordCount: Int = records.size
+}
+
+data class ActionDispatchQueueRecord(
+    val graphUri: String,
+    val actionAuditReleaseId: String,
+    val dispatchUri: String,
+    val dispatchId: String,
+    val dispatchChannel: String,
+    val dispatchStatus: String,
+    val dispatchLifecycleState: String,
+    val dispatchSummary: String,
+    val executionUri: String,
+    val executionId: String,
+    val requestUri: String,
+    val requestId: String,
+    val actionTypeUri: String,
+    val actionTypeId: String,
+    val transitionUri: String,
+    val transitionId: String,
+    val actorId: String,
+    val generatedAt: String,
+    val incidentUri: String,
+    val incidentId: String,
+    val sourceRecordUri: String? = null,
+)
+
+data class DynamicPlaybackEnvelope(
+    override val queryId: String,
+    val records: List<DynamicPlaybackRecord>,
+    override val provenance: QueryResultEnvelopeProvenance,
+) : QueryResultEnvelope {
+    override val resultType: QueryResultType = QueryResultType.DYNAMIC_PLAYBACK
+    override val recordCount: Int = records.size
+}
+
+data class DynamicPlaybackRecord(
+    val graphUri: String,
+    val actionAuditReleaseId: String,
+    val eventUri: String,
+    val eventId: String,
+    val scenarioId: String,
+    val playbackBatchId: String,
+    val playbackStep: Int,
+    val incidentUri: String,
+    val incidentId: String,
+    val eventKind: String,
+    val sourceFamily: String,
+    val occurredAt: String,
+    val summary: String,
+    val sourceRecordUri: String,
+    val beforeState: String,
+    val afterState: String,
+    val beforeReasoningState: String,
+    val afterReasoningState: String,
+    val beforeTrustState: String,
+    val afterTrustState: String,
+    val beforeBlastRadiusCount: Int,
+    val afterBlastRadiusCount: Int,
+    val actionLifecycleState: String,
+    val canonicalGraphUri: String? = null,
+    val provenanceGraphUri: String? = null,
+    val reasoningGraphUri: String? = null,
+)
+
+data class AiProposalReviewQueueEnvelope(
+    override val queryId: String,
+    val records: List<AiProposalRecord>,
+    override val provenance: QueryResultEnvelopeProvenance,
+) : QueryResultEnvelope {
+    override val resultType: QueryResultType = QueryResultType.AI_PROPOSAL_REVIEW_QUEUE
+    override val recordCount: Int = records.size
+}
+
+data class AiProposalDetailEnvelope(
+    override val queryId: String,
+    val records: List<AiProposalRecord>,
+    override val provenance: QueryResultEnvelopeProvenance,
+) : QueryResultEnvelope {
+    override val resultType: QueryResultType = QueryResultType.AI_PROPOSAL_DETAIL
+    override val recordCount: Int = records.size
+}
+
+data class AiProposalRecord(
+    val graphUri: String,
+    val aiAuditReleaseId: String,
+    val proposalUri: String,
+    val proposalId: String,
+    val proposalType: String,
+    val proposalStatus: String,
+    val reviewStatus: String,
+    val disabledReason: String,
+    val summary: String,
+    val rationale: String,
+    val confidenceScore: Double,
+    val riskLevel: String,
+    val modelId: String,
+    val promptId: String,
+    val promptHash: String,
+    val actorId: String,
+    val generatedAt: String,
+    val batchUri: String,
+    val batchId: String,
+    val validationReportUri: String,
+    val validationStatus: String,
+    val validationSummary: String,
+    val incidentUri: String,
+    val incidentId: String,
+    val targetObjectUri: String,
+    val sourceRecordUri: String,
+    val supportingEvidenceUri: String,
 )
 
 data class ActionAvailabilityEnvelope(

@@ -1,0 +1,35 @@
+@prefix dcai-release: <urn:dcai:release:> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+dcai-release:2026-06-internal-ontology-action-dispatch-simulation-v1
+  rdf:type owl:Ontology ;
+  dcterms:title "Internal ontology action dispatch simulation v1 release" ;
+  dcterms:description "Internal simulated operations dispatch release for approved local ontology action transitions. It adds OntologyActionDispatch facts for simulated NOC, work-order, and validation-review queues; SHACL/provenance validation; approved semanticActionDispatchQueueByIncident read-model support; typed semantic-service envelopes and serialization; frontend selected-finding dispatch visibility; focused tests; and docs. This release writes only managed action-audit graph state and does not expose public endpoints, add authentication, mutate canonical/reasoning/provenance/operations/source graphs, add real external connectors, perform external writeback, implement AI governance, commit, or push." ;
+  dcterms:created "2026-06-15"^^xsd:date ;
+  dcterms:requires dcai-release:2026-06-internal-ontology-action-state-machine-v1 ;
+  dcterms:hasPart
+    <../../ontology/modules/operations.ttl>,
+    <../../shapes/action-audit.ttl>,
+    <../../queries/manifest.ttl>,
+    <../../queries/read-model/semantic_action_dispatch_queue_by_incident.select.rq>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/actions/OntologyActionTransitionService.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/actions/OntologyActionValidationGate.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/api/PrivateSemanticQueryEndpoint.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/query/QueryResultEnvelope.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/query/QueryResultShaper.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/response/SemanticResponseSerializer.kt>,
+    <../../semantic-service/openapi.semantic-service.yaml>,
+    <../../semantic-service/api-dtos.md>,
+    <../../frontend/src/api.ts>,
+    <../../frontend/src/App.tsx>,
+    <../../frontend/src/App.css>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/actions/OntologyActionTransitionServiceTest.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/query/ApprovedQueryCatalogTest.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/query/QueryResultShaperTest.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/response/SemanticResponseSerializerTest.kt>,
+    <../../README.md>,
+    <../../semantic-service/README.md>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/api/README.md> .

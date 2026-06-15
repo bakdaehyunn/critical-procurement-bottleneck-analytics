@@ -1,0 +1,45 @@
+@prefix dcai-release: <urn:dcai:release:> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+dcai-release:2026-06-internal-ai-governance-proposal-v1
+  rdf:type owl:Ontology ;
+  dcterms:title "Internal AI governance proposal v1 release" ;
+  dcterms:description "Internal AI governance proposal and human review release for ontology-native semantic operations. It adds AIProposalBatch, AIProposal, AIProposalValidationReport, and AIApprovalDecision ontology terms; SHACL and provenance gates; deterministic local proposal fixtures; rollback-safe managed ai-audit graph writes; idempotent proposal/review reruns; approved private semantic query IDs for AI proposal review queue and detail; a private internal AI proposal review endpoint; governed action-audit request creation for approved ACTION_RECOMMENDATION proposals; typed semantic-service envelopes and serialization; and frontend proposal review visibility. This release does not call external AI APIs, expose public endpoints, add authentication, mutate canonical/reasoning/provenance/source/operations graphs from AI proposals, perform source-system writeback, redesign UI, commit, or push." ;
+  dcterms:created "2026-06-15"^^xsd:date ;
+  dcterms:requires dcai-release:2026-06-internal-ontology-action-dispatch-simulation-v1 ;
+  dcterms:hasPart
+    <../../ontology/modules/ai-interaction.ttl>,
+    <../../shapes/ai-proposal-audit.ttl>,
+    <../../fixtures/ai-proposals/local-ai-governance-v1.properties>,
+    <../../queries/manifest.ttl>,
+    <../../queries/read-model/semantic_ai_proposal_review_queue.select.rq>,
+    <../../queries/read-model/semantic_ai_proposal_detail_by_incident.select.rq>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/governance/AiGovernanceProposal.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/governance/AiGovernanceProposalLoader.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/governance/AiGovernanceProposalService.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/governance/AiGovernanceReviewService.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/ingestion/OntologyVocabulary.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/api/PrivateSemanticQueryEndpoint.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/api/PrivateAiGovernanceEndpoint.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/query/QueryResultEnvelope.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/query/QueryResultShaper.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/response/SemanticResponseSerializer.kt>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/runtime/SemanticServiceApplication.kt>,
+    <../../semantic-service/openapi.semantic-service.yaml>,
+    <../../semantic-service/api-dtos.md>,
+    <../../frontend/src/api.ts>,
+    <../../frontend/src/App.tsx>,
+    <../../frontend/src/App.css>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/governance/AiGovernanceProposalServiceTest.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/governance/AiGovernanceReviewServiceTest.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/api/PrivateSemanticQueryEndpointTest.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/query/ApprovedQueryCatalogTest.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/query/QueryResultShaperTest.kt>,
+    <../../semantic-service/src/test/kotlin/com/dcai/semanticservice/response/SemanticResponseSerializerTest.kt>,
+    <../../README.md>,
+    <../../semantic-service/README.md>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/api/README.md>,
+    <../../semantic-service/src/main/kotlin/com/dcai/semanticservice/governance/README.md> .
