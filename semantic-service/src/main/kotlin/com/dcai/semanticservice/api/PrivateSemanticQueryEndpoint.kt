@@ -45,7 +45,7 @@ class PrivateSemanticQueryEndpoint(
                 message = "Private semantic query route must match /semantic/query/{queryId}.",
             )
 
-        if (request.body.containsRawSparql()) {
+        if (PrivateEndpointPayload.containsRawSparql(request.body)) {
             return error(
                 statusCode = 400,
                 code = SemanticErrorCode.CONTRACT_VALIDATION_FAILED,
@@ -137,51 +137,11 @@ class PrivateSemanticQueryEndpoint(
         return URLDecoder.decode(encoded, StandardCharsets.UTF_8)
     }
 
-    private fun String.containsRawSparql(): Boolean {
-        val normalized = lowercase()
-        return normalized.contains("\"sparql\"") ||
-            normalized.contains("\"query\"") ||
-            RAW_SPARQL_KEYWORD.containsMatchIn(this)
-    }
-
     private fun PrivateSemanticQueryRequest.parameters(): Map<String, String> {
-        if (body.isBlank()) {
-            return emptyMap()
-        }
-        val parameterBody = PARAMETERS_OBJECT.find(body)?.groupValues?.get(1) ?: return emptyMap()
-        val matches = PARAMETER_PAIR.findAll(parameterBody).toList()
-        val unmatchedBody = matches.fold(parameterBody) { remaining, match ->
-            remaining.replace(match.value, "")
-        }
-        require(unmatchedBody.replace(",", "").isBlank()) {
-            "Parameters must be a JSON object with string values and supported names."
-        }
-        return matches.associate { match ->
-            val key = match.groupValues[1]
-            require(PARAMETER_NAME.matches(key)) { "Unsupported query parameter name: $key" }
-            key to match.groupValues[2].unescapeJsonString()
-        }
-    }
-
-    private fun String.unescapeJsonString(): String {
-        return replace("\\\"", "\"")
-            .replace("\\\\", "\\")
-            .replace("\\n", "\n")
-            .replace("\\r", "\r")
-            .replace("\\t", "\t")
+        return PrivateEndpointPayload.parameters(body)
     }
 
     companion object {
-        private val PARAMETERS_OBJECT = Regex(
-            pattern = "\"parameters\"\\s*:\\s*\\{([^}]*)}",
-            options = setOf(RegexOption.DOT_MATCHES_ALL),
-        )
-        private val PARAMETER_PAIR = Regex("\"([A-Za-z][A-Za-z0-9_]*)\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"")
-        private val PARAMETER_NAME = Regex("[A-Za-z][A-Za-z0-9_]*")
-        private val RAW_SPARQL_KEYWORD = Regex(
-            pattern = "\\b(select|ask|construct|describe|insert|delete|update|where)\\b",
-            options = setOf(RegexOption.IGNORE_CASE),
-        )
         val APPROVED_PRIVATE_QUERY_IDS = setOf(
             "fixtureNamedGraphInventory",
             "fixtureIncidentSummary",

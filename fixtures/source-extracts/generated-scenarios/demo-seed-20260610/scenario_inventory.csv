@@ -1,0 +1,5 @@
+scenarioId,incidentId,scenarioType,operationalNarrative,expectedReasoningFocus,primarySourceSystems,replayWindowStart,replayWindowEnd
+SCN-20260611,INC-GEN-SCN-20260611,recovery-blocker,Restore readiness is blocked by missing final validation and unresolved signoff,recovery-blocker|restore-readiness|trust-finding,incident-workflow|validation|work-order,2026-06-10T00:00:00Z,2026-06-10T02:00:00Z
+SCN-20260612,INC-GEN-SCN-20260612,ups-degradation,UPS output degradation creates immediate capacity and redundancy risk for a GPU pod,dependency-exposure|restore-readiness|capacity-risk,dcim|power-monitoring|work-order,2026-06-10T00:10:00Z,2026-06-10T02:10:00Z
+SCN-20260613,INC-GEN-SCN-20260613,cooling-instability,Chilled water instability drives thermal throttling while recovery evidence is still open,recovery-blocker|thermal-risk|restore-readiness,bms|dcim|validation,2026-06-10T00:20:00Z,2026-06-10T02:20:00Z
+SCN-20260614,INC-GEN-SCN-20260614,telemetry-bridge-failure,DCIM telemetry bridge loss forces manual validation before trusting impact claims,trust-finding|telemetry-gap|manual-validation,dcim|manual-rounds|validation,2026-06-10T00:30:00Z,2026-06-10T02:30:00Z

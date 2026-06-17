@@ -35,7 +35,7 @@ class PrivateOntologyActionEndpoint(
             )
         }
 
-        if (request.body.containsRawSparql()) {
+        if (PrivateEndpointPayload.containsRawSparql(request.body)) {
             return error(
                 statusCode = 400,
                 message = "Private ontology action endpoint does not accept raw SPARQL.",
@@ -43,7 +43,12 @@ class PrivateOntologyActionEndpoint(
         }
 
         return try {
-            val payload = request.body.stringPayload()
+            val payload = PrivateEndpointPayload.stringObject(
+                body = request.body,
+                allowedFields = ALLOWED_FIELDS,
+                bodyLabel = "Ontology action request",
+                fieldLabel = "ontology action request",
+            )
             if (request.path == ACTION_TRANSITION_PATH) {
                 return handleTransition(payload)
             }
@@ -115,7 +120,7 @@ class PrivateOntologyActionEndpoint(
         }
     }
 
-    private fun handleTransition(payload: Map<String, String>): PrivateSemanticQueryResponse {
+    private fun handleTransition(payload: PrivateStringPayload): PrivateSemanticQueryResponse {
         val toState = OntologyActionLifecycleState.fromId(payload.required("toState"))
             ?: return error(
                 statusCode = 400,
@@ -230,77 +235,9 @@ class PrivateOntologyActionEndpoint(
         )
     }
 
-    private fun String.containsRawSparql(): Boolean {
-        val normalized = lowercase()
-        return normalized.contains("\"sparql\"") ||
-            normalized.contains("\"query\"") ||
-            RAW_SPARQL_KEYWORD.containsMatchIn(this)
-    }
-
-    private fun String.stringPayload(): Map<String, String> {
-        require(trim().startsWith("{") && trim().endsWith("}")) {
-            "Ontology action request body must be a JSON object with string values."
-        }
-        val matches = FIELD_PAIR.findAll(this).toList()
-        val unmatchedBody = matches.fold(trim().removePrefix("{").removeSuffix("}")) { remaining, match ->
-            remaining.replace(match.value, "")
-        }
-        require(unmatchedBody.replace(",", "").isBlank()) {
-            "Ontology action request body must contain only string fields."
-        }
-        return matches.associate { match ->
-            val key = match.groupValues[1]
-            require(key in ALLOWED_FIELDS) { "Unsupported ontology action request field: $key" }
-            key to match.groupValues[2].unescapeJsonString()
-        }
-    }
-
-    private fun Map<String, String>.required(key: String): String {
-        return this[key]?.trim()?.takeIf(String::isNotBlank)
-            ?: throw IllegalArgumentException("Missing required ontology action request field: $key")
-    }
-
-    private fun Map<String, String>.requiredControlled(key: String): String {
-        return required(key).also { value ->
-            require(CONTROLLED_TOKEN.matches(value)) { "$key must use the controlled local identifier vocabulary" }
-        }
-    }
-
-    private fun Map<String, String>.optionalControlled(key: String): String? {
-        return this[key]?.trim()?.takeIf(String::isNotBlank)?.also { value ->
-            require(CONTROLLED_TOKEN.matches(value)) { "$key must use the controlled local identifier vocabulary" }
-        }
-    }
-
-    private fun Map<String, String>.requiredUri(key: String): String {
-        return required(key).also { value ->
-            require(value.startsWith("urn:dcai:")) { "$key must be a controlled DCAI URN" }
-        }
-    }
-
-    private fun Map<String, String>.optionalUri(key: String): String? {
-        return this[key]?.trim()?.takeIf(String::isNotBlank)?.also { value ->
-            require(value.startsWith("urn:dcai:")) { "$key must be a controlled DCAI URN" }
-        }
-    }
-
-    private fun String.unescapeJsonString(): String {
-        return replace("\\\"", "\"")
-            .replace("\\\\", "\\")
-            .replace("\\n", "\n")
-            .replace("\\r", "\r")
-            .replace("\\t", "\t")
-    }
-
     companion object {
         const val ACTION_REQUEST_PATH = "/semantic/internal/action-request"
         const val ACTION_TRANSITION_PATH = "/semantic/internal/action-transition"
-        private val FIELD_PAIR = Regex("\"([A-Za-z][A-Za-z0-9_]*)\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"")
-        private val CONTROLLED_TOKEN = Regex("[A-Za-z0-9._:-]+")
-        private val RAW_SPARQL_KEYWORD = Regex(
-            pattern = "\\b(select|ask|construct|describe|insert|delete|update|where)\\b",
-            options = setOf(RegexOption.IGNORE_CASE),
-        )
         private val ALLOWED_FIELDS = setOf(
             "requestId",
             "actionId",

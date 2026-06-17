@@ -1,3 +1,5 @@
+import { semanticQueryCatalog, semanticQueryPath, type SemanticQueryId, type SemanticQueryParameters } from './semanticQueryCatalog'
+
 const SEMANTIC_API_BASE_URL = import.meta.env.VITE_SEMANTIC_API_BASE_URL ?? 'http://127.0.0.1:18080'
 const SEMANTIC_SOURCE_RELEASE_ID = import.meta.env.VITE_SEMANTIC_SOURCE_RELEASE_ID ?? 'local-controlled-source-v1'
 const SEMANTIC_REASONING_RUN_ID = import.meta.env.VITE_SEMANTIC_REASONING_RUN_ID ?? 'local-controlled-reasoning-v1'
@@ -159,6 +161,15 @@ export type SemanticDependencyEdge = {
   dependency_asset_id: string
   dependency_type: string
   dependency_role: string
+  finding_uri: string | null
+  finding_summary: string | null
+  source_record_uri: string | null
+}
+
+export type SemanticReasoningFinding = {
+  finding_uri: string
+  summary: string
+  source_record_uri: string | null
 }
 
 export type SemanticDependencyImpact = {
@@ -166,6 +177,7 @@ export type SemanticDependencyImpact = {
   direct_dependency_count: number
   direct_dependencies: SemanticDependencyEdge[]
   inferred_downstream_assets: string[]
+  reasoning_findings: SemanticReasoningFinding[]
 }
 
 export type SemanticIncidentEvidence = {
@@ -183,6 +195,7 @@ export type SemanticBlastRadius = {
   asset_id: string
   inferred_downstream_assets: string[]
   affected_incident_count: number
+  reasoning_findings: SemanticReasoningFinding[]
   affected_incidents: {
     incident_id: string
     asset_id: string
@@ -236,6 +249,24 @@ export type ProvenanceTraceItem = {
   label: string
   resource_uri: string
   detail: string
+}
+
+export type OntologyEvidenceFact = {
+  kind: 'direct-fact' | 'inferred-fact' | 'provenance' | 'action-eligibility'
+  label: string
+  value: string
+  detail: string
+  resource_uri: string | null
+  confidence: 'trusted' | 'review' | 'blocked'
+}
+
+export type OntologyEvidenceExplanation = {
+  question: string
+  answer: string
+  direct_facts: OntologyEvidenceFact[]
+  inferred_facts: OntologyEvidenceFact[]
+  provenance_links: OntologyEvidenceFact[]
+  action_eligibility: OntologyEvidenceFact[]
 }
 
 export type OntologyActionPlacement = 'summary' | 'trust'
@@ -632,6 +663,7 @@ export type RequestDetail = {
     evidence: Record<string, unknown>
   }[]
   provenance_trace: ProvenanceTraceItem[]
+  ontology_evidence: OntologyEvidenceExplanation
   ontology_actions: OntologyActionAffordance[]
   action_audit_history: OntologyActionAuditHistoryItem[]
   action_notifications: OntologyActionNotificationItem[]
@@ -1195,18 +1227,18 @@ export async function fetchDashboardData(filters: DashboardFilters = {}): Promis
     promotionReviewQueue,
     reasoningReviewQueue,
   ] = await Promise.all([
-    postSemanticQuery<SemanticDashboardOverviewRecord>('semanticDashboardOverview'),
-    postSemanticQuery<SemanticFollowUpQueueRecord>('semanticFollowUpQueueList'),
-    postSemanticQuery<SemanticFollowUpDetailRecord>('semanticFollowUpDetail'),
-    postSemanticQuery<SemanticStageBottleneckRecord>('semanticStageBottlenecks'),
-    postSemanticQuery<SemanticAssetDelaySummaryRecord>('semanticAssetDelaySummary'),
-    postSemanticQuery<SemanticZoneDelaySummaryRecord>('semanticZoneDelaySummary'),
-    postSemanticQuery<SemanticSpareWaitSummaryRecord>('semanticSpareWaitSummary'),
-    postSemanticQuery<SemanticTrustFindingRecord>('semanticTrustFindingList'),
-    postSemanticQuery<SemanticImpactSummaryRecord>('semanticImpactSummary'),
-    postSemanticQuery<SemanticTopologyDependencyRecord>('semanticTopologyDependencies'),
-    postSemanticQuery<SemanticOntologyReviewQueueRecord>('semanticPromotionReviewQueue'),
-    postSemanticQuery<SemanticOntologyReviewQueueRecord>('semanticReasoningReviewQueue'),
+    postSemanticQuery<SemanticDashboardOverviewRecord>(semanticQueryCatalog.dashboardOverview),
+    postSemanticQuery<SemanticFollowUpQueueRecord>(semanticQueryCatalog.followUpQueueList),
+    postSemanticQuery<SemanticFollowUpDetailRecord>(semanticQueryCatalog.followUpDetail),
+    postSemanticQuery<SemanticStageBottleneckRecord>(semanticQueryCatalog.stageBottlenecks),
+    postSemanticQuery<SemanticAssetDelaySummaryRecord>(semanticQueryCatalog.assetDelaySummary),
+    postSemanticQuery<SemanticZoneDelaySummaryRecord>(semanticQueryCatalog.zoneDelaySummary),
+    postSemanticQuery<SemanticSpareWaitSummaryRecord>(semanticQueryCatalog.spareWaitSummary),
+    postSemanticQuery<SemanticTrustFindingRecord>(semanticQueryCatalog.trustFindingList),
+    postSemanticQuery<SemanticImpactSummaryRecord>(semanticQueryCatalog.impactSummary),
+    postSemanticQuery<SemanticTopologyDependencyRecord>(semanticQueryCatalog.topologyDependencies),
+    postSemanticQuery<SemanticOntologyReviewQueueRecord>(semanticQueryCatalog.promotionReviewQueue),
+    postSemanticQuery<SemanticOntologyReviewQueueRecord>(semanticQueryCatalog.reasoningReviewQueue),
   ])
 
   const followUps = applyDashboardFilters(buildFollowUps(queueRecords, detailRecords, dependencyRecords), filters)
@@ -1241,7 +1273,7 @@ export function filterDashboardData(data: DashboardData, filters: DashboardFilte
 }
 
 export async function fetchFilterMetadata(): Promise<FilterMetadata> {
-  const records = await postSemanticQuery<SemanticFilterMetadataRecord>('semanticFilterMetadata')
+  const records = await postSemanticQuery<SemanticFilterMetadataRecord>(semanticQueryCatalog.filterMetadata)
   const grouped = records.reduce<Record<string, FilterOption[]>>((summary, record) => {
     const key = record.filterType
     summary[key] = summary[key] ?? []
@@ -1282,21 +1314,21 @@ export async function fetchRequestDetail(infrastructureRequestId: string): Promi
     dynamicReasoningChangeRecords,
     dynamicActionLifecycleRecords,
   ] = await Promise.all([
-    postSemanticQuery<SemanticFollowUpQueueRecord>('semanticFollowUpQueueList'),
-    postSemanticQuery<SemanticFollowUpDetailRecord>('semanticFollowUpDetail', { incidentIdParam: infrastructureRequestId }),
-    postSemanticQuery<SemanticIncidentEvidenceRecord>('semanticIncidentEvidence', { incidentIdParam: infrastructureRequestId }),
-    postSemanticQuery<SemanticIncidentTimelineRecord>('semanticIncidentTimeline', { incidentIdParam: infrastructureRequestId }),
-    postSemanticQuery<SemanticActionAvailabilityRecord>('semanticAvailableActionsByFinding', { incidentIdParam: infrastructureRequestId }),
-    postSemanticQuery<SemanticActionAuditHistoryRecord>('semanticActionAuditHistoryByIncident', { incidentIdParam: infrastructureRequestId }),
-    postSemanticQuery<SemanticActionNotificationQueueRecord>('semanticActionNotificationQueueByIncident', { incidentIdParam: infrastructureRequestId }),
-    postSemanticQuery<SemanticActionReviewQueueRecord>('semanticActionReviewQueueByIncident', { incidentIdParam: infrastructureRequestId }),
-    postSemanticQuery<SemanticActionTransitionHistoryRecord>('semanticActionTransitionHistoryByIncident', { incidentIdParam: infrastructureRequestId }),
-    postSemanticQuery<SemanticActionDispatchQueueRecord>('semanticActionDispatchQueueByIncident', { incidentIdParam: infrastructureRequestId }),
-    postSemanticQuery<SemanticAiProposalRecord>('semanticAiProposalDetailByIncident', { incidentIdParam: infrastructureRequestId }),
-    postSemanticQuery<SemanticDynamicPlaybackRecord>('semanticDynamicEventTimelineByIncident', { incidentIdParam: infrastructureRequestId }),
-    postSemanticQuery<SemanticDynamicPlaybackRecord>('semanticDynamicStateChangesByIncident', { incidentIdParam: infrastructureRequestId }),
-    postSemanticQuery<SemanticDynamicPlaybackRecord>('semanticDynamicReasoningChangesByIncident', { incidentIdParam: infrastructureRequestId }),
-    postSemanticQuery<SemanticDynamicPlaybackRecord>('semanticDynamicActionLifecycleByIncident', { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticFollowUpQueueRecord>(semanticQueryCatalog.followUpQueueList),
+    postSemanticQuery<SemanticFollowUpDetailRecord>(semanticQueryCatalog.followUpDetail, { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticIncidentEvidenceRecord>(semanticQueryCatalog.incidentEvidence, { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticIncidentTimelineRecord>(semanticQueryCatalog.incidentTimeline, { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticActionAvailabilityRecord>(semanticQueryCatalog.availableActionsByFinding, { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticActionAuditHistoryRecord>(semanticQueryCatalog.actionAuditHistoryByIncident, { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticActionNotificationQueueRecord>(semanticQueryCatalog.actionNotificationQueueByIncident, { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticActionReviewQueueRecord>(semanticQueryCatalog.actionReviewQueueByIncident, { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticActionTransitionHistoryRecord>(semanticQueryCatalog.actionTransitionHistoryByIncident, { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticActionDispatchQueueRecord>(semanticQueryCatalog.actionDispatchQueueByIncident, { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticAiProposalRecord>(semanticQueryCatalog.aiProposalDetailByIncident, { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticDynamicPlaybackRecord>(semanticQueryCatalog.dynamicEventTimelineByIncident, { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticDynamicPlaybackRecord>(semanticQueryCatalog.dynamicStateChangesByIncident, { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticDynamicPlaybackRecord>(semanticQueryCatalog.dynamicReasoningChangesByIncident, { incidentIdParam: infrastructureRequestId }),
+    postSemanticQuery<SemanticDynamicPlaybackRecord>(semanticQueryCatalog.dynamicActionLifecycleByIncident, { incidentIdParam: infrastructureRequestId }),
   ])
   const request = buildFollowUps(queueRecords, detailRecords).find((row) => row.incident_id === infrastructureRequestId)
   if (!request) {
@@ -1423,7 +1455,7 @@ export async function submitAiProposalReview(
 }
 
 export async function fetchDataQualityCheck(checkResultId: string): Promise<DataQualityCheck> {
-  const records = await postSemanticQuery<SemanticTrustFindingRecord>('semanticTrustFindingList', {
+  const records = await postSemanticQuery<SemanticTrustFindingRecord>(semanticQueryCatalog.trustFindingList, {
     trustFindingIdParam: checkResultId,
   })
   const selected = records[0]
@@ -1435,9 +1467,9 @@ export async function fetchDataQualityCheck(checkResultId: string): Promise<Data
 
 export async function fetchTopologyDependencies(): Promise<InfrastructureDependency[]> {
   const [dependencyRecords, queueRecords, detailRecords] = await Promise.all([
-    postSemanticQuery<SemanticTopologyDependencyRecord>('semanticTopologyDependencies'),
-    postSemanticQuery<SemanticFollowUpQueueRecord>('semanticFollowUpQueueList'),
-    postSemanticQuery<SemanticFollowUpDetailRecord>('semanticFollowUpDetail'),
+    postSemanticQuery<SemanticTopologyDependencyRecord>(semanticQueryCatalog.topologyDependencies),
+    postSemanticQuery<SemanticFollowUpQueueRecord>(semanticQueryCatalog.followUpQueueList),
+    postSemanticQuery<SemanticFollowUpDetailRecord>(semanticQueryCatalog.followUpDetail),
   ])
   return buildTopologyDependencies(dependencyRecords, buildFollowUps(queueRecords, detailRecords))
 }
@@ -1447,10 +1479,10 @@ export async function fetchRequestSemanticContext(
   assetId: string,
 ): Promise<RequestSemanticContext> {
   const [validationRecords, evidenceRecords, dependencyRecords, blastRadiusRecords] = await Promise.all([
-    postSemanticQuery<SemanticValidationSummaryRecord>('semanticValidationSummary'),
-    postSemanticQuery<SemanticIncidentEvidenceRecord>('semanticIncidentEvidence', { incidentIdParam: incidentId }),
-    postSemanticQuery<SemanticDependencyImpactRecord>('semanticDependencyImpactByAsset', { assetIdParam: assetId }),
-    postSemanticQuery<SemanticBlastRadiusRecord>('semanticBlastRadiusByAsset', { assetIdParam: assetId }),
+    postSemanticQuery<SemanticValidationSummaryRecord>(semanticQueryCatalog.validationSummary),
+    postSemanticQuery<SemanticIncidentEvidenceRecord>(semanticQueryCatalog.incidentEvidence, { incidentIdParam: incidentId }),
+    postSemanticQuery<SemanticDependencyImpactRecord>(semanticQueryCatalog.dependencyImpactByAsset, { assetIdParam: assetId }),
+    postSemanticQuery<SemanticBlastRadiusRecord>(semanticQueryCatalog.blastRadiusByAsset, { assetIdParam: assetId }),
   ])
   const incidentEvidenceRecords = evidenceRecords
   const dependencyImpactRecords = dependencyRecords
@@ -1464,10 +1496,10 @@ export async function fetchRequestSemanticContext(
 }
 
 async function postSemanticQuery<T>(
-  queryId: string,
-  parameters: Record<string, string> = {},
+  queryId: SemanticQueryId,
+  parameters: SemanticQueryParameters = {},
 ): Promise<T[]> {
-  const response = await fetch(`${SEMANTIC_API_BASE_URL}/semantic/query/${queryId}`, {
+  const response = await fetch(`${SEMANTIC_API_BASE_URL}${semanticQueryPath(queryId)}`, {
     method: 'POST',
     headers: Object.keys(parameters).length ? { 'Content-Type': 'application/json' } : undefined,
     body: Object.keys(parameters).length ? JSON.stringify({ parameters }) : undefined,
@@ -1495,7 +1527,18 @@ function buildFollowUps(
   return queueRecords
     .map((record) => mapFollowUp(record, detailsByIncident.get(record.incidentId), dependenciesByAsset.get(record.assetId) ?? []))
     .sort((left, right) => left.priority_rank - right.priority_rank || right.total_priority_score - left.total_priority_score || left.incident_id.localeCompare(right.incident_id))
+    .filter(uniqueBy((row) => row.incident_id))
     .map((row, index) => ({ ...row, priority_rank: row.priority_rank || index + 1 }))
+}
+
+function uniqueBy<T>(keyFor: (item: T) => string): (item: T) => boolean {
+  const seen = new Set<string>()
+  return (item) => {
+    const key = keyFor(item)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  }
 }
 
 function mapFollowUp(
@@ -1901,6 +1944,14 @@ function buildRequestDetail(
       },
     })),
     provenance_trace: provenanceTrace,
+    ontology_evidence: buildOntologyEvidenceExplanation(
+      request,
+      detail,
+      evidence,
+      workflowTimeline,
+      provenanceTrace,
+      actionAvailabilityRecords,
+    ),
     ontology_actions: mapOntologyActionAffordances(actionAvailabilityRecords),
     action_audit_history: actionAuditRecords.map(mapActionAuditHistory),
     action_notifications: actionNotificationRecords.map(mapActionNotification),
@@ -2247,6 +2298,129 @@ function buildProvenanceTrace(
   return trace
 }
 
+function buildOntologyEvidenceExplanation(
+  request: FollowUpItem,
+  detail: SemanticFollowUpDetailRecord | undefined,
+  evidence: SemanticIncidentEvidenceRecord[],
+  workflowTimeline: SemanticIncidentTimelineRecord[],
+  provenanceTrace: ProvenanceTraceItem[],
+  actionAvailabilityRecords: SemanticActionAvailabilityRecord[],
+): OntologyEvidenceExplanation {
+  const latestWorkflow = workflowTimeline.at(-1)
+  const evidenceIssueCount = uniqueTrustFindingEvidence(evidence.filter((record) => record.trustFindingUri)).length
+  const actionDetails = actionAvailabilityRecords.reduce<Map<string, SemanticActionAvailabilityRecord[]>>((summary, record) => {
+    const existing = summary.get(record.actionId) ?? []
+    existing.push(record)
+    summary.set(record.actionId, existing)
+    return summary
+  }, new Map())
+  const availableActionCount = [...actionDetails.values()].filter((records) =>
+    records.some((record) => record.actionStatus !== 'DISABLED'),
+  ).length
+  const blockedActionCount = [...actionDetails.values()].length - availableActionCount
+  const directFacts: OntologyEvidenceFact[] = [
+    {
+      kind: 'direct-fact',
+      label: 'Incident to asset assertion',
+      value: `${request.incident_id} -> ${request.asset_id}`,
+      detail: `${request.asset_name} in ${request.zone_name}`,
+      resource_uri: detail?.incidentUri ?? `urn:dcai:incident:${request.incident_id}`,
+      confidence: 'trusted',
+    },
+    {
+      kind: 'direct-fact',
+      label: 'Workflow state',
+      value: formatOntologyFactValue(latestWorkflow?.stageLabel ?? latestWorkflow?.stageUri ?? request.current_stage),
+      detail: latestWorkflow?.delayHours && latestWorkflow.delayHours > 0
+        ? `${latestWorkflow.delayHours}h over threshold`
+        : `${request.hours_in_current_stage.toFixed(1)}h in selected stage`,
+      resource_uri: latestWorkflow?.eventUri ?? null,
+      confidence: request.hours_in_current_stage > 0 ? 'review' : 'trusted',
+    },
+    {
+      kind: 'direct-fact',
+      label: 'Impact observation',
+      value: `${request.affected_gpu_count} GPUs / ${request.estimated_capacity_risk_kw.toFixed(0)} kW`,
+      detail: `Redundancy ${formatOntologyFactValue(request.redundancy_state ?? 'UNKNOWN')}`,
+      resource_uri: detail?.impactUri ?? null,
+      confidence: request.impact_confidence_status === 'TRUSTED' ? 'trusted' : 'review',
+    },
+  ]
+
+  const inferredFacts: OntologyEvidenceFact[] = [
+    {
+      kind: 'inferred-fact',
+      label: 'Restore readiness',
+      value: request.restore_readiness_status,
+      detail: request.restore_readiness_summary ?? 'No restore-readiness reasoning summary is attached',
+      resource_uri: detail?.restoreReadinessUri ?? null,
+      confidence: request.restore_readiness_status === 'NOT_READY' ? 'blocked' : request.restore_readiness_status === 'READY' ? 'trusted' : 'review',
+    },
+    {
+      kind: 'inferred-fact',
+      label: 'Recovery blocker',
+      value: detail?.recoveryBlockerUri ? 'Derived blocker' : 'No blocker finding',
+      detail: detail?.blockerSummary ?? request.reason_summary,
+      resource_uri: detail?.recoveryBlockerUri ?? null,
+      confidence: detail?.recoveryBlockerUri ? 'blocked' : 'review',
+    },
+    {
+      kind: 'inferred-fact',
+      label: 'Evidence trust',
+      value: evidenceIssueCount ? `${evidenceIssueCount} trust issue${evidenceIssueCount === 1 ? '' : 's'}` : 'Trusted',
+      detail: evidenceIssueCount ? 'Trust findings are linked to source evidence' : 'No trust finding is linked to this selected incident',
+      resource_uri: evidence.find((record) => record.trustFindingUri)?.trustFindingUri ?? null,
+      confidence: evidenceIssueCount ? 'review' : 'trusted',
+    },
+  ]
+
+  const provenanceLinks = provenanceTrace.map<OntologyEvidenceFact>((item) => ({
+    kind: 'provenance',
+    label: item.step,
+    value: item.label,
+    detail: item.detail,
+    resource_uri: item.resource_uri,
+    confidence: 'trusted',
+  }))
+
+  const actionEligibility = [...actionDetails.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map<OntologyEvidenceFact>(([actionId, records]) => {
+      const disabledReason = records.find((record) => record.detailKind === 'disabledReason')?.detailValue
+      const requiredParameters = records.filter((record) => record.detailKind === 'requiredParameter').length
+      const provenanceRequirements = records.filter((record) => record.detailKind === 'provenanceRequirement').length
+      const status = records[0]?.actionStatus ?? 'UNKNOWN'
+      return {
+        kind: 'action-eligibility',
+        label: actionId,
+        value: status,
+        detail: disabledReason ?? `${requiredParameters} required parameter${requiredParameters === 1 ? '' : 's'} and ${provenanceRequirements} provenance gate${provenanceRequirements === 1 ? '' : 's'}`,
+        resource_uri: records.find((record) => record.detailKind === 'targetObject')?.detailValue ?? null,
+        confidence: status === 'DISABLED' ? 'review' : 'trusted',
+      }
+    })
+
+  return {
+    question: 'Why is this selected finding actionable?',
+    answer: [
+      `${request.incident_id} is linked to ${request.asset_name} through canonical graph facts.`,
+      request.restore_readiness_status === 'NOT_READY'
+        ? 'Reasoning marks restore readiness as blocked.'
+        : 'Reasoning keeps restore readiness available for review.',
+      evidenceIssueCount ? `${evidenceIssueCount} trust issue${evidenceIssueCount === 1 ? '' : 's'} need review.` : 'Evidence trust is currently clean.',
+      blockedActionCount ? `${blockedActionCount} governed action path${blockedActionCount === 1 ? '' : 's'} remain gated.` : 'Governed action paths are available for local audit.',
+    ].join(' '),
+    direct_facts: directFacts,
+    inferred_facts: inferredFacts,
+    provenance_links: provenanceLinks,
+    action_eligibility: actionEligibility,
+  }
+}
+
+function formatOntologyFactValue(value: string): string {
+  return humanize(canonicalStage(value))
+}
+
 function pushTrace(trace: ProvenanceTraceItem[], item: ProvenanceTraceItem) {
   if (!item.resource_uri || trace.some((existing) => existing.resource_uri === item.resource_uri)) {
     return
@@ -2343,8 +2517,20 @@ function mapSemanticDependencyImpact(
         dependency_asset_id: record.dependencyAssetId as string,
         dependency_type: record.impactScope ?? 'SEMANTIC_DEPENDENCY',
         dependency_role: record.dependencyRole ?? 'dependency',
+        finding_uri: record.findingUri ?? null,
+        finding_summary: record.findingSummary ?? null,
+        source_record_uri: record.sourceRecordUri ?? null,
       })),
     inferred_downstream_assets: unique(records.map((record) => record.dependencyAssetId).filter(Boolean) as string[]),
+    reasoning_findings: uniqueReasoningFindings(
+      records
+        .filter((record) => record.findingUri)
+        .map((record) => ({
+          finding_uri: record.findingUri as string,
+          summary: record.findingSummary ?? 'Dependency exposure finding',
+          source_record_uri: record.sourceRecordUri ?? null,
+        })),
+    ),
   }
 }
 
@@ -2356,6 +2542,15 @@ function mapSemanticBlastRadius(
     asset_id: assetId,
     inferred_downstream_assets: unique(records.map((record) => record.downstreamAssetId).filter(Boolean) as string[]),
     affected_incident_count: unique(records.map((record) => record.incidentId).filter(Boolean) as string[]).length,
+    reasoning_findings: uniqueReasoningFindings(
+      records
+        .filter((record) => record.findingUri)
+        .map((record) => ({
+          finding_uri: record.findingUri as string,
+          summary: record.findingSummary ?? 'Blast-radius finding',
+          source_record_uri: null,
+        })),
+    ),
     affected_incidents: records
       .filter((record) => record.incidentId)
       .map((record) => ({
@@ -2365,6 +2560,15 @@ function mapSemanticBlastRadius(
         stage: 'SEMANTIC_GRAPH',
       })),
   }
+}
+
+function uniqueReasoningFindings(findings: SemanticReasoningFinding[]): SemanticReasoningFinding[] {
+  return [...findings.reduce<Map<string, SemanticReasoningFinding>>((summary, finding) => {
+    if (!summary.has(finding.finding_uri)) {
+      summary.set(finding.finding_uri, finding)
+    }
+    return summary
+  }, new Map()).values()]
 }
 
 function topStage(rows: FollowUpItem[]): string | null {

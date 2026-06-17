@@ -28,7 +28,7 @@ class PrivateAiGovernanceEndpoint(
                 message = "Private AI governance route must match $AI_PROPOSAL_REVIEW_PATH.",
             )
         }
-        if (request.body.containsRawSparql()) {
+        if (PrivateEndpointPayload.containsRawSparql(request.body)) {
             return error(
                 statusCode = 400,
                 message = "Private AI governance endpoint does not accept raw SPARQL.",
@@ -36,7 +36,12 @@ class PrivateAiGovernanceEndpoint(
         }
 
         return try {
-            val payload = request.body.stringPayload()
+            val payload = PrivateEndpointPayload.stringObject(
+                body = request.body,
+                allowedFields = ALLOWED_FIELDS,
+                bodyLabel = "AI proposal review",
+                fieldLabel = "AI proposal review",
+            )
             val decision = AiGovernanceReviewDecision.fromId(payload.required("decision"))
                 ?: return error(
                     statusCode = 400,
@@ -170,70 +175,8 @@ class PrivateAiGovernanceEndpoint(
         )
     }
 
-    private fun String.containsRawSparql(): Boolean {
-        val normalized = lowercase()
-        return normalized.contains("\"sparql\"") ||
-            normalized.contains("\"query\"") ||
-            RAW_SPARQL_KEYWORD.containsMatchIn(this)
-    }
-
-    private fun String.stringPayload(): Map<String, String> {
-        require(trim().startsWith("{") && trim().endsWith("}")) {
-            "AI proposal review body must be a JSON object with string values."
-        }
-        val matches = FIELD_PAIR.findAll(this).toList()
-        val unmatchedBody = matches.fold(trim().removePrefix("{").removeSuffix("}")) { remaining, match ->
-            remaining.replace(match.value, "")
-        }
-        require(unmatchedBody.replace(",", "").isBlank()) {
-            "AI proposal review body must contain only string fields."
-        }
-        return matches.associate { match ->
-            val key = match.groupValues[1]
-            require(key in ALLOWED_FIELDS) { "Unsupported AI proposal review field: $key" }
-            key to match.groupValues[2].unescapeJsonString()
-        }
-    }
-
-    private fun Map<String, String>.required(key: String): String {
-        return this[key]?.trim()?.takeIf(String::isNotBlank)
-            ?: throw IllegalArgumentException("Missing required AI proposal review field: $key")
-    }
-
-    private fun Map<String, String>.requiredControlled(key: String): String {
-        return required(key).also { value ->
-            require(CONTROLLED_TOKEN.matches(value)) { "$key must use the controlled local identifier vocabulary" }
-        }
-    }
-
-    private fun Map<String, String>.optionalControlled(key: String): String? {
-        return this[key]?.trim()?.takeIf(String::isNotBlank)?.also { value ->
-            require(CONTROLLED_TOKEN.matches(value)) { "$key must use the controlled local identifier vocabulary" }
-        }
-    }
-
-    private fun Map<String, String>.requiredUri(key: String): String {
-        return required(key).also { value ->
-            require(value.startsWith("urn:dcai:")) { "$key must be a controlled DCAI URN" }
-        }
-    }
-
-    private fun String.unescapeJsonString(): String {
-        return replace("\\\"", "\"")
-            .replace("\\\\", "\\")
-            .replace("\\n", "\n")
-            .replace("\\r", "\r")
-            .replace("\\t", "\t")
-    }
-
     companion object {
         const val AI_PROPOSAL_REVIEW_PATH = "/semantic/internal/ai-proposal-review"
-        private val FIELD_PAIR = Regex("\"([A-Za-z][A-Za-z0-9_]*)\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"")
-        private val CONTROLLED_TOKEN = Regex("[A-Za-z0-9._:-]+")
-        private val RAW_SPARQL_KEYWORD = Regex(
-            pattern = "\\b(select|ask|construct|describe|insert|delete|update|where)\\b",
-            options = setOf(RegexOption.IGNORE_CASE),
-        )
         private val ALLOWED_FIELDS = setOf(
             "reviewId",
             "idempotencyKey",

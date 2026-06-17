@@ -1,6 +1,6 @@
 package com.dcai.semanticservice.promotion
 
-import com.dcai.semanticservice.graph.NamedGraphSnapshot
+import com.dcai.semanticservice.graph.ManagedGraphWriteCoordinator
 import com.dcai.semanticservice.graph.NamedGraphStore
 import com.dcai.semanticservice.ingestion.SourceExtractBatch
 import com.dcai.semanticservice.ingestion.SourceExtractRdfMapper
@@ -16,6 +16,8 @@ class GraphPromotionService(
     private val validationGate: ProductionGraphValidationGate,
     private val graphStore: NamedGraphStore,
 ) : SourceGraphPromoter {
+    private val graphWrites = ManagedGraphWriteCoordinator(graphStore)
+
     override fun promote(plan: ProductionGraphPromotionPlan): GraphPromotionResult {
         val mapping = mapper.map(plan.batch)
         val validation = validationGate.validate(mapping.combinedValidationModel())
@@ -29,7 +31,7 @@ class GraphPromotionService(
 
         val graphModels = plan.graphs.models(mapping)
         val snapshots = runCatching {
-            graphModels.keys.associateWith { graphUri -> graphStore.readNamedGraph(graphUri) }
+            graphWrites.snapshot(graphModels.keys)
         }.getOrElse { error ->
             return GraphPromotionResult(
                 promoted = false,
@@ -38,46 +40,28 @@ class GraphPromotionService(
             )
         }
 
-        val writtenGraphs = mutableListOf<String>()
-        return runCatching {
-            graphModels.forEach { (graphUri, model) ->
-                graphStore.replaceNamedGraph(graphUri, model)
-                writtenGraphs += graphUri
-            }
+        val write = graphWrites.replaceAll(
+            graphModels = graphModels,
+            snapshots = snapshots,
+            writeFailurePrefix = "Promotion write failed",
+            rollbackFailurePrefix = "Rollback failed",
+        )
+        return if (write.succeeded) {
             GraphPromotionResult(
                 promoted = true,
                 validation = validation,
-                writtenGraphUris = writtenGraphs.toList(),
+                writtenGraphUris = write.writtenGraphUris,
                 releaseManifest = PromotionReleaseManifest.from(plan),
             )
-        }.getOrElse { writeError ->
-            val rollbackErrors = rollback(writtenGraphs.asReversed(), snapshots)
+        } else {
             GraphPromotionResult(
                 promoted = false,
                 validation = validation,
-                writtenGraphUris = writtenGraphs.toList(),
-                rollbackAttempted = true,
-                rollbackSucceeded = rollbackErrors.isEmpty(),
-                errors = listOf("Promotion write failed: ${writeError.message}") + rollbackErrors,
+                writtenGraphUris = write.writtenGraphUris,
+                rollbackAttempted = write.rollbackAttempted,
+                rollbackSucceeded = write.rollbackSucceeded,
+                errors = write.errors,
             )
-        }
-    }
-
-    private fun rollback(
-        writtenGraphs: List<String>,
-        snapshots: Map<String, NamedGraphSnapshot>,
-    ): List<String> {
-        return writtenGraphs.mapNotNull { graphUri ->
-            val snapshot = snapshots.getValue(graphUri)
-            runCatching {
-                if (snapshot.exists) {
-                    graphStore.replaceNamedGraph(graphUri, snapshot.copyModel())
-                } else {
-                    graphStore.deleteNamedGraph(graphUri)
-                }
-            }.exceptionOrNull()?.let { error ->
-                "Rollback failed for $graphUri: ${error.message}"
-            }
         }
     }
 }

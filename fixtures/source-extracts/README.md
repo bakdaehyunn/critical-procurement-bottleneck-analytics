@@ -10,6 +10,8 @@ Recorded source-system connector simulation v1 uses deterministic CSV exports
 under `fixtures/source-extracts/recorded-source-systems/local-ops-v1/`.
 Seeded recorded scenario generation v1 can generate the same connector export
 shape under `fixtures/source-extracts/generated-scenarios/`.
+The local MVP connector contract fixture is
+`fixtures/source-extracts/connector-contracts/recorded-source-system-v1.properties`.
 
 The controlled fixture covers these source record families:
 
@@ -73,6 +75,12 @@ a `manifest.properties` file and CSV exports for source-system-shaped data:
 - `work_orders.csv`
 - `validation_results.csv`
 - `telemetry_impacts.csv`
+
+The manifest should identify the local connector contract with
+`connectorContract.id=recorded-source-system-contract-v1` and
+`connectorContract.version=2026-06-mvp`. The loader reports these values so a
+promotion run can be traced back to the controlled contract used for the local
+recorded export.
 
 The semantic-service adapter maps these connector-style exports into the
 existing Kotlin `SourceExtractBatch` DTOs before the normal SHACL/provenance
@@ -138,3 +146,8 @@ docker run --rm \
 
 The generator is local-only. It does not connect to external systems or approve
 arbitrary source ingestion.
+
+Generated batches also include `scenario_inventory.csv`, a non-promoted review
+file that explains scenario type, operational narrative, source-system families,
+expected reasoning focus, and replay window. It is there to make MVP review and
+browser verification easier; it is not canonical source truth.

@@ -183,6 +183,10 @@ class RecordedSourceConnectorSimulationLoader {
                 batchId = batch.batchId,
                 sourceSystemId = batch.sourceSystemId,
                 importedAt = batch.importedAt,
+                connectorContractId = manifest.optional("connectorContract.id"),
+                connectorContractVersion = manifest.optional("connectorContract.version"),
+                scenarioProfile = manifest.optional("scenario.profile"),
+                scenarioSeed = manifest.optional("scenario.seed")?.toInt(),
                 sourceFiles = context.sourceFileReports.sortedBy { it.path },
                 rejectedRows = context.rejectedRows,
             ),
@@ -311,8 +315,12 @@ class RecordedSourceConnectorSimulationLoader {
     }
 
     private fun Properties.required(key: String): String {
-        return getProperty(key)?.trim()?.takeIf { it.isNotEmpty() }
+        return optional(key)
             ?: error("Missing required recorded connector manifest field: $key")
+    }
+
+    private fun Properties.optional(key: String): String? {
+        return getProperty(key)?.trim()?.takeIf { it.isNotEmpty() }
     }
 
     private companion object {
@@ -334,6 +342,10 @@ data class RecordedConnectorSimulationReport(
     val batchId: String,
     val sourceSystemId: String,
     val importedAt: Instant,
+    val connectorContractId: String?,
+    val connectorContractVersion: String?,
+    val scenarioProfile: String?,
+    val scenarioSeed: Int?,
     val sourceFiles: List<RecordedConnectorSourceFileReport>,
     val rejectedRows: List<RecordedConnectorRejectedRow>,
 ) {

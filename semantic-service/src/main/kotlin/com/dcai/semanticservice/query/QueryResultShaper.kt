@@ -681,7 +681,10 @@ class QueryResultShaper(
     ): ActionAvailabilityEnvelope {
         return ActionAvailabilityEnvelope(
             queryId = report.queryId,
-            records = report.rows.map { row ->
+            records = report.rows.mapNotNull { row ->
+                if (!row.hasAllActionAvailabilityBindings()) {
+                    return@mapNotNull null
+                }
                 ActionAvailabilityRecord(
                     graphUri = row.required("graph"),
                     incidentUri = row.required("incident"),
@@ -939,6 +942,27 @@ class QueryResultShaper(
             queryId = definition.id,
             graphScope = definition.graphScope,
         )
+    }
+
+    private fun Map<String, String>.hasAllActionAvailabilityBindings(): Boolean {
+        return listOf(
+            "graph",
+            "incident",
+            "incidentId",
+            "asset",
+            "assetId",
+            "sourceRecord",
+            "actionId",
+            "actionLabel",
+            "actionDescription",
+            "actionStatus",
+            "uiPlacement",
+            "detailKind",
+            "detailRole",
+            "detailLabel",
+            "detailValue",
+            "detailSortOrder",
+        ).all { key -> !this[key].isNullOrBlank() }
     }
 
     private fun Map<String, String>.required(key: String): String {

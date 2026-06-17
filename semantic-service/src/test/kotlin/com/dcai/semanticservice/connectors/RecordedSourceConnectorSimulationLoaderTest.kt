@@ -35,6 +35,10 @@ class RecordedSourceConnectorSimulationLoaderTest {
         assertEquals(23, report.totalRows)
         assertEquals(21, report.acceptedRows)
         assertEquals(2, report.rejectedRowCount)
+        assertEquals("recorded-source-system-contract-v1", report.connectorContractId)
+        assertEquals("2026-06-mvp", report.connectorContractVersion)
+        assertEquals("demo", report.scenarioProfile)
+        assertEquals(0, report.scenarioSeed)
         assertTrue(report.batchHistoryEntry.contains("accepted=21"))
         assertTrue(report.batchHistoryEntry.contains("rejected=2"))
     }

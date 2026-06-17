@@ -1,5 +1,6 @@
 package com.dcai.semanticservice.actions
 
+import com.dcai.semanticservice.graph.ManagedGraphWriteCoordinator
 import com.dcai.semanticservice.graph.NamedGraphSnapshot
 import com.dcai.semanticservice.graph.NamedGraphStore
 import com.dcai.semanticservice.ingestion.Dcai
@@ -15,6 +16,8 @@ class OntologyActionAuditService(
     private val validationGate: OntologyActionValidationGate,
     private val graphStore: NamedGraphStore,
 ) : OntologyActionSubmitter {
+    private val graphWrites = ManagedGraphWriteCoordinator(graphStore)
+
     override fun submit(plan: OntologyActionAuditPlan): OntologyActionAuditResult {
         val snapshots = runCatching {
             ActionGraphSnapshots(
@@ -74,37 +77,29 @@ class OntologyActionAuditService(
             )
         }
 
-        return runCatching {
-            graphStore.replaceNamedGraph(plan.graphs.actionAuditGraphUri, combined)
+        val write = graphWrites.replaceAll(
+            graphModels = mapOf(plan.graphs.actionAuditGraphUri to combined),
+            snapshots = mapOf(plan.graphs.actionAuditGraphUri to snapshots.actionAudit),
+            writeFailurePrefix = "Action audit graph write failed",
+            rollbackFailurePrefix = "Action audit rollback failed",
+        )
+        return if (write.succeeded) {
             OntologyActionAuditResult(
                 audited = true,
                 validation = validation,
                 actionAuditGraphUri = plan.graphs.actionAuditGraphUri,
-                writtenGraphUris = listOf(plan.graphs.actionAuditGraphUri),
+                writtenGraphUris = write.writtenGraphUris,
             )
-        }.getOrElse { writeError ->
-            val rollbackErrors = rollback(plan.graphs.actionAuditGraphUri, snapshots.actionAudit)
+        } else {
             OntologyActionAuditResult(
                 audited = false,
                 validation = validation,
                 actionAuditGraphUri = plan.graphs.actionAuditGraphUri,
-                rollbackAttempted = true,
-                rollbackSucceeded = rollbackErrors.isEmpty(),
-                errors = listOf("Action audit graph write failed: ${writeError.message}") + rollbackErrors,
+                rollbackAttempted = write.rollbackAttempted,
+                rollbackSucceeded = write.rollbackSucceeded,
+                errors = write.errors,
             )
         }
-    }
-
-    private fun rollback(graphUri: String, snapshot: NamedGraphSnapshot): List<String> {
-        return runCatching {
-            if (snapshot.exists) {
-                graphStore.replaceNamedGraph(graphUri, snapshot.copyModel())
-            } else {
-                graphStore.deleteNamedGraph(graphUri)
-            }
-        }.exceptionOrNull()?.let { error ->
-            listOf("Action audit rollback failed for $graphUri: ${error.message}")
-        } ?: emptyList()
     }
 
     private data class ActionGraphSnapshots(

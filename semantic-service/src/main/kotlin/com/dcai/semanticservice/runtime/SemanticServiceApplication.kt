@@ -391,6 +391,10 @@ object SemanticServiceApplication {
         report.recordedConnectorReport?.let { connectorReport ->
             println("recordedConnectorBatch=${connectorReport.batchId}")
             println("recordedConnectorSourceSystem=${connectorReport.sourceSystemId}")
+            connectorReport.connectorContractId?.let { println("recordedConnectorContract=$it") }
+            connectorReport.connectorContractVersion?.let { println("recordedConnectorContractVersion=$it") }
+            connectorReport.scenarioProfile?.let { println("recordedConnectorScenarioProfile=$it") }
+            connectorReport.scenarioSeed?.let { println("recordedConnectorScenarioSeed=$it") }
             println("recordedConnectorTotalRows=${connectorReport.totalRows}")
             println("recordedConnectorAcceptedRows=${connectorReport.acceptedRows}")
             println("recordedConnectorRejectedRows=${connectorReport.rejectedRowCount}")

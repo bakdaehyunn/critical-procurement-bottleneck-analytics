@@ -30,6 +30,7 @@ import {
   type OntologyActionAffordance,
   type OntologyActionAuditHistoryItem,
   type OntologyActionDispatchQueueItem,
+  type OntologyEvidenceFact,
   type OntologyActionLifecycleState,
   type OntologyActionNotificationItem,
   type OntologyActionPlacement,
@@ -895,6 +896,8 @@ function RequestDetailView({ detail, semanticContext, topologyDependencies, onAc
 
       <SemanticTracePanel semanticContext={semanticContext} />
 
+      <OntologyEvidenceChainPanel detail={detail} semanticContext={semanticContext} />
+
       <SemanticExplanationCanvas
         detail={detail}
         semanticContext={semanticContext}
@@ -936,8 +939,8 @@ function RequestDetailView({ detail, semanticContext, topologyDependencies, onAc
       <div className="detail-section evidence-section">
         <strong className="detail-section-title">Recovery blocker evidence</strong>
         <div className="blocker-stage-grid">
-          {detail.stage_lead_times.map((stage) => (
-            <div className={stage.is_bottleneck ? 'blocker-stage-card bottleneck' : 'blocker-stage-card'} key={`${stage.stage}-${stage.entered_at}`}>
+          {detail.stage_lead_times.map((stage, index) => (
+            <div className={stage.is_bottleneck ? 'blocker-stage-card bottleneck' : 'blocker-stage-card'} key={`${stage.stage}-${stage.entered_at}-${index}`}>
               <span>{formatStage(stage.stage)}</span>
               <strong>{formatHours(stage.duration_hours)}</strong>
               <small>{stage.delay_hours > 0 ? `${formatHours(stage.delay_hours)} over threshold` : `Threshold ${formatHours(stage.threshold_hours)}`}</small>
@@ -1789,6 +1792,104 @@ function primaryActionTarget(action: OntologyActionAffordance) {
     actionTarget(action, 'InfrastructureIncident')
 }
 
+function OntologyEvidenceChainPanel({ detail, semanticContext }: {
+  detail: RequestDetail
+  semanticContext: RequestSemanticContext | null
+}) {
+  const dependencyFindings = semanticContext?.dependencyImpact.reasoning_findings ?? []
+  const blastFindings = semanticContext?.blastRadius.reasoning_findings ?? []
+  const directFacts: OntologyEvidenceFact[] = [
+    ...detail.ontology_evidence.direct_facts,
+    ...(semanticContext?.dependencyImpact.direct_dependencies ?? []).map((edge) => ({
+      kind: 'direct-fact' as const,
+      label: 'Dependency edge',
+      value: `${edge.dependent_asset_id} -> ${edge.dependency_asset_id}`,
+      detail: `${formatStage(edge.dependency_role)} · ${formatStage(edge.dependency_type)}`,
+      resource_uri: edge.finding_uri ?? edge.source_record_uri,
+      confidence: edge.finding_uri ? 'review' as const : 'trusted' as const,
+    })),
+  ]
+  const inferredFacts: OntologyEvidenceFact[] = [
+    ...detail.ontology_evidence.inferred_facts,
+    ...dependencyFindings.map((finding) => ({
+      kind: 'inferred-fact' as const,
+      label: 'Dependency exposure',
+      value: 'Reasoning finding',
+      detail: finding.summary,
+      resource_uri: finding.finding_uri,
+      confidence: 'review' as const,
+    })),
+    ...blastFindings.map((finding) => ({
+      kind: 'inferred-fact' as const,
+      label: 'Blast radius',
+      value: 'Reasoning finding',
+      detail: finding.summary,
+      resource_uri: finding.finding_uri,
+      confidence: 'review' as const,
+    })),
+  ]
+  return (
+    <section className="ontology-evidence-chain" aria-label="Ontology evidence explanation chain">
+      <div className="ontology-chain-heading">
+        <Database size={18} />
+        <div>
+          <span>Ontology evidence chain</span>
+          <strong>{detail.ontology_evidence.answer}</strong>
+        </div>
+      </div>
+      <div className="ontology-chain-grid">
+        <OntologyEvidenceColumn
+          title="Direct graph facts"
+          subtitle="Canonical RDF assertions from source records"
+          facts={directFacts}
+        />
+        <OntologyEvidenceColumn
+          title="Inferred graph facts"
+          subtitle="Reasoning output for restore, trust, dependency, and blast radius"
+          facts={inferredFacts}
+        />
+        <OntologyEvidenceColumn
+          title="Provenance and gates"
+          subtitle="Source lineage and governed action eligibility"
+          facts={[
+            ...detail.ontology_evidence.provenance_links,
+            ...detail.ontology_evidence.action_eligibility,
+          ]}
+        />
+      </div>
+    </section>
+  )
+}
+
+function OntologyEvidenceColumn({ title, subtitle, facts }: {
+  title: string
+  subtitle: string
+  facts: OntologyEvidenceFact[]
+}) {
+  return (
+    <div className="ontology-chain-column">
+      <div className="ontology-chain-column-heading">
+        <span>{title}</span>
+        <small>{subtitle}</small>
+      </div>
+      {facts.length ? (
+        <div className="ontology-fact-list">
+          {facts.slice(0, 8).map((fact, index) => (
+            <div className={`ontology-fact ${fact.confidence}`} key={`${fact.kind}-${fact.label}-${fact.resource_uri ?? fact.value}-${index}`}>
+              <span>{fact.label}</span>
+              <strong>{fact.value}</strong>
+              <small>{fact.detail}</small>
+              {fact.resource_uri ? <code>{fact.resource_uri}</code> : null}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state compact-empty">No graph facts are available for this evidence group</div>
+      )}
+    </div>
+  )
+}
+
 function SemanticExplanationCanvas({ detail, semanticContext, topologyDependencies }: {
   detail: RequestDetail
   semanticContext: RequestSemanticContext | null
@@ -2303,6 +2404,36 @@ function DependencyDetailView({ detail, semanticContext, topologyDependencies }:
             },
           ]}
         />
+      </div>
+
+      <div className="detail-section evidence-section">
+        <strong className="detail-section-title">Reasoning findings behind this exposure</strong>
+        <div className="ontology-reasoning-finding-grid">
+          {[
+            ...(semanticContext?.dependencyImpact.reasoning_findings ?? []).map((finding) => ({
+              label: 'Dependency exposure',
+              uri: finding.finding_uri,
+              summary: finding.summary,
+              source: finding.source_record_uri,
+            })),
+            ...(semanticContext?.blastRadius.reasoning_findings ?? []).map((finding) => ({
+              label: 'Blast radius',
+              uri: finding.finding_uri,
+              summary: finding.summary,
+              source: finding.source_record_uri,
+            })),
+          ].map((finding) => (
+            <div className="ontology-reasoning-finding" key={`${finding.label}-${finding.uri}`}>
+              <span>{finding.label}</span>
+              <strong>{finding.summary}</strong>
+              {finding.source ? <small>Source {finding.source}</small> : null}
+              <code>{finding.uri}</code>
+            </div>
+          ))}
+          {!(semanticContext?.dependencyImpact.reasoning_findings.length || semanticContext?.blastRadius.reasoning_findings.length) ? (
+            <div className="empty-state compact-empty">No dependency or blast-radius reasoning finding is attached to this selected asset</div>
+          ) : null}
+        </div>
       </div>
 
       <div className="detail-section evidence-section">

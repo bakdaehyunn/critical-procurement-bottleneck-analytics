@@ -44,3 +44,24 @@ Required connector contract areas:
 - impact observations
 - topology dependencies
 - source system provenance
+
+## Local Recorded Contract
+
+The current MVP implementation has a local recorded source-system contract, not
+a real external connector:
+
+- contract fixture:
+  `fixtures/source-extracts/connector-contracts/recorded-source-system-v1.properties`
+- recorded exports:
+  `fixtures/source-extracts/recorded-source-systems/local-ops-v1/`
+- generated scenario exports:
+  `fixtures/source-extracts/generated-scenarios/`
+
+Generated batches include `scenario_inventory.csv` so reviewers can see why a
+batch should exercise dependency exposure, blast radius, trust findings,
+restore readiness, and recovery blockers. That inventory is explanatory and is
+not promoted into canonical RDF in v1.
+
+The local contract is useful for deterministic MVP verification, but it remains
+separate from future source-system-specific connector contracts for DCIM, BMS,
+work-order, validation, topology, and telemetry platforms.

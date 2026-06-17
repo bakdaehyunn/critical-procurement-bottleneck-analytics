@@ -1,7 +1,7 @@
 package com.dcai.semanticservice.dynamic
 
 import com.dcai.semanticservice.actions.OntologyActionGraphUris
-import com.dcai.semanticservice.graph.NamedGraphSnapshot
+import com.dcai.semanticservice.graph.ManagedGraphWriteCoordinator
 import com.dcai.semanticservice.graph.NamedGraphStore
 import com.dcai.semanticservice.ingestion.Dcai
 import com.dcai.semanticservice.ingestion.Prov
@@ -36,6 +36,8 @@ class DynamicPlaybackService(
     private val validationGate: DynamicPlaybackValidationGate,
     private val graphStore: NamedGraphStore,
 ) : DynamicPlaybackRunner {
+    private val graphWrites = ManagedGraphWriteCoordinator(graphStore)
+
     override fun run(plan: DynamicPlaybackPlan): DynamicPlaybackResult {
         val stepResults = mutableListOf<DynamicPlaybackStepResult>()
         val eventRecords = mutableListOf<DynamicPlaybackEventRecord>()
@@ -112,8 +114,13 @@ class DynamicPlaybackService(
             )
         }
 
-        return runCatching {
-            graphStore.replaceNamedGraph(plan.graphs.actionAuditGraphUri, candidate)
+        val write = graphWrites.replaceAll(
+            graphModels = mapOf(plan.graphs.actionAuditGraphUri to candidate),
+            snapshots = mapOf(plan.graphs.actionAuditGraphUri to snapshot),
+            writeFailurePrefix = "Dynamic playback graph write failed",
+            rollbackFailurePrefix = "Dynamic playback rollback failed",
+        )
+        return if (write.succeeded) {
             DynamicPlaybackResult(
                 played = true,
                 scenarioId = plan.scenario.scenarioId,
@@ -121,10 +128,9 @@ class DynamicPlaybackService(
                 actionAuditGraphUri = plan.graphs.actionAuditGraphUri,
                 stepResults = stepResults.toList(),
                 validation = validation,
-                writtenGraphUris = listOf(plan.graphs.actionAuditGraphUri),
+                writtenGraphUris = write.writtenGraphUris,
             )
-        }.getOrElse { writeError ->
-            val rollbackErrors = rollback(plan.graphs.actionAuditGraphUri, snapshot)
+        } else {
             DynamicPlaybackResult(
                 played = false,
                 scenarioId = plan.scenario.scenarioId,
@@ -132,23 +138,11 @@ class DynamicPlaybackService(
                 actionAuditGraphUri = plan.graphs.actionAuditGraphUri,
                 stepResults = stepResults.toList(),
                 validation = validation,
-                rollbackAttempted = true,
-                rollbackSucceeded = rollbackErrors.isEmpty(),
-                errors = listOf("Dynamic playback graph write failed: ${writeError.message}") + rollbackErrors,
+                rollbackAttempted = write.rollbackAttempted,
+                rollbackSucceeded = write.rollbackSucceeded,
+                errors = write.errors,
             )
         }
-    }
-
-    private fun rollback(graphUri: String, snapshot: NamedGraphSnapshot): List<String> {
-        return runCatching {
-            if (snapshot.exists) {
-                graphStore.replaceNamedGraph(graphUri, snapshot.copyModel())
-            } else {
-                graphStore.deleteNamedGraph(graphUri)
-            }
-        }.exceptionOrNull()?.let { error ->
-            listOf("Dynamic playback rollback failed for $graphUri: ${error.message}")
-        } ?: emptyList()
     }
 }
 

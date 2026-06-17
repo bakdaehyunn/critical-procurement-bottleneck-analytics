@@ -1,5 +1,6 @@
 package com.dcai.semanticservice.governance
 
+import com.dcai.semanticservice.graph.ManagedGraphWriteCoordinator
 import com.dcai.semanticservice.graph.NamedGraphSnapshot
 import com.dcai.semanticservice.graph.NamedGraphStore
 import com.dcai.semanticservice.ingestion.Dcai
@@ -29,6 +30,8 @@ class AiGovernanceProposalService(
     private val validationGate: AiGovernanceProposalValidationGate,
     private val graphStore: NamedGraphStore,
 ) : AiGovernanceProposalSubmitter {
+    private val graphWrites = ManagedGraphWriteCoordinator(graphStore)
+
     override fun submit(plan: AiGovernanceProposalPlan): AiGovernanceProposalResult {
         val snapshots = runCatching {
             AiGovernanceGraphSnapshots(
@@ -83,37 +86,29 @@ class AiGovernanceProposalService(
             )
         }
 
-        return runCatching {
-            graphStore.replaceNamedGraph(plan.graphs.aiAuditGraphUri, candidate)
+        val write = graphWrites.replaceAll(
+            graphModels = mapOf(plan.graphs.aiAuditGraphUri to candidate),
+            snapshots = mapOf(plan.graphs.aiAuditGraphUri to snapshots.aiAudit),
+            writeFailurePrefix = "AI governance proposal graph write failed",
+            rollbackFailurePrefix = "AI governance rollback failed",
+        )
+        return if (write.succeeded) {
             AiGovernanceProposalResult(
                 proposed = true,
                 validation = validation,
                 aiAuditGraphUri = plan.graphs.aiAuditGraphUri,
-                writtenGraphUris = listOf(plan.graphs.aiAuditGraphUri),
+                writtenGraphUris = write.writtenGraphUris,
             )
-        }.getOrElse { writeError ->
-            val rollbackErrors = rollback(plan.graphs.aiAuditGraphUri, snapshots.aiAudit)
+        } else {
             AiGovernanceProposalResult(
                 proposed = false,
                 validation = validation,
                 aiAuditGraphUri = plan.graphs.aiAuditGraphUri,
-                rollbackAttempted = true,
-                rollbackSucceeded = rollbackErrors.isEmpty(),
-                errors = listOf("AI governance proposal graph write failed: ${writeError.message}") + rollbackErrors,
+                rollbackAttempted = write.rollbackAttempted,
+                rollbackSucceeded = write.rollbackSucceeded,
+                errors = write.errors,
             )
         }
-    }
-
-    private fun rollback(graphUri: String, snapshot: NamedGraphSnapshot): List<String> {
-        return runCatching {
-            if (snapshot.exists) {
-                graphStore.replaceNamedGraph(graphUri, snapshot.copyModel())
-            } else {
-                graphStore.deleteNamedGraph(graphUri)
-            }
-        }.exceptionOrNull()?.let { error ->
-            listOf("AI governance rollback failed for $graphUri: ${error.message}")
-        } ?: emptyList()
     }
 
     private data class AiGovernanceGraphSnapshots(
@@ -153,7 +148,7 @@ class AiGovernanceProposalRdfMapper {
         model.add(proposal, Dcai.hasPromptHash, request.promptHash)
         model.add(proposal, Dcai.hasActorId, request.actorId)
         model.add(proposal, Dcai.hasAIGovernanceReviewStatus, "PENDING_HUMAN_REVIEW")
-        model.add(proposal, Dcai.hasAIGovernanceDisabledReason, "AI proposal review is read-only; approval mutation path is not implemented.")
+        model.add(proposal, Dcai.hasAIGovernanceDisabledReason, "AI proposal is pending human review; approved action handoff remains confined to managed audit graphs.")
         model.add(proposal, Dcai.hasTargetObject, target)
         model.add(proposal, Dcai.hasTargetObject, incident)
         model.add(proposal, Prov.used, sourceRecord)

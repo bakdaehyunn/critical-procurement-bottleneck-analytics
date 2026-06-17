@@ -663,6 +663,24 @@ class QueryResultShaperTest {
     }
 
     @Test
+    fun skipsIncompleteActionAvailabilityRows() {
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticAvailableActionsByFinding",
+                mode = QueryMode.SELECT,
+                rows = listOf(
+                    actionAvailabilityRow() - "detailKind",
+                    actionAvailabilityRow(),
+                ),
+            ),
+        )
+
+        val typed = assertIs<ActionAvailabilityEnvelope>(envelope)
+        assertEquals(1, typed.records.size)
+        assertEquals("targetObject", typed.records.single().detailKind)
+    }
+
+    @Test
     fun shapesActionNotificationQueueRows() {
         val envelope = shaper.shape(
             QueryExecutionReport(

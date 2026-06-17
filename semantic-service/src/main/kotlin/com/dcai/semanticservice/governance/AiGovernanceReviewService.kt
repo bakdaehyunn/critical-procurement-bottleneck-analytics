@@ -6,7 +6,7 @@ import com.dcai.semanticservice.actions.OntologyActionGraphUris
 import com.dcai.semanticservice.actions.OntologyActionRequest
 import com.dcai.semanticservice.actions.OntologyActionSubmitter
 import com.dcai.semanticservice.actions.OntologyActionType
-import com.dcai.semanticservice.actions.OntologyActionValidationReport
+import com.dcai.semanticservice.graph.ManagedGraphWriteCoordinator
 import com.dcai.semanticservice.graph.NamedGraphSnapshot
 import com.dcai.semanticservice.graph.NamedGraphStore
 import com.dcai.semanticservice.ingestion.Dcai
@@ -148,6 +148,8 @@ class AiGovernanceReviewService(
     private val graphStore: NamedGraphStore,
     private val actionSubmitter: OntologyActionSubmitter,
 ) : AiGovernanceReviewSubmitter {
+    private val graphWrites = ManagedGraphWriteCoordinator(graphStore)
+
     override fun submit(plan: AiGovernanceReviewPlan): AiGovernanceReviewResult {
         val snapshots = runCatching {
             AiGovernanceReviewGraphSnapshots(
@@ -201,26 +203,26 @@ class AiGovernanceReviewService(
             )
         }
 
-        return runCatching {
-            graphStore.replaceNamedGraph(plan.graphs.aiAuditGraphUri, candidate)
-        }.fold(
-            onSuccess = {
-                submitActionIfRequired(plan, proposalFacts, snapshots.aiAudit, validation)
-            },
-            onFailure = { writeError ->
-                val rollbackErrors = rollback(plan.graphs.aiAuditGraphUri, snapshots.aiAudit)
-                AiGovernanceReviewResult(
-                    reviewed = false,
-                    decision = plan.request.decision,
-                    validation = validation,
-                    aiAuditGraphUri = plan.graphs.aiAuditGraphUri,
-                    actionAuditGraphUri = plan.graphs.actionAuditGraphUri,
-                    rollbackAttempted = true,
-                    rollbackSucceeded = rollbackErrors.isEmpty(),
-                    errors = listOf("AI governance review graph write failed: ${writeError.message}") + rollbackErrors,
-                )
-            },
+        val write = graphWrites.replaceAll(
+            graphModels = mapOf(plan.graphs.aiAuditGraphUri to candidate),
+            snapshots = mapOf(plan.graphs.aiAuditGraphUri to snapshots.aiAudit),
+            writeFailurePrefix = "AI governance review graph write failed",
+            rollbackFailurePrefix = "AI governance review rollback failed",
         )
+        return if (write.succeeded) {
+            submitActionIfRequired(plan, proposalFacts, snapshots.aiAudit, validation)
+        } else {
+            AiGovernanceReviewResult(
+                reviewed = false,
+                decision = plan.request.decision,
+                validation = validation,
+                aiAuditGraphUri = plan.graphs.aiAuditGraphUri,
+                actionAuditGraphUri = plan.graphs.actionAuditGraphUri,
+                rollbackAttempted = write.rollbackAttempted,
+                rollbackSucceeded = write.rollbackSucceeded,
+                errors = write.errors,
+            )
+        }
     }
 
     private fun submitActionIfRequired(
@@ -290,7 +292,11 @@ class AiGovernanceReviewService(
         message: String,
         actionResult: OntologyActionAuditResult? = null,
     ): AiGovernanceReviewResult {
-        val rollbackErrors = rollback(plan.graphs.aiAuditGraphUri, snapshot)
+        val rollbackErrors = graphWrites.rollback(
+            graphUri = plan.graphs.aiAuditGraphUri,
+            snapshot = snapshot,
+            rollbackFailurePrefix = "AI governance review rollback failed",
+        )
         return AiGovernanceReviewResult(
             reviewed = false,
             decision = plan.request.decision,
@@ -423,18 +429,6 @@ class AiGovernanceReviewService(
         model.add(decision, Prov.wasDerivedFrom, proposal)
         model.add(decision, Prov.generatedAtTime, ResourceFactory.createTypedLiteral(request.reviewedAt.toString(), XSDDatatype.XSDdateTime))
         return model
-    }
-
-    private fun rollback(graphUri: String, snapshot: NamedGraphSnapshot): List<String> {
-        return runCatching {
-            if (snapshot.exists) {
-                graphStore.replaceNamedGraph(graphUri, snapshot.copyModel())
-            } else {
-                graphStore.deleteNamedGraph(graphUri)
-            }
-        }.exceptionOrNull()?.let { error ->
-            listOf("AI governance review rollback failed for $graphUri: ${error.message}")
-        } ?: emptyList()
     }
 
     private fun failed(

@@ -1,6 +1,6 @@
 package com.dcai.semanticservice.actions
 
-import com.dcai.semanticservice.graph.NamedGraphSnapshot
+import com.dcai.semanticservice.graph.ManagedGraphWriteCoordinator
 import com.dcai.semanticservice.graph.NamedGraphStore
 import com.dcai.semanticservice.ingestion.Dcai
 import com.dcai.semanticservice.ingestion.Prov
@@ -22,6 +22,8 @@ class OntologyActionTransitionService(
     private val validationGate: OntologyActionValidationGate,
     private val graphStore: NamedGraphStore,
 ) : OntologyActionTransitionSubmitter {
+    private val graphWrites = ManagedGraphWriteCoordinator(graphStore)
+
     override fun submit(plan: OntologyActionTransitionPlan): OntologyActionTransitionResult {
         val snapshot = runCatching {
             graphStore.readNamedGraph(plan.graphs.actionAuditGraphUri)
@@ -81,25 +83,29 @@ class OntologyActionTransitionService(
             )
         }
 
-        return runCatching {
-            graphStore.replaceNamedGraph(plan.graphs.actionAuditGraphUri, candidate)
+        val write = graphWrites.replaceAll(
+            graphModels = mapOf(plan.graphs.actionAuditGraphUri to candidate),
+            snapshots = mapOf(plan.graphs.actionAuditGraphUri to snapshot),
+            writeFailurePrefix = "Action transition graph write failed",
+            rollbackFailurePrefix = "Action transition rollback failed",
+        )
+        return if (write.succeeded) {
             OntologyActionTransitionResult(
                 transitioned = true,
                 validation = validation,
                 actionAuditGraphUri = plan.graphs.actionAuditGraphUri,
                 currentState = plan.request.toState,
-                writtenGraphUris = listOf(plan.graphs.actionAuditGraphUri),
+                writtenGraphUris = write.writtenGraphUris,
             )
-        }.getOrElse { writeError ->
-            val rollbackErrors = rollback(plan.graphs.actionAuditGraphUri, snapshot)
+        } else {
             OntologyActionTransitionResult(
                 transitioned = false,
                 validation = validation,
                 actionAuditGraphUri = plan.graphs.actionAuditGraphUri,
                 currentState = currentState,
-                rollbackAttempted = true,
-                rollbackSucceeded = rollbackErrors.isEmpty(),
-                errors = listOf("Action transition graph write failed: ${writeError.message}") + rollbackErrors,
+                rollbackAttempted = write.rollbackAttempted,
+                rollbackSucceeded = write.rollbackSucceeded,
+                errors = write.errors,
             )
         }
     }
@@ -213,18 +219,6 @@ class OntologyActionTransitionService(
 
     private fun transition(idempotencyKey: String): Resource {
         return ResourceFactory.createResource("urn:dcai:ontology-action-transition:${encode(idempotencyKey)}")
-    }
-
-    private fun rollback(graphUri: String, snapshot: NamedGraphSnapshot): List<String> {
-        return runCatching {
-            if (snapshot.exists) {
-                graphStore.replaceNamedGraph(graphUri, snapshot.copyModel())
-            } else {
-                graphStore.deleteNamedGraph(graphUri)
-            }
-        }.exceptionOrNull()?.let { error ->
-            listOf("Action transition rollback failed for $graphUri: ${error.message}")
-        } ?: emptyList()
     }
 
     private fun encode(value: String): String {

@@ -25,9 +25,11 @@ class RecordedSourceScenarioGenerator {
         val workOrders = mutableListOf<List<String>>()
         val validations = mutableListOf<List<String>>()
         val telemetryImpacts = mutableListOf<List<String>>()
+        val scenarioInventory = mutableListOf<List<String>>()
 
         repeat(profile.scenarioCount) { index ->
             val scenario = context.scenario(index)
+            scenarioInventory += scenario.inventoryRow()
             assets += scenario.assetRows()
             incidents += scenario.incidentRows()
             dependencies += scenario.dependencyRows()
@@ -57,6 +59,20 @@ class RecordedSourceScenarioGenerator {
         }
 
         val files = listOf(
+            GeneratedCsv(
+                "scenario_inventory.csv",
+                listOf(
+                    "scenarioId",
+                    "incidentId",
+                    "scenarioType",
+                    "operationalNarrative",
+                    "expectedReasoningFocus",
+                    "primarySourceSystems",
+                    "replayWindowStart",
+                    "replayWindowEnd",
+                ),
+                scenarioInventory,
+            ),
             GeneratedCsv("facilities.csv", listOf("facilityId", "label"), facilities),
             GeneratedCsv("zones.csv", listOf("zoneId", "facilityId", "label"), zones),
             GeneratedCsv(
@@ -131,6 +147,12 @@ class RecordedSourceScenarioGenerator {
             sourceSystem.id=generated-recorded-source-${profile.value}
             sourceSystem.label=Generated Recorded Source Scenario ${profile.value}
             importedAt=${request.importedAt}
+            connectorContract.id=recorded-source-system-contract-v1
+            connectorContract.version=2026-06-mvp
+            scenario.profile=${profile.value}
+            scenario.seed=${request.seed}
+            scenario.count=${profile.scenarioCount}
+            scenario.coverage=${ScenarioType.values().joinToString(separator = "|") { it.scenarioType }}
             """.trimIndent() + "\n",
         )
         files.forEach { file ->
@@ -286,6 +308,19 @@ class RecordedSourceScenarioGenerator {
                     type.secondaryTelemetryStatus,
                     type.secondaryTelemetryConfidence,
                 ),
+            )
+        }
+
+        fun inventoryRow(): List<String> {
+            return listOf(
+                id,
+                incident,
+                type.scenarioType,
+                type.operationalNarrative,
+                type.expectedReasoningFocus,
+                type.primarySourceSystems,
+                baseTime.toString(),
+                baseTime.plusSeconds(7200).toString(),
             )
         }
     }
@@ -618,6 +653,43 @@ class RecordedSourceScenarioGenerator {
             "warning",
             "REVIEW_REQUIRED",
         ),
+        ;
+
+        val scenarioType: String
+            get() = name.lowercase().replace("_", "-")
+
+        val operationalNarrative: String
+            get() = when (this) {
+                UPS_DEGRADATION -> "UPS output degradation creates immediate capacity and redundancy risk for a GPU pod"
+                COOLING_INSTABILITY -> "Chilled water instability drives thermal throttling while recovery evidence is still open"
+                TELEMETRY_BRIDGE_FAILURE -> "DCIM telemetry bridge loss forces manual validation before trusting impact claims"
+                DELAYED_WORK_ORDER -> "Field repair is delayed by assignment and dispatch latency despite ongoing mitigation"
+                CONFLICTING_VALIDATION -> "Primary validation passes while secondary evidence conflicts and blocks closure"
+                REPEATED_BLAST_RADIUS -> "Repeated dependency exposure expands blast radius across GPU capacity groups"
+                RECOVERY_BLOCKER -> "Restore readiness is blocked by missing final validation and unresolved signoff"
+            }
+
+        val expectedReasoningFocus: String
+            get() = when (this) {
+                UPS_DEGRADATION -> "dependency-exposure|restore-readiness|capacity-risk"
+                COOLING_INSTABILITY -> "recovery-blocker|thermal-risk|restore-readiness"
+                TELEMETRY_BRIDGE_FAILURE -> "trust-finding|telemetry-gap|manual-validation"
+                DELAYED_WORK_ORDER -> "recovery-blocker|work-order-delay|action-eligibility"
+                CONFLICTING_VALIDATION -> "trust-finding|conflicting-validation|evidence-review"
+                REPEATED_BLAST_RADIUS -> "blast-radius|dependency-exposure|capacity-risk"
+                RECOVERY_BLOCKER -> "recovery-blocker|restore-readiness|trust-finding"
+            }
+
+        val primarySourceSystems: String
+            get() = when (this) {
+                UPS_DEGRADATION -> "dcim|power-monitoring|work-order"
+                COOLING_INSTABILITY -> "bms|dcim|validation"
+                TELEMETRY_BRIDGE_FAILURE -> "dcim|manual-rounds|validation"
+                DELAYED_WORK_ORDER -> "work-order|incident-workflow|validation"
+                CONFLICTING_VALIDATION -> "validation|work-order|dcim"
+                REPEATED_BLAST_RADIUS -> "topology|dcim|incident-workflow"
+                RECOVERY_BLOCKER -> "incident-workflow|validation|work-order"
+            }
     }
 }
 

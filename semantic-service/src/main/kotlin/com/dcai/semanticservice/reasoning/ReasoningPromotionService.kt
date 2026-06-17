@@ -1,6 +1,6 @@
 package com.dcai.semanticservice.reasoning
 
-import com.dcai.semanticservice.graph.NamedGraphSnapshot
+import com.dcai.semanticservice.graph.ManagedGraphWriteCoordinator
 import com.dcai.semanticservice.graph.NamedGraphStore
 import java.time.Instant
 import org.apache.jena.rdf.model.Model
@@ -14,6 +14,8 @@ class ReasoningPromotionService(
     private val validationGate: ReasoningValidationGate,
     private val graphStore: NamedGraphStore,
 ) : ReasoningRefresher {
+    private val graphWrites = ManagedGraphWriteCoordinator(graphStore)
+
     override fun run(plan: ReasoningPromotionPlan): ReasoningPromotionResult {
         val canonicalSnapshot = graphStore.readNamedGraph(plan.inputGraphs.canonicalGraphUri)
         if (!canonicalSnapshot.exists || canonicalSnapshot.model.isEmpty) {
@@ -45,7 +47,7 @@ class ReasoningPromotionService(
 
         val graphModels = plan.outputGraphs.models(output)
         val snapshots = runCatching {
-            graphModels.keys.associateWith { graphUri -> graphStore.readNamedGraph(graphUri) }
+            graphWrites.snapshot(graphModels.keys)
         }.getOrElse { error ->
             return ReasoningPromotionResult(
                 promoted = false,
@@ -55,48 +57,30 @@ class ReasoningPromotionService(
             )
         }
 
-        val writtenGraphs = mutableListOf<String>()
-        return runCatching {
-            graphModels.forEach { (graphUri, model) ->
-                graphStore.replaceNamedGraph(graphUri, model)
-                writtenGraphs += graphUri
-            }
+        val write = graphWrites.replaceAll(
+            graphModels = graphModels,
+            snapshots = snapshots,
+            writeFailurePrefix = "Reasoning promotion write failed",
+            rollbackFailurePrefix = "Reasoning rollback failed",
+        )
+        return if (write.succeeded) {
             ReasoningPromotionResult(
                 promoted = true,
                 validation = validation,
                 findingCount = output.findingCount,
-                writtenGraphUris = writtenGraphs.toList(),
+                writtenGraphUris = write.writtenGraphUris,
                 releaseManifest = ReasoningReleaseManifest.from(plan, output.findingCount),
             )
-        }.getOrElse { error ->
-            val rollbackErrors = rollback(writtenGraphs.asReversed(), snapshots)
+        } else {
             ReasoningPromotionResult(
                 promoted = false,
                 validation = validation,
                 findingCount = output.findingCount,
-                writtenGraphUris = writtenGraphs.toList(),
-                rollbackAttempted = true,
-                rollbackSucceeded = rollbackErrors.isEmpty(),
-                errors = listOf("Reasoning promotion write failed: ${error.message}") + rollbackErrors,
+                writtenGraphUris = write.writtenGraphUris,
+                rollbackAttempted = write.rollbackAttempted,
+                rollbackSucceeded = write.rollbackSucceeded,
+                errors = write.errors,
             )
-        }
-    }
-
-    private fun rollback(
-        writtenGraphs: List<String>,
-        snapshots: Map<String, NamedGraphSnapshot>,
-    ): List<String> {
-        return writtenGraphs.mapNotNull { graphUri ->
-            val snapshot = snapshots.getValue(graphUri)
-            runCatching {
-                if (snapshot.exists) {
-                    graphStore.replaceNamedGraph(graphUri, snapshot.copyModel())
-                } else {
-                    graphStore.deleteNamedGraph(graphUri)
-                }
-            }.exceptionOrNull()?.let { error ->
-                "Reasoning rollback failed for $graphUri: ${error.message}"
-            }
         }
     }
 }
