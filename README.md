@@ -325,3 +325,4 @@ latest behavior.
 - `docs/ontology-native/layer_consolidation_hardening_v1.md`: current layer boundary review, low-risk helper consolidation, preserved guardrails, and remaining architecture debt
 - `docs/ontology-native/ontology_evidence_explanation_v1.md`: selected-finding ontology evidence chain for direct facts, inferred facts, provenance, dependency/blast-radius reasoning, and governed action gates
 - `docs/ontology-native/recorded_source_connector_contract_v1.md`: local recorded source-system connector contract fixture, scenario inventory boundary, quarantine behavior, and real-connector readiness notes
+- `docs/ontology-native/query_catalog_ownership_v1.md`: approved query catalog ownership, result envelopes, graph scopes, frontend consumers, and runtime status

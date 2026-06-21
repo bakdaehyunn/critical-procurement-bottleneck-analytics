@@ -978,7 +978,7 @@ function OntologyActionPanel({ detail, placement, onActionSubmitted }: {
         <Wrench size={17} />
         <div>
           <span>Governed ontology actions</span>
-          <strong>{actions.length} request contract{actions.length === 1 ? '' : 's'} and {aiProposals.length} AI proposal{aiProposals.length === 1 ? '' : 's'}</strong>
+          <strong>{actions.length} audit request contract{actions.length === 1 ? '' : 's'} and {aiProposals.length} AI proposal{aiProposals.length === 1 ? '' : 's'}</strong>
         </div>
       </div>
       {actions.length ? (

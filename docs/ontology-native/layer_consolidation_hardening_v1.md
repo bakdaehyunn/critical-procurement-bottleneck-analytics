@@ -46,10 +46,11 @@ behavior.
 The following concerns are real but are not fixed in this pass because they
 would be product-structure work rather than low-risk helper extraction:
 
-- `frontend/src/api.ts` is still a large semantic adapter that mixes legacy UI
-  shapes, graph read-model DTOs, private action commands, AI governance commands,
-  and fallback shaping. It should be split by domain once frontend behavior is
-  stable.
+- `frontend/src/api.ts` is still a large semantic adapter for dashboard/detail
+  read-model DTOs and graph-to-UI mapping. Frontend hardening v1 split runtime
+  config, approved query posting, ontology action commands, and AI governance
+  commands into focused modules, but mapper/domain splitting remains future
+  work.
 - `frontend/src/App.tsx` is still a large workbench component tree. It should be
   split into route, finding list, finding detail, action panel, AI governance,
   dynamic playback, trust, impact, and dependency components.
@@ -79,10 +80,10 @@ would be product-structure work rather than low-risk helper extraction:
 The next consolidation pass should focus on frontend and query-contract
 structure, not another runtime layer:
 
-1. Split `frontend/src/api.ts` into semantic query, action, AI governance, and
-   mapper modules.
+1. Split the remaining `frontend/src/api.ts` read-model mappers by dashboard,
+   finding detail, dependency/reasoning, and trust/provenance domains.
 2. Split `frontend/src/App.tsx` workbench sections into stable components.
-3. Add a query catalog ownership/version table that maps query IDs to result
-   envelopes, graph scopes, and frontend consumers.
+3. Add stronger contract tests that keep the query catalog ownership table,
+   semantic-service result envelopes, and frontend consumer modules aligned.
 4. Keep all behavior unchanged unless a separate product/UI goal explicitly
    approves redesign.

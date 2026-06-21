@@ -1,0 +1,5 @@
+export const SEMANTIC_API_BASE_URL = import.meta.env.VITE_SEMANTIC_API_BASE_URL ?? 'http://127.0.0.1:18080'
+export const SEMANTIC_SOURCE_RELEASE_ID = import.meta.env.VITE_SEMANTIC_SOURCE_RELEASE_ID ?? 'local-controlled-source-v1'
+export const SEMANTIC_REASONING_RUN_ID = import.meta.env.VITE_SEMANTIC_REASONING_RUN_ID ?? 'local-controlled-reasoning-v1'
+export const SEMANTIC_ACTION_AUDIT_RELEASE_ID = import.meta.env.VITE_SEMANTIC_ACTION_AUDIT_RELEASE_ID ?? 'local-action-audit-v1'
+export const SEMANTIC_AI_AUDIT_RELEASE_ID = import.meta.env.VITE_SEMANTIC_AI_AUDIT_RELEASE_ID ?? 'local-ai-governance-v1'

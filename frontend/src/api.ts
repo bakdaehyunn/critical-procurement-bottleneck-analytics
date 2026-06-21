@@ -1,10 +1,26 @@
-import { semanticQueryCatalog, semanticQueryPath, type SemanticQueryId, type SemanticQueryParameters } from './semanticQueryCatalog'
+import type {
+  OntologyActionLifecycleState,
+} from './ontologyActionApi'
+import { semanticQueryCatalog } from './semanticQueryCatalog'
+import { postSemanticQuery } from './semanticQueryClient'
 
-const SEMANTIC_API_BASE_URL = import.meta.env.VITE_SEMANTIC_API_BASE_URL ?? 'http://127.0.0.1:18080'
-const SEMANTIC_SOURCE_RELEASE_ID = import.meta.env.VITE_SEMANTIC_SOURCE_RELEASE_ID ?? 'local-controlled-source-v1'
-const SEMANTIC_REASONING_RUN_ID = import.meta.env.VITE_SEMANTIC_REASONING_RUN_ID ?? 'local-controlled-reasoning-v1'
-const SEMANTIC_ACTION_AUDIT_RELEASE_ID = import.meta.env.VITE_SEMANTIC_ACTION_AUDIT_RELEASE_ID ?? 'local-action-audit-v1'
-const SEMANTIC_AI_AUDIT_RELEASE_ID = import.meta.env.VITE_SEMANTIC_AI_AUDIT_RELEASE_ID ?? 'local-ai-governance-v1'
+export {
+  submitOntologyActionRequest,
+  submitOntologyActionTransition,
+} from './ontologyActionApi'
+export type {
+  OntologyActionLifecycleState,
+  OntologyActionSubmission,
+  OntologyActionSubmissionResult,
+  OntologyActionTransitionSubmission,
+  OntologyActionTransitionResult,
+} from './ontologyActionApi'
+export { submitAiProposalReview } from './aiGovernanceApi'
+export type {
+  AiProposalReviewDecision,
+  AiProposalReviewResult,
+  AiProposalReviewSubmission,
+} from './aiGovernanceApi'
 
 export type Overview = {
   total_requests: number
@@ -471,98 +487,6 @@ export type DynamicPlaybackItem = {
   reasoning_graph_uri: string | null
 }
 
-export type OntologyActionLifecycleState = 'REQUESTED' | 'VALIDATED' | 'QUEUED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'CLOSED'
-
-export type OntologyActionSubmission = {
-  action_id: string
-  actor_id: string
-  action_reason: string
-  incident_uri: string
-  source_record_uri: string
-  restore_readiness_finding_uri?: string
-  recovery_blocker_uri?: string
-  trust_finding_uri?: string
-  validation_evidence_uri?: string
-  assigned_team?: string
-  assignee_id?: string
-  reviewed_status?: string
-  review_summary?: string
-  supporting_evidence_uri?: string
-}
-
-export type OntologyActionSubmissionResult = {
-  resultType: 'ontology-action-request'
-  audited: boolean
-  actionId: string
-  requestId: string
-  idempotencyKey: string
-  actionAuditGraphUri: string
-  writtenGraphUris: string[]
-  idempotentReplay: boolean
-  notificationStatus: string
-  canonicalGraphMutation: boolean
-  reasoningGraphMutation: boolean
-  operationsGraphMutation: boolean
-  externalSystemMutation: boolean
-}
-
-export type OntologyActionTransitionSubmission = {
-  target_execution_uri: string
-  to_state: OntologyActionLifecycleState
-  actor_id: string
-  transition_reason: string
-}
-
-export type OntologyActionTransitionResult = {
-  resultType: 'ontology-action-transition'
-  transitioned: boolean
-  transitionId: string
-  idempotencyKey: string
-  targetExecutionUri: string
-  currentState: OntologyActionLifecycleState
-  actionAuditGraphUri: string
-  writtenGraphUris: string[]
-  idempotentReplay: boolean
-  canonicalGraphMutation: boolean
-  reasoningGraphMutation: boolean
-  operationsGraphMutation: boolean
-  externalSystemMutation: boolean
-}
-
-export type AiProposalReviewDecision = 'APPROVE' | 'REJECT'
-
-export type AiProposalReviewSubmission = {
-  proposal_uri: string
-  proposal_id: string
-  decision: AiProposalReviewDecision
-  actor_id: string
-  review_reason: string
-  action_id?: string
-}
-
-export type AiProposalReviewResult = {
-  resultType: 'ai-proposal-review'
-  reviewed: boolean
-  decision: AiProposalReviewDecision
-  reviewStatus: string
-  reviewId: string
-  idempotencyKey: string
-  proposalUri: string
-  aiAuditGraphUri: string
-  actionAuditGraphUri?: string
-  writtenGraphUris: string[]
-  idempotentReplay: boolean
-  actionRequestCreated: boolean
-  actionRequestId?: string
-  actionId?: string
-  canonicalGraphMutation: boolean
-  reasoningGraphMutation: boolean
-  provenanceGraphMutation: boolean
-  sourceGraphMutation: boolean
-  operationsGraphMutation: boolean
-  externalSystemMutation: boolean
-}
-
 export type OntologyReviewQueueItem = {
   graph_uri: string
   queue_id: string
@@ -722,18 +646,6 @@ export type DashboardData = {
   impactSummary: ImpactSummary
   topologyDependencies: InfrastructureDependency[]
   ontologyReviewQueue: OntologyReviewQueueItem[]
-}
-
-type SemanticEnvelope<T> = {
-  queryId: string
-  resultType: string
-  recordCount: number
-  records: T[]
-  provenance: {
-    queryId: string
-    graphScope: string
-    contractVersion: string
-  }
 }
 
 type SemanticDashboardOverviewRecord = {
@@ -1356,104 +1268,6 @@ export async function fetchRequestDetail(infrastructureRequestId: string): Promi
   )
 }
 
-export async function submitOntologyActionRequest(
-  submission: OntologyActionSubmission,
-): Promise<OntologyActionSubmissionResult> {
-  const requestId = `ACT-REQ-${submission.action_id}-${submission.actor_id}-${new Date().toISOString().replace(/[-:.TZ]/g, '')}`
-  const idempotencyKey = `${SEMANTIC_ACTION_AUDIT_RELEASE_ID}:${submission.action_id}:${submission.incident_uri}:${requestId}`
-  const response = await fetch(`${SEMANTIC_API_BASE_URL}/semantic/internal/action-request`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      requestId,
-      actionId: submission.action_id,
-      idempotencyKey,
-      actorId: submission.actor_id,
-      requestedAt: new Date().toISOString(),
-      incidentUri: submission.incident_uri,
-      actionReason: submission.action_reason,
-      sourceRecordUri: submission.source_record_uri,
-      restoreReadinessFindingUri: submission.restore_readiness_finding_uri,
-      recoveryBlockerUri: submission.recovery_blocker_uri,
-      trustFindingUri: submission.trust_finding_uri,
-      validationEvidenceUri: submission.validation_evidence_uri,
-      assignedTeam: submission.assigned_team,
-      assigneeId: submission.assignee_id,
-      reviewedStatus: submission.reviewed_status,
-      reviewSummary: submission.review_summary,
-      supportingEvidenceUri: submission.supporting_evidence_uri,
-      sourceReleaseId: SEMANTIC_SOURCE_RELEASE_ID,
-      reasoningRunId: SEMANTIC_REASONING_RUN_ID,
-      actionAuditReleaseId: SEMANTIC_ACTION_AUDIT_RELEASE_ID,
-    }),
-  })
-  if (!response.ok) {
-    const payload = await response.text()
-    throw new Error(`Ontology action request failed: ${response.status} ${response.statusText} ${payload}`)
-  }
-  return await response.json() as OntologyActionSubmissionResult
-}
-
-export async function submitOntologyActionTransition(
-  submission: OntologyActionTransitionSubmission,
-): Promise<OntologyActionTransitionResult> {
-  const transitionId = `ACT-TRN-${submission.to_state}-${submission.actor_id}-${new Date().toISOString().replace(/[-:.TZ]/g, '')}`
-  const idempotencyKey = `${SEMANTIC_ACTION_AUDIT_RELEASE_ID}:transition:${submission.to_state}:${submission.target_execution_uri}:${transitionId}`
-  const response = await fetch(`${SEMANTIC_API_BASE_URL}/semantic/internal/action-transition`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      transitionId,
-      idempotencyKey,
-      actorId: submission.actor_id,
-      requestedAt: new Date().toISOString(),
-      targetExecutionUri: submission.target_execution_uri,
-      toState: submission.to_state,
-      transitionReason: submission.transition_reason,
-      sourceReleaseId: SEMANTIC_SOURCE_RELEASE_ID,
-      reasoningRunId: SEMANTIC_REASONING_RUN_ID,
-      actionAuditReleaseId: SEMANTIC_ACTION_AUDIT_RELEASE_ID,
-    }),
-  })
-  if (!response.ok) {
-    const payload = await response.text()
-    throw new Error(`Ontology action transition failed: ${response.status} ${response.statusText} ${payload}`)
-  }
-  return await response.json() as OntologyActionTransitionResult
-}
-
-export async function submitAiProposalReview(
-  submission: AiProposalReviewSubmission,
-): Promise<AiProposalReviewResult> {
-  const reviewedAt = new Date().toISOString()
-  const timestamp = reviewedAt.replace(/[-:.TZ]/g, '')
-  const reviewId = `AI-REV-${submission.decision}-${submission.proposal_id}-${timestamp}`
-  const idempotencyKey = `${SEMANTIC_AI_AUDIT_RELEASE_ID}:review:${submission.decision}:${submission.proposal_id}:${timestamp}`
-  const response = await fetch(`${SEMANTIC_API_BASE_URL}/semantic/internal/ai-proposal-review`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      reviewId,
-      idempotencyKey,
-      actorId: submission.actor_id,
-      reviewedAt,
-      proposalUri: submission.proposal_uri,
-      decision: submission.decision,
-      reviewReason: submission.review_reason,
-      actionId: submission.action_id,
-      sourceReleaseId: SEMANTIC_SOURCE_RELEASE_ID,
-      reasoningRunId: SEMANTIC_REASONING_RUN_ID,
-      aiAuditReleaseId: SEMANTIC_AI_AUDIT_RELEASE_ID,
-      actionAuditReleaseId: SEMANTIC_ACTION_AUDIT_RELEASE_ID,
-    }),
-  })
-  if (!response.ok) {
-    const payload = await response.text()
-    throw new Error(`AI proposal review failed: ${response.status} ${response.statusText} ${payload}`)
-  }
-  return await response.json() as AiProposalReviewResult
-}
-
 export async function fetchDataQualityCheck(checkResultId: string): Promise<DataQualityCheck> {
   const records = await postSemanticQuery<SemanticTrustFindingRecord>(semanticQueryCatalog.trustFindingList, {
     trustFindingIdParam: checkResultId,
@@ -1493,23 +1307,6 @@ export async function fetchRequestSemanticContext(
     dependencyImpact: mapSemanticDependencyImpact(assetId, dependencyImpactRecords),
     blastRadius: mapSemanticBlastRadius(assetId, selectedBlastRadiusRecords),
   }
-}
-
-async function postSemanticQuery<T>(
-  queryId: SemanticQueryId,
-  parameters: SemanticQueryParameters = {},
-): Promise<T[]> {
-  const response = await fetch(`${SEMANTIC_API_BASE_URL}${semanticQueryPath(queryId)}`, {
-    method: 'POST',
-    headers: Object.keys(parameters).length ? { 'Content-Type': 'application/json' } : undefined,
-    body: Object.keys(parameters).length ? JSON.stringify({ parameters }) : undefined,
-  })
-  if (!response.ok) {
-    const payload = await response.text()
-    throw new Error(`Semantic query failed: ${queryId} ${response.status} ${response.statusText} ${payload}`)
-  }
-  const payload = await response.json() as SemanticEnvelope<T>
-  return payload.records
 }
 
 function buildFollowUps(
