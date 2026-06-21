@@ -5,8 +5,8 @@
 
 dcai-contract:reasoningExecutionContract
   rdf:type dcai-contract:ReasoningExecutionContract ;
-  dcterms:title "Non-runtime reasoning execution contract" ;
-  dcterms:description "Phase 6 contract for future execution of Phase 5 SPARQL reasoning queries. This metadata defines graph boundaries, gates, provenance requirements, failure modes, and service boundaries only. It does not implement executable orchestration." ;
+  dcterms:title "Reasoning execution contract" ;
+  dcterms:description "Graph boundary, validation, provenance, rollback, and service-boundary contract for executable Kotlin reasoning v1. Historical SPARQL reasoning query paths remain reference-only and are not exposed to browser or raw client execution." ;
   dcterms:created "2026-06-07"^^xsd:date ;
   dcai-contract:inputGraph "urn:dcai:graph:canonical" ;
   dcai-contract:inputGraph "urn:dcai:graph:provenance" ;
@@ -76,12 +76,12 @@ dcai-contract:conflictingFinding
 
 dcai-contract:reasoningRunnerBoundary
   rdf:type dcai-contract:ServiceBoundary ;
-  dcterms:title "Future reasoning runner boundary" .
+  dcterms:title "Semantic-service reasoning runner boundary" .
 
 dcai-contract:semanticApiBoundary
   rdf:type dcai-contract:ServiceBoundary ;
-  dcterms:title "Future semantic API boundary" .
+  dcterms:title "Private semantic API boundary" .
 
 dcai-contract:aiGovernanceBoundary
   rdf:type dcai-contract:ServiceBoundary ;
-  dcterms:title "Future AI governance boundary" .
+  dcterms:title "Managed AI governance audit boundary" .

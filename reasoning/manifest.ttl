@@ -5,8 +5,8 @@
 
 dcai-reasoning:manifest
   rdf:type dcai-reasoning:ReasoningManifest ;
-  dcterms:title "Ontology-native reasoning pipeline scaffold" ;
-  dcterms:description "Phase 4 placeholder manifest for future dependency exposure, recovery blocker, restore readiness, impact trust, and blast-radius reasoning. This manifest is metadata only and does not implement executable reasoning." ;
+  dcterms:title "Ontology-native reasoning pipeline manifest" ;
+  dcterms:description "Reasoning metadata for executable Kotlin reasoning v1 over promoted canonical graphs. Historical rulePath and queryPath values remain reference-only boundaries; runtime orchestration is owned by semantic-service." ;
   dcterms:created "2026-06-07"^^xsd:date ;
   dcai-reasoning:inputGraph "urn:dcai:graph:canonical" ;
   dcai-reasoning:provenanceGraph "urn:dcai:graph:provenance" ;
@@ -21,45 +21,45 @@ dcai-reasoning:manifest
 
 dcai-reasoning:dependencyExposure
   rdf:type dcai-reasoning:ReasoningEntry ;
-  dcterms:title "Dependency exposure reasoning placeholder" ;
+  dcterms:title "Dependency exposure reasoning v1" ;
   dcai-reasoning:targetClass "dcai:DependencyImpactFinding" ;
   dcai-reasoning:rulePath "reasoning/rules/dependency-exposure.rules" ;
   dcai-reasoning:queryPath "queries/reasoning/dependency_exposure.construct.rq" ;
-  dcai-reasoning:fixtureExpectation "fixtures/rdf/valid/dependency-path.ttl should support a future dependency exposure finding." ;
-  dcai-reasoning:implementationStatus "placeholder" .
+  dcai-reasoning:fixtureExpectation "Promoted canonical dependency paths support dependency exposure findings." ;
+  dcai-reasoning:implementationStatus "kotlin-runtime-v1" .
 
 dcai-reasoning:recoveryBlocker
   rdf:type dcai-reasoning:ReasoningEntry ;
-  dcterms:title "Recovery blocker reasoning placeholder" ;
+  dcterms:title "Recovery blocker reasoning v1" ;
   dcai-reasoning:targetClass "dcai:RecoveryBlocker and dcai:FollowUpDecision" ;
   dcai-reasoning:rulePath "reasoning/rules/recovery-blocker.rules" ;
   dcai-reasoning:queryPath "queries/reasoning/recovery_blocker.construct.rq" ;
-  dcai-reasoning:fixtureExpectation "fixtures/rdf/valid/minimal-incident.ttl should support a future recovery blocker and follow-up decision finding." ;
-  dcai-reasoning:implementationStatus "placeholder" .
+  dcai-reasoning:fixtureExpectation "Promoted canonical workflow, work-order, validation, and telemetry states support recovery blocker and follow-up decision findings." ;
+  dcai-reasoning:implementationStatus "kotlin-runtime-v1" .
 
 dcai-reasoning:restoreReadiness
   rdf:type dcai-reasoning:ReasoningEntry ;
-  dcterms:title "Restore readiness reasoning placeholder" ;
+  dcterms:title "Restore readiness reasoning v1" ;
   dcai-reasoning:targetClass "dcai:RestoreReadinessFinding" ;
   dcai-reasoning:rulePath "reasoning/rules/restore-readiness.rules" ;
   dcai-reasoning:queryPath "queries/reasoning/restore_readiness.construct.rq" ;
-  dcai-reasoning:fixtureExpectation "fixtures/rdf/valid/evidence-provenance.ttl should support future restore readiness reasoning from evidence and provenance." ;
-  dcai-reasoning:implementationStatus "placeholder" .
+  dcai-reasoning:fixtureExpectation "Promoted canonical evidence, provenance, blocker, validation, telemetry, mitigation, and dependency facts support restore readiness findings." ;
+  dcai-reasoning:implementationStatus "kotlin-runtime-v1" .
 
 dcai-reasoning:impactTrust
   rdf:type dcai-reasoning:ReasoningEntry ;
-  dcterms:title "Impact trust reasoning placeholder" ;
+  dcterms:title "Impact trust reasoning v1" ;
   dcai-reasoning:targetClass "dcai:TrustFinding" ;
   dcai-reasoning:rulePath "reasoning/rules/impact-trust.rules" ;
   dcai-reasoning:queryPath "queries/reasoning/impact_trust.construct.rq" ;
-  dcai-reasoning:fixtureExpectation "fixtures/rdf/invalid/ai-proposed-write.ttl and fixtures/rdf/valid/evidence-provenance.ttl should support future trust finding expectations." ;
-  dcai-reasoning:implementationStatus "placeholder" .
+  dcai-reasoning:fixtureExpectation "Promoted canonical evidence, validation, telemetry, impact, and provenance facts support trust finding expectations." ;
+  dcai-reasoning:implementationStatus "kotlin-runtime-v1" .
 
 dcai-reasoning:blastRadius
   rdf:type dcai-reasoning:ReasoningEntry ;
-  dcterms:title "Blast radius reasoning placeholder" ;
+  dcterms:title "Blast radius reasoning v1" ;
   dcai-reasoning:targetClass "dcai:BlastRadiusFinding" ;
   dcai-reasoning:rulePath "reasoning/rules/blast-radius.rules" ;
   dcai-reasoning:queryPath "queries/reasoning/blast_radius.construct.rq" ;
-  dcai-reasoning:fixtureExpectation "fixtures/rdf/valid/dependency-path.ttl should support future blast-radius reasoning across dependency paths." ;
-  dcai-reasoning:implementationStatus "placeholder" .
+  dcai-reasoning:fixtureExpectation "Promoted canonical dependency paths support downstream blast-radius findings." ;
+  dcai-reasoning:implementationStatus "kotlin-runtime-v1" .

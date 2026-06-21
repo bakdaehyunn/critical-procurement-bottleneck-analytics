@@ -265,7 +265,7 @@ function OperationalCommandStrip({ dashboard, summary, loading, onRefresh, onTru
     <section className="command-strip" aria-label="Semantic operations status">
       <SystemSignal icon={<Activity size={16} />} label="Pipeline run" value={formatStage(pipelineStatus)} tone={statusSignalTone(pipelineStatus)} onClick={onRefresh} actionLabel="Refresh semantic dashboard data" />
       <SystemSignal icon={<CheckCircle2 size={16} />} label="Data quality" value={formatStage(dataQualityStatus)} tone={qualitySignalTone(dataQualityStatus)} onClick={onTrustReview} actionLabel="Show findings that need trust review" />
-      <SystemSignal icon={<ServerCog size={16} />} label="Semantic boundary" value="Approved query catalog" tone="ok" onClick={onFocusBoundary} actionLabel="Focus approved semantic finding controls" />
+      <SystemSignal icon={<ServerCog size={16} />} label="Query boundary" value="Approved read models" tone="ok" onClick={onFocusBoundary} actionLabel="Focus approved semantic finding controls" />
       <SystemSignal icon={<Target size={16} />} label="Visible findings" value={`${summary.queueItems} active`} tone={summary.queueItems ? 'warning' : 'ok'} onClick={onShowFindings} actionLabel="Show all visible semantic findings" />
     </section>
   )
@@ -2382,7 +2382,7 @@ function DependencyDetailView({ detail, semanticContext, topologyDependencies }:
           { label: 'Path incidents', value: String(activeIncidentCount), detail: 'Active incidents on paths', tone: activeIncidentCount > 0 ? 'warning' : undefined },
           { label: 'Capacity risk', value: `${detail.request.estimated_capacity_risk_kw.toFixed(0)} kW`, detail: `${detail.request.affected_gpu_count} affected GPUs`, tone: capacityRiskTone(detail.request.estimated_capacity_risk_kw) },
           { label: 'Redundancy', value: redundancyLabel(detail.request.redundancy_state), detail: 'Selected incident redundancy state', tone: redundancyTone(detail.request.redundancy_state) },
-          { label: 'Inferred downstream', value: String(semanticContext?.blastRadius.inferred_downstream_assets.length ?? 0), detail: 'SPARQL blast-radius traversal', tone: (semanticContext?.blastRadius.inferred_downstream_assets.length ?? 0) ? 'warning' : undefined },
+          { label: 'Inferred downstream', value: String(semanticContext?.blastRadius.inferred_downstream_assets.length ?? 0), detail: 'Reasoning graph traversal', tone: (semanticContext?.blastRadius.inferred_downstream_assets.length ?? 0) ? 'warning' : undefined },
         ]}
       />
 

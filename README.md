@@ -109,8 +109,8 @@ See `docs/01_architecture.md` for the source-to-question mapping and trust risks
 - `ontology/modules/`: OWL/RDFS modules for core, infrastructure, topology, workflow, impact, evidence, provenance, AI interaction, and operations concepts
 - `shapes/`: SHACL contracts for source, canonical, reasoning, and service-boundary graph validation
 - `fixtures/` and `rdf-mapping/`: source-to-canonical RDF fixtures and mapping contracts
-- `queries/manifest.ttl`: approved query catalog with read-only SPARQL files under `queries/`
-- `reasoning/`: reasoning pipeline contracts and placeholder reasoning query/rule structure
+- `queries/manifest.ttl`: approved read-only query catalog plus reference-only historical query metadata
+- `reasoning/`: executable Kotlin reasoning pipeline contracts, validation gates, rollback-safe promotion, and reference-only historical query/rule boundaries
 - `semantic-service/`: Kotlin/JVM runtime that loads approved queries, talks to Fuseki/TDB2, shapes typed result envelopes, serializes success/error responses, and serves the private semantic query endpoint
 - `frontend/`: React/Vite dashboard that reads the semantic-service private endpoint through `VITE_SEMANTIC_API_BASE_URL`
 
@@ -295,6 +295,12 @@ npm run build
 - `docs/12_ontology_native_rewrite_execplan.md`: full rewrite ExecPlan for an ontology-native AI semantic operations platform
 - `docs/13_ontology_native_target_architecture.md`: target ontology-native architecture, graph model, modules, reasoning, AI governance, and old-runtime removal plan
 - `docs/14_ontology_native_verification_plan.md`: rewrite verification gates for ontology, SHACL, SPARQL, reasoning, AI governance, UI, and old-runtime removal
+
+The `phase*` documents below are historical implementation checkpoints. They
+preserve the state and constraints of each phase when it was written; use the
+current runtime sections above plus the post-cutover and hardening notes for the
+latest behavior.
+
 - `docs/ontology-native/phase1_semantic_runtime_scaffold.md`: Phase 1 scaffold for persistent Jena/Fuseki/TDB2 runtime, graph release manifest, ontology module boundary, SHACL boundary, and query manifest placeholder
 - `docs/ontology-native/phase2_ontology_shacl_contract.md`: Phase 2 parseable OWL/RDFS module and SHACL shape skeletons, fixture expectations, and validation commands
 - `docs/ontology-native/phase3_rdf_mapping_graph_promotion.md`: Phase 3 RDF fixtures, source-to-canonical mapping scaffold, graph promotion documentation, and validation commands

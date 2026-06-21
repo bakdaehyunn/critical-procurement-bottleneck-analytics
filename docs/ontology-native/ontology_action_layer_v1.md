@@ -214,25 +214,26 @@ V1 UI should show action affordances without claiming writeback is available.
 | --- | --- |
 | Dashboard operational focus strip | Filter-only actions such as restore blocked, trust review, redundancy lost, capacity at risk, validation stage. These are not ontology write actions. |
 | Findings table | Keep as object-set view. Rows should show recommended next action and disabled/action-needed state, not execute writes directly. |
-| Selected finding Summary | Show primary operator action placeholders: acknowledge blocker, assign evidence review, request validation review. UI remains disabled until a governed request path exists. |
+| Selected finding Summary | Show primary operator action contracts: acknowledge blocker, assign evidence review, request validation review. Supported audit-only requests can be submitted through the private internal endpoint and remain confined to managed action-audit facts. |
 | Trust tab | Place evidence review assignment and validation review actions beside the evidence they affect. |
 | Dependencies tab | Read-only in v1. Do not allow relationship edits from the operator view. |
 | Admin/lifecycle view | Read-only promotion batch, reasoning refresh, and reasoning approval queues are now visible on the dashboard from approved semantic query IDs. Execution remains disabled and still requires a future governed request surface. |
 
 Action buttons must display one of three states:
 
-- Available: only after runtime, policy, and validation support exists.
+- Available: only after runtime, policy, and validation support exists for the audit-only action path.
 - Disabled with reason: action is conceptually valid but cannot execute.
 - Hidden: action does not apply to the selected object type or state.
 
 ## Runtime Boundary Strategy
 
-The first executable step is an internal action runner, not a public API.
+The first executable step is an internal action runner and private loopback
+request boundary, not a public API.
 
 Preferred v1 runtime sequence:
 
 ```text
-UI displays action contract and disabled reason
+UI displays action contract, availability, and disabled reason
 -> internal action request DTO
 -> precondition validator
 -> action audit candidate model
@@ -243,7 +244,7 @@ UI displays action contract and disabled reason
 -> action status read model
 ```
 
-Future HTTP or UI execution must wait for:
+Any future external or operations-affecting execution must wait for:
 
 - authentication and authorization policy
 - actor identity model
@@ -269,16 +270,19 @@ validates the audit graph with SHACL, and writes only to
 `urn:dcai:graph:action-audit:*` through `NamedGraphStore`.
 
 The runner does not mutate canonical, reasoning, or operations graphs. It does
-not expose HTTP write endpoints, add authentication, perform source-system
-writeback, implement AI governance, or enable browser execution. The React
-affordances remain read-only/disabled until a future governed request surface is
-approved.
+not expose public write endpoints, add authentication, or perform source-system
+writeback. Supported React affordances can submit private internal audit-only
+requests; unsupported actions remain disabled with graph-backed reasons. AI
+proposal human review is implemented as a separate managed ai-audit boundary
+that can hand approved action recommendations into the same action-audit graph
+without mutating canonical, reasoning, operations, production, or external
+source-system state.
 
 ## Action Status Read Model
 
 The read-only action status slice is implemented through approved semantic
 query IDs. These expose selected-finding action availability and internal action
-audit state without enabling browser execution or graph mutation:
+audit state without enabling public execution or protected graph mutation:
 
 | Query | Purpose |
 | --- | --- |
@@ -295,8 +299,8 @@ action cards instead of constructing action affordance metadata from frontend
 defaults. The action-audit response contract includes action execution, action
 request, validation report, action type, target object, idempotency key, actor,
 timestamps, provenance links, and optional review/assignment fields. The React
-selected finding view displays this as read-only audit history under the
-disabled governed action affordances.
+selected finding view displays this as audit history under the governed action
+affordances.
 
 The promotion and reasoning review queue contracts include the governed action
 id, disabled status, target graph/object, managed graph URIs, release/run id,
@@ -306,7 +310,7 @@ actions, approve findings, request refreshes, or mutate graph state.
 
 ## Verification Requirements For Implementation
 
-Any future implementation goal must verify:
+Any implementation goal that extends this layer must verify:
 
 - no public endpoint exposure unless explicitly approved
 - no raw SPARQL or SPARQL Update from browser/client input
@@ -317,8 +321,8 @@ Any future implementation goal must verify:
 - failed graph writes restore last-known-good graphs
 - deterministic reruns do not duplicate action executions when an idempotency
   key is reused
-- UI shows disabled reasons and does not imply action execution when runtime is
-  disabled
+- UI shows disabled reasons and does not imply protected graph or external
+  execution when only audit-only runtime support exists
 - source scans confirm no auth/public endpoint/AI governance scope drift unless
   explicitly approved
 
@@ -326,16 +330,17 @@ Any future implementation goal must verify:
 
 This v1 design and current implementation do not:
 
-- implement public or browser-executable action execution
-- expose public or private write endpoints
+- implement public action execution or operations-affecting browser execution
+- expose public write endpoints
 - add authentication or authorization
 - mutate real production data
-- edit frontend read models beyond future placement guidance
-- implement AI governance workflows
+- mutate canonical, reasoning, provenance, source, operations, or production
+  graphs from action requests or AI proposal reviews
+- implement AI governance writeback or AI-generated protected graph mutation
 - implement source-system writeback
 - replace source promotion or reasoning promotion services
 
-## Recommended Next Goal
+## Historical Recommended Next Goal
 
 ```text
 /goal Implement read-only ontology action affordance v1: add semantic action contract metadata and UI-disabled action states for selected findings, showing available action labels, required parameters, and disabled reasons without executing writes. Keep all graph writes internal-only and unimplemented, do not expose public endpoints/auth, do not mutate production data, commit, or push.
@@ -344,8 +349,12 @@ This v1 design and current implementation do not:
 ## Implementation Note
 
 Read-only action affordance v1 is implemented in the selected finding Summary
-and Trust views. Internal action audit runner v1 adds CLI-only audit writes for
-three controlled action contracts. The UI remains read-only and disabled; the
-runner remains internal-only and does not expose write endpoints, add
-authentication, mutate canonical/reasoning/operations graphs, implement AI
-governance, or allow browser-supplied SPARQL/SPARQL Update.
+and Trust views. Internal action audit runner v1 adds audit-only writes for
+three controlled action contracts through CLI and private loopback request
+boundaries. The UI can submit supported local audit requests and display their
+audit lifecycle, while unsupported or protected actions remain disabled with
+graph-backed reasons. The runner remains internal-only and does not expose
+public write endpoints, add authentication, mutate canonical/reasoning/operations
+graphs, perform source-system writeback, or allow browser-supplied SPARQL/SPARQL
+Update. AI proposal human review is implemented separately as managed ai-audit
+review plus optional governed action-audit request creation.
