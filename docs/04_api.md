@@ -35,7 +35,7 @@ Approved product read-model query IDs include:
 
 ## Follow-Up Workflow Support
 
-The dashboard adapter uses these semantic read models to replace the old
+The workbench adapter uses these semantic read models to replace the old
 analytics route surface:
 
 - overview KPI and exposure summaries from graph-backed aggregate queries

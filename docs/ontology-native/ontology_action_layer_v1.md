@@ -212,12 +212,12 @@ V1 UI should show action affordances without claiming writeback is available.
 
 | UI area | Action treatment |
 | --- | --- |
-| Dashboard operational focus strip | Filter-only actions such as restore blocked, trust review, redundancy lost, capacity at risk, validation stage. These are not ontology write actions. |
+| Workbench operational focus strip | Filter-only actions such as restore blocked, trust review, redundancy lost, capacity at risk, validation stage. These are not ontology write actions. |
 | Findings table | Keep as object-set view. Rows should show recommended next action and disabled/action-needed state, not execute writes directly. |
 | Selected finding Summary | Show primary operator action contracts: acknowledge blocker, assign evidence review, request validation review. Supported audit-only requests can be submitted through the private internal endpoint and remain confined to managed action-audit facts. |
 | Trust tab | Place evidence review assignment and validation review actions beside the evidence they affect. |
 | Dependencies tab | Read-only in v1. Do not allow relationship edits from the operator view. |
-| Admin/lifecycle view | Read-only promotion batch, reasoning refresh, and reasoning approval queues are now visible on the dashboard from approved semantic query IDs. Execution remains disabled and still requires a future governed request surface. |
+| Admin/lifecycle view | Read-only promotion batch, reasoning refresh, and reasoning approval queues are now visible in the workbench from approved semantic query IDs. Execution remains disabled and still requires a future governed request surface. |
 
 Action buttons must display one of three states:
 
@@ -305,7 +305,7 @@ affordances.
 The promotion and reasoning review queue contracts include the governed action
 id, disabled status, target graph/object, managed graph URIs, release/run id,
 graph-backed counts, review status, evidence summary, and disabled reason. The
-React dashboard displays these as internal read-only queues. They do not execute
+The React workbench displays these as internal read-only queues. They do not execute
 actions, approve findings, request refreshes, or mutate graph state.
 
 ## Verification Requirements For Implementation

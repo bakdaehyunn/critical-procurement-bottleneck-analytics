@@ -1,14 +1,18 @@
 # AI Data Center Infrastructure Semantic Operations Platform
 
-AI Data Center Infrastructure Semantic Operations Platform is a semantic ontology platform for AI data center facilities follow-up decisions.
+AI Data Center Infrastructure Semantic Operations Platform is an AI data center infrastructure semantic operations platform for facilities follow-up decisions.
 
 It answers one practical question:
 
 > Which AI infrastructure incidents are delaying return-to-service, where is the blocker, and what should the team follow up next?
 
-![AI data center infrastructure semantic operations dashboard](docs/assets/dashboard-preview.png)
+![AI data center infrastructure semantic operations workbench](docs/assets/dashboard-preview.png)
 
 ![Selected follow-up detail page](docs/assets/follow-up-detail-preview.png)
+
+## Naming Boundary
+
+AI Data Center Infrastructure Semantic Operations Platform is the project and platform name. Downtime follow-up is the first operational workflow and use case implemented on the platform; it is not the overall project name.
 
 ## Why This Exists
 
@@ -84,7 +88,7 @@ scattered AI infrastructure source records
   -> SHACL validation gates
   -> approved SPARQL read models
   -> Kotlin/JVM semantic-service
-  -> React dashboard
+  -> React semantic operations workbench
 ```
 
 The RDF graph store is the source of truth. The Kotlin/JVM semantic-service is the controlled API facade over approved query IDs, typed result envelopes, provenance, and semantic error contracts.
@@ -112,7 +116,7 @@ See `docs/01_architecture.md` for the source-to-question mapping and trust risks
 - `queries/manifest.ttl`: approved read-only query catalog plus reference-only historical query metadata
 - `reasoning/`: executable Kotlin reasoning pipeline contracts, validation gates, rollback-safe promotion, and reference-only historical query/rule boundaries
 - `semantic-service/`: Kotlin/JVM runtime that loads approved queries, talks to Fuseki/TDB2, shapes typed result envelopes, serializes success/error responses, and serves the private semantic query endpoint
-- `frontend/`: React/Vite dashboard that reads the semantic-service private endpoint through `VITE_SEMANTIC_API_BASE_URL`
+- `frontend/`: React/Vite semantic operations workbench that reads the semantic-service private endpoint through `VITE_SEMANTIC_API_BASE_URL`
 
 ## Semantic-Service Responsibilities
 
@@ -244,7 +248,7 @@ The React frontend is built as a semantic operations workbench:
   internal `NOC_QUEUE`, `WORK_ORDER_QUEUE`, and `VALIDATION_REVIEW_QUEUE`
   dispatch facts with provenance. These are displayed in the selected finding
   action panel and are not external notifications or source-system writeback.
-- Read-only internal lifecycle review queues on the dashboard, backed by
+- Read-only internal lifecycle review queues in the semantic operations workbench, backed by
   `semanticPromotionReviewQueue` and `semanticReasoningReviewQueue`. They show
   promotion batch, reasoning refresh, and reasoning approval state from managed
   graph facts while keeping all actions disabled.

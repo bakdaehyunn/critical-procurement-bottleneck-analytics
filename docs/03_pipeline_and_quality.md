@@ -30,7 +30,7 @@ Trust is product data. A follow-up decision should expose whether its graph
 facts came from source records, validation evidence, telemetry evidence,
 work-order evidence, impact observations, or reasoning findings.
 
-The dashboard should prefer graph-backed fields. Compatibility defaults are
+The semantic operations workbench should prefer graph-backed fields. Compatibility defaults are
 temporary and should be removed as RDF fixtures and SPARQL read models gain
 field-level parity.
 

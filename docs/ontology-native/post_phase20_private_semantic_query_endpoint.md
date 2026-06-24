@@ -56,7 +56,7 @@ Only these approved query IDs are allowed:
 
 The endpoint rejects any other query ID with `unapproved-query-id`.
 
-The product read-model queries return canonical graph-backed dashboard and
+The product read-model queries return canonical graph-backed workbench and
 detail fields through typed envelopes. They include graph-backed rank, title,
 status, current stage hours, priority level, business impact, priority score
 inputs, impact, trust, blocker, recommendation, redundancy, mitigation, vendor,

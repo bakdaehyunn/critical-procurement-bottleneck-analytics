@@ -6,12 +6,12 @@ The active product runtime has been cut over to the ontology-native path:
 
 - Fuseki/TDB2 is the only Compose-managed data runtime.
 - The Kotlin/JVM semantic-service owns the private semantic query endpoint.
-- The React dashboard reads `POST /semantic/query/{queryId}` through
+- The React workbench reads `POST /semantic/query/{queryId}` through
   `VITE_SEMANTIC_API_BASE_URL`.
 - The old tracked FastAPI/Postgres/SQLAlchemy backend package has been removed.
 
 The frontend still contains a compatibility adapter that maps graph-backed
-semantic envelopes into the current dashboard component contracts. Remaining
+semantic envelopes into the current workbench component contracts. Remaining
 defaults are defensive handling for absent optional semantic facts, not a
 dependency on the removed relational runtime.
 

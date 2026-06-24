@@ -25,7 +25,7 @@ The prototype simulates fragmented source systems:
 - Telemetry alerts for thermal, power, and sensor evidence.
 - Impact snapshots for affected racks, GPUs, kW at risk, redundancy state, mitigation, and telemetry readings.
 
-Raw records are preserved before transformation so data engineers can trace an analytics output back to source evidence.
+Raw records are preserved before transformation so data engineers can trace a semantic output back to source evidence.
 
 ## Workflow Model
 
@@ -41,7 +41,7 @@ Incident Reported
 -> Restored
 ```
 
-Each stage has a threshold. Delay is calculated from stage entry to stage exit, or to the analytics as-of time for open stages. Restored incidents remain visible in timelines but are excluded from active bottleneck and follow-up surfaces.
+Each stage has a threshold. Delay is calculated from stage entry to stage exit, or to the current read-model as-of time for open stages. Restored incidents remain visible in timelines but are excluded from active bottleneck and follow-up surfaces.
 
 ## System Design
 

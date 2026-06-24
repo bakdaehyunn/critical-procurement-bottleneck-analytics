@@ -65,7 +65,7 @@ SHACL contracts, source mappings, or reasoning outputs exist.
 
 This slice does not:
 
-- switch the React dashboard to semantic-service
+- switch the React workbench to semantic-service
 - delete FastAPI/Postgres/SQLAlchemy/React runtime code
 - execute reasoning
 - write graphs

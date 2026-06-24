@@ -30,7 +30,7 @@ not part of the read-only query catalog and write only to managed audit graphs.
 | `frontend/src/semanticQueryClient.ts` | Approved query POST envelope handling for read-only semantic query IDs. |
 | `frontend/src/ontologyActionApi.ts` | Private internal action request and transition submissions into the managed action-audit graph. |
 | `frontend/src/aiGovernanceApi.ts` | Private internal AI proposal approve/reject submissions into managed ai-audit and optional action-audit graphs. |
-| `frontend/src/api.ts` | Dashboard/detail read-model DTOs, semantic record DTOs, and graph-to-UI mappers. |
+| `frontend/src/api.ts` | Workbench/detail read-model DTOs, semantic record DTOs, and graph-to-UI mappers. |
 
 ## Approved Query Ownership
 
@@ -39,14 +39,14 @@ not part of the read-only query catalog and write only to managed audit graphs.
 | `fixtureNamedGraphInventory` | `named-graph-inventory` | Fixture source/canonical inventory | Fixture/diagnostic inspection | `phase16-approved` |
 | `fixtureIncidentSummary` | `incident-summary` | Fixture or promoted canonical graph | Fixture/diagnostic inspection | `phase16-approved` |
 | `fixtureProvenanceSourceRecords` | `provenance-source-records` | Fixture source/canonical/provenance | Fixture/diagnostic inspection | `phase16-approved` |
-| `semanticDashboardOverview` | `dashboard-overview` | Canonical plus reasoning graph | Dashboard overview KPIs | `phase16-approved` |
-| `semanticFollowUpQueueList` | `follow-up-queue` | Canonical graph | Dashboard finding list and detail joins | `phase16-approved` |
-| `semanticFilterMetadata` | `filter-metadata` | Canonical graph | Dashboard filters | `phase16-approved` |
+| `semanticDashboardOverview` | `dashboard-overview` | Canonical plus reasoning graph | Workbench overview KPIs | `phase16-approved` |
+| `semanticFollowUpQueueList` | `follow-up-queue` | Canonical graph | Workbench finding list and detail joins | `phase16-approved` |
+| `semanticFilterMetadata` | `filter-metadata` | Canonical graph | Workbench filters | `phase16-approved` |
 | `semanticFollowUpDetail` | `follow-up-detail` | Canonical plus reasoning graph | Selected finding detail | `phase16-approved` |
-| `semanticImpactSummary` | `impact-summary` | Canonical plus reasoning graph | Dashboard impact summary | `phase16-approved` |
+| `semanticImpactSummary` | `impact-summary` | Canonical plus reasoning graph | Workbench impact summary | `phase16-approved` |
 | `semanticTopologyDependencies` | `topology-dependencies` | Canonical graph | Dependency tab and topology summaries | `phase16-approved` |
 | `semanticTrustFindingList` | `trust-findings` | Canonical or reasoning graph | Data-quality/trust review surfaces | `phase16-approved` |
-| `semanticStageBottlenecks` | `stage-bottlenecks` | Canonical graph | Dashboard bottleneck metrics | `phase16-approved` |
+| `semanticStageBottlenecks` | `stage-bottlenecks` | Canonical graph | Workbench bottleneck metrics | `phase16-approved` |
 | `semanticAssetDelaySummary` | `asset-delay-summary` | Canonical graph | Asset delay summary | `phase16-approved` |
 | `semanticZoneDelaySummary` | `zone-delay-summary` | Canonical graph | Zone delay summary | `phase16-approved` |
 | `semanticSpareWaitSummary` | `spare-wait-summary` | Canonical plus reasoning graph | Spare/vendor wait summary | `phase16-approved` |

@@ -7,7 +7,7 @@ source extracts or controlled fixtures
   -> RDF mapping and graph promotion gates
   -> Fuseki/TDB2 dataset
   -> Kotlin/JVM semantic-service
-  -> React/Vite dashboard
+  -> React/Vite semantic operations workbench
 ```
 
 ## Local Runtime

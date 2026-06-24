@@ -3,7 +3,7 @@
 ## Current Status
 
 The ontology-native semantic-service now owns the first private read-model
-contracts for several active product surfaces. The React dashboard data adapter
+contracts for several active product surfaces. The React workbench data adapter
 now calls the private semantic-service endpoint instead of the old FastAPI
 `/api/*` routes.
 

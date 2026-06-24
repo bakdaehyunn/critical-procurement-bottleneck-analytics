@@ -3,7 +3,8 @@
 ## Topology Graph
 
 Topology is represented as RDF dependency paths and dependency edges. The
-dashboard consumes topology through approved semantic read models, especially
+semantic operations workbench consumes topology through approved semantic read
+models, especially
 `semanticTopologyDependencies`, `semanticDependencyImpactByAsset`, and
 `semanticBlastRadiusByAsset`.
 

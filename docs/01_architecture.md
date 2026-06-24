@@ -10,7 +10,7 @@ scattered AI infrastructure source records
   -> SHACL validation gates
   -> approved read-only SPARQL queries
   -> Kotlin/JVM semantic-service
-  -> React follow-up dashboard
+  -> React semantic operations workbench
 ```
 
 The RDF graph store is the source of truth. The semantic-service is the
@@ -47,7 +47,7 @@ promotion requires parseable RDF, SHACL conformance, and provenance links.
 - The Kotlin/JVM semantic-service loads contracts, reads Fuseki graphs,
   executes approved read-only SPARQL, shapes typed envelopes, serializes
   semantic responses, and rejects unapproved query IDs.
-- The React dashboard preserves the follow-up workflow UX while reading from
+- The React semantic operations workbench preserves the follow-up workflow UX while reading from
   the semantic-service private endpoint.
 
 ## Design Choices

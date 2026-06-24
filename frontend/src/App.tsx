@@ -132,7 +132,7 @@ function FollowUpQueuePage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load dashboard')
+          setError(err instanceof Error ? err.message : 'Failed to load workbench')
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -189,7 +189,7 @@ function FollowUpQueuePage() {
       {error ? <div className="error-banner">{error}</div> : null}
 
       <SectionLabel label="Filters" />
-      <section className="filters" aria-label="Dashboard filters">
+      <section className="filters" aria-label="Workbench filters">
         <Filter size={18} />
         <Select label="Zone" value={filters.zone_id ?? ''} options={metadata?.infrastructure_zones ?? []} onChange={(value) => setFilter('zone_id', value)} />
         <Select label="Asset" value={filters.asset_id ?? ''} options={metadata?.assets ?? []} onChange={(value) => setFilter('asset_id', value)} />
@@ -263,7 +263,7 @@ function OperationalCommandStrip({ dashboard, summary, loading, onRefresh, onTru
   const dataQualityStatus = dashboard?.overview.data_quality_status ?? (loading ? 'Loading' : 'Unavailable')
   return (
     <section className="command-strip" aria-label="Semantic operations status">
-      <SystemSignal icon={<Activity size={16} />} label="Pipeline run" value={formatStage(pipelineStatus)} tone={statusSignalTone(pipelineStatus)} onClick={onRefresh} actionLabel="Refresh semantic dashboard data" />
+      <SystemSignal icon={<Activity size={16} />} label="Pipeline run" value={formatStage(pipelineStatus)} tone={statusSignalTone(pipelineStatus)} onClick={onRefresh} actionLabel="Refresh semantic workbench data" />
       <SystemSignal icon={<CheckCircle2 size={16} />} label="Data quality" value={formatStage(dataQualityStatus)} tone={qualitySignalTone(dataQualityStatus)} onClick={onTrustReview} actionLabel="Show findings that need trust review" />
       <SystemSignal icon={<ServerCog size={16} />} label="Query boundary" value="Approved read models" tone="ok" onClick={onFocusBoundary} actionLabel="Focus approved semantic finding controls" />
       <SystemSignal icon={<Target size={16} />} label="Visible findings" value={`${summary.queueItems} active`} tone={summary.queueItems ? 'warning' : 'ok'} onClick={onShowFindings} actionLabel="Show all visible semantic findings" />

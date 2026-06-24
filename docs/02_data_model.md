@@ -1,5 +1,10 @@
 # Data Model
 
+This document preserves the historical relational vocabulary used to explain
+source records, joins, and scoring fields. The active runtime is the
+ontology-native semantic operations platform described in the architecture and
+semantic-service docs.
+
 ## Raw Tables
 
 - `raw_infrastructure_incidents`
@@ -24,7 +29,7 @@ Raw tables keep source-shaped payloads for traceability and duplicate detection.
 - `telemetry_alerts`: linked monitoring evidence
 - `infrastructure_impact_snapshots`: latest-known rack, GPU, capacity, redundancy, thermal, vendor ETA, mitigation, and telemetry reading context for an incident
 
-## Analytics Tables
+## Historical Analytics Tables
 
 - `incident_current_status`: reconstructed current state and delay signal
 - `incident_stage_lead_times`: stage duration, threshold, and bottleneck signal
@@ -48,5 +53,5 @@ Raw tables keep source-shaped payloads for traceability and duplicate detection.
 - Work orders belong to an incident and may reference a facilities engineer and critical spare.
 - Validation results belong to an incident and indicate restore readiness.
 - Telemetry alerts belong to an asset and may link to an incident.
-- Impact snapshots belong to an incident, asset, and zone. The analytics builder uses the latest snapshot per incident when scoring active follow-up work.
+- Impact snapshots belong to an incident, asset, and zone. The semantic scoring layer uses the latest snapshot per incident when scoring active follow-up work.
 - Reconciliation issues are tied to a pipeline run and may link to an incident and asset.

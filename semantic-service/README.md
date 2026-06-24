@@ -471,7 +471,7 @@ The runtime cutover batches add additional private product read-model queries
 for dashboard overview, filter metadata, follow-up detail, impact summary,
 topology dependencies, trust findings, stage bottlenecks, asset/zone delay
 summaries, spare/vendor wait summaries, validation summaries, incident
-evidence, dependency impact, and blast radius. The React dashboard now reads
+evidence, dependency impact, and blast radius. The React workbench now reads
 these graph-backed semantic-service contracts through its API adapter.
 Telemetry alerts, repeat-failure counters, engineer-assignment counters,
 semantic data-quality detail lookup, and parameterized incident/asset lookup

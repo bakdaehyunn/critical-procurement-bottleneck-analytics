@@ -79,7 +79,7 @@ Post-Phase-20 implementation status:
   Update, or replacement query definitions
 - request bodies may include string-valued `parameters` for approved lookup
   query IDs; unsupported parameter names are rejected before execution
-- product dashboard view-model query IDs are implemented only when backed by
+- product workbench read-model query IDs are implemented only when backed by
   approved SPARQL, typed envelopes, shaper support, serializer support, and
   private endpoint tests
 

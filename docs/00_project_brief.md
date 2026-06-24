@@ -2,11 +2,15 @@
 
 ## Product
 
-AI Data Center Infrastructure Semantic Operations Platform is a read-only semantic operations layer for AI data center facilities incidents.
+AI Data Center Infrastructure Semantic Operations Platform is an AI data center infrastructure semantic operations platform for AI data center facilities incidents.
 
 It answers:
 
 > Which AI infrastructure incidents are delaying return-to-service, where is the blocker, and what should the team follow up next?
+
+## Naming Boundary
+
+AI Data Center Infrastructure Semantic Operations Platform is the product and platform name. Downtime follow-up is the first operational workflow and use case implemented on the platform, so docs should describe it as a workflow rather than the overall project identity.
 
 ## Operating Need
 
@@ -40,7 +44,7 @@ The product requirement is not a prettier incident dashboard. It is a decision l
 - Reliability engineers who need repeat failure and asset impact signals
 - Operations leads who need zone-level return-to-service risk
 - Capacity and infrastructure operations leads who need affected rack, GPU, redundancy, and thermal exposure signals
-- Data/platform engineers who need traceable analytics outputs from messy operational records
+- Data/platform engineers who need traceable semantic outputs from messy operational records
 
 ## Success Questions
 
@@ -54,7 +58,7 @@ The project should prove these questions:
 - Which follow-up action should the operator take?
 - How would the system be deployed, monitored, and improved in production?
 
-The current answer is the ranked follow-up queue. Supporting analytics explain delay and exposure, but the product succeeds only when the queue helps an operator choose the next recovery action faster and with fewer source-system checks.
+The current answer is the ranked follow-up queue. Supporting semantic evidence explains delay and exposure, but the product succeeds only when the queue helps an operator choose the next recovery action faster and with fewer source-system checks.
 
 ## In Scope
 
@@ -65,7 +69,7 @@ The current answer is the ranked follow-up queue. Supporting analytics explain d
 - Spare/vendor waiting risk
 - Impact context for affected racks, affected GPUs, capacity-at-risk, redundancy state, thermal breach, vendor ETA, and mitigation status
 - Data quality checks and reconciliation issues
-- Read-only API and dashboard
+- Read-only semantic API and operations workbench
 
 ## Out of Scope
 

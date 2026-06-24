@@ -2,7 +2,7 @@
 
 ## Workbench Structure
 
-The dashboard opens directly into the operational follow-up queue. It is not a landing page and does not include record-entry workflows.
+The semantic operations workbench opens directly into the operational follow-up queue. It is not a landing page and does not include record-entry workflows.
 
 Primary hierarchy:
 
@@ -28,11 +28,11 @@ Terminal `RESTORED` stages are not exposed as actionable stage filters.
 
 ## Queue Summary
 
-The dashboard separates visible-queue summary indicators from secondary exposure indicators so the first screen stays scannable.
+The workbench separates visible-queue summary indicators from secondary exposure indicators so the first screen stays scannable.
 
 KPI cards and exposure metrics are read-only summaries of the currently visible follow-up queue. They are not clickable. This prevents a mismatch where a number appears to represent one queue population but a click shows a different population.
 
-Filters, Dashboard Summary, Queue Intelligence, and Follow-up Queue should use small section labels immediately above their bordered content areas. These labels should not be placed inside the bordered section. Dashboard Summary covers both the primary KPI cards and the operational exposure strip so those two rows read as one top-level dashboard summary block.
+Filters, Platform Summary, Queue Intelligence, and Follow-up Queue should use small section labels immediately above their bordered content areas. These labels should not be placed inside the bordered section. Platform Summary covers both the primary KPI cards and the operational exposure strip so those two rows read as one top-level platform summary block.
 
 Primary KPI cards:
 
@@ -51,7 +51,7 @@ Operational exposure strip:
 
 ## Queue Intelligence
 
-The dashboard includes a compact Queue Intelligence section between the Dashboard Summary block and Follow-up Queue controls. It defaults to a read-only operational brief generated from the currently visible queue rows. The section should use terse single-field cards rather than explanatory helper copy.
+The workbench includes a compact Queue Intelligence section between the Platform Summary block and Follow-up Queue controls. It defaults to a read-only operational brief generated from the currently visible queue rows. The section should use terse single-field cards rather than explanatory helper copy.
 
 Queue Intelligence may wrap to two rows on desktop. Selected follow-up previews should not be forced into a single compressed row. Mobile stacks the cards in one column.
 
@@ -63,7 +63,7 @@ Queue Intelligence signals:
 - Trust load: visible incidents that require evidence review.
 - Primary risk: the dominant operational risk signal, such as N-1 exposure, missed vendor ETA, or spare/vendor wait.
 
-This section must not introduce new semantic analytics logic, charts, navigation, or clickable KPI behavior. It exists to make the queue-first dashboard read as an analytic workbench rather than a plain incident list.
+This section must not introduce new semantic operations logic, charts, navigation, or clickable KPI behavior. It exists to make the queue-first workbench read as an ontology-native operations surface rather than a plain incident list.
 
 When an operator selects a queue row, Queue Intelligence changes into a selected follow-up preview. Row selection must not navigate. The preview should show enough context for fast triage while preserving `View details` as the explicit route to the full incident page.
 
@@ -165,7 +165,7 @@ Trust is a selected-incident detail tab with the same compact operational-brief 
 
 ## Dependencies
 
-Dependencies is a selected-incident detail tab with a path-evidence layout. It lists compact power and cooling dependency paths and selected incident impact context so topology explains blast-radius evidence without becoming the visual center of the dashboard. This is not a free-form graph editor or ontology map; it is supporting context for follow-up prioritization.
+Dependencies is a selected-incident detail tab with a path-evidence layout. It lists compact power and cooling dependency paths and selected incident impact context so topology explains blast-radius evidence without becoming the visual center of the workbench. This is not a free-form graph editor or ontology map; it is supporting context for follow-up prioritization.
 
 - dependency question
 - neutral dependency fact strip for path count, active path incidents, capacity risk, and redundancy state
