@@ -1,186 +1,226 @@
 # UI Specification
 
-## Workbench Structure
+## Product Position
 
-The semantic operations workbench opens directly into the operational follow-up queue. It is not a landing page and does not include record-entry workflows.
+The frontend is a queue-first **Return-to-Service Operations Console** for AI
+data-center infrastructure incidents. It helps an operator identify the next
+recovery intervention, understand operational exposure, see who or what owns
+the blocker, and decide whether the supporting evidence is trustworthy.
 
-Primary hierarchy:
+Semantic and ontology capabilities remain part of the product, but they are
+supporting evidence. Operational language and decisions appear before graph,
+SHACL, provenance, or ontology terminology.
 
-- Follow-up Queue is the parent screen.
-- Each queue item exposes a `View details` action.
-- `View details` is a real link to `/follow-ups/{incident_id}` so browser back/forward, direct reload, and new-tab comparison work normally.
-- Detail page tabs provide selected-incident context:
-  - Summary
-  - Impact
-  - Trust
-  - Dependencies
+## Users and Workspaces
 
-The detail tabs are not equal top-level app views. They depend on the selected follow-up item, so they live inside the selected-incident detail page. This keeps the queue as the primary workflow and prevents analytics, evidence, and topology from competing with the parent screen.
+| User | Primary decision | Workspace |
+| --- | --- | --- |
+| Shift lead | Which recovery case needs intervention next? | Recovery Queue |
+| Facilities supervisor | What will move this case toward restoration? | Recovery Case |
+| Reliability or evidence reviewer | Can the evidence or governed action be approved? | Review Inbox |
+| Data or platform engineer | Is the semantic operations layer healthy and current? | Platform Status |
 
-## Filters
+Primary navigation:
 
-- Zone
-- Asset
-- Priority
-- Active stage
+- **Recovery Queue** at `/`
+- **Recovery Case** at `/recovery-cases/{incident_id}`
+- **Review Inbox** at `/reviews`
+- **Platform Status** at `/platform-status`
 
-Terminal `RESTORED` stages are not exposed as actionable stage filters.
+The legacy `/findings/{incident_id}` route remains a supported compatibility
+alias for existing links.
 
-## Queue Summary
+## Recovery Queue
 
-The workbench separates visible-queue summary indicators from secondary exposure indicators so the first screen stays scannable.
+The queue begins in the first viewport. It is the primary decision surface, not
+a dashboard summary placed below product or platform information.
 
-KPI cards and exposure metrics are read-only summaries of the currently visible follow-up queue. They are not clickable. This prevents a mismatch where a number appears to represent one queue population but a click shows a different population.
+Content order:
 
-Filters, Platform Summary, Queue Intelligence, and Follow-up Queue should use small section labels immediately above their bordered content areas. These labels should not be placed inside the bordered section. Platform Summary covers both the primary KPI cards and the operational exposure strip so those two rows read as one top-level platform summary block.
+1. Compact page identity, data freshness, and refresh control
+2. Critical recovery signals
+3. Search, sorting, and optional filters
+4. Applied-filter context and visible result count
+5. Ranked recovery table
+6. Selected-case decision preview
 
-Primary KPI cards:
+Queue rows compare:
 
-- Queue items
-- Delayed queue items
-- Critical priority
-- Capacity at risk
-- Affected GPUs
+- operational rank and priority
+- incident, asset, and zone
+- active recovery blocker
+- time in the current stage
+- affected GPU and power capacity
+- redundancy exposure
+- owner or external dependency
+- evidence status
+- explicit link to the recovery case
 
-Operational exposure strip:
+Selecting a row does not navigate. It updates the decision preview. Opening a
+case requires the explicit `Open recovery case` action or the row action link.
+Search and filters persist in the URL.
 
-- N-1 exposure
-- Vendor ETA missed
-- Spare/vendor wait
-- Evidence review
+The queue does not contain ontology lifecycle review queues, promotion reviews,
+AI proposal administration, or detailed platform health. Those concerns have
+dedicated workspaces.
 
-## Queue Intelligence
+## Recovery Case
 
-The workbench includes a compact Queue Intelligence section between the Platform Summary block and Follow-up Queue controls. It defaults to a read-only operational brief generated from the currently visible queue rows. The section should use terse single-field cards rather than explanatory helper copy.
+The case header keeps the incident, priority, current stage, time blocked,
+owner, exposure, restore readiness, evidence status, and recommended action
+visible before tab content.
 
-Queue Intelligence may wrap to two rows on desktop. Selected follow-up previews should not be forced into a single compressed row. Mobile stacks the cards in one column.
+Tabs are URL-addressable through `?tab=` and use the following hierarchy:
 
-Queue Intelligence signals:
+### Overview
 
-- Top blocker: the stage with the highest visible queue time.
-- Capacity risk: visible queue capacity impact.
-- Affected GPUs: visible queue GPU impact.
-- Trust load: visible incidents that require evidence review.
-- Primary risk: the dominant operational risk signal, such as N-1 exposure, missed vendor ETA, or spare/vendor wait.
+- concise operational brief
+- recommended decision
+- blocker, exposure, redundancy, and evidence summary
+- recovery-stage timeline with thresholds
+- current work-order ownership
+- latest activity
 
-This section must not introduce new semantic operations logic, charts, navigation, or clickable KPI behavior. It exists to make the queue-first workbench read as an ontology-native operations surface rather than a plain incident list.
+### Recovery & Actions
 
-When an operator selects a queue row, Queue Intelligence changes into a selected follow-up preview. Row selection must not navigate. The preview should show enough context for fast triage while preserving `View details` as the explicit route to the full incident page.
+- complete recovery timeline
+- approved governed-action affordances
+- disabled-action explanations
+- work-order and spare/vendor context
+- operational event history
+- progressively disclosed audit and transition history
 
-Selected follow-up preview signals should remain separate single-field cards:
+Supported action requests retain the existing private semantic action contract.
+They require confirmation and create local audited requests only. They do not
+mutate canonical, reasoning, operations, or external source-system state.
 
-- Incident ID.
-- Incident summary.
-- Next action.
-- Current blocker.
-- Time in stage.
-- Affected GPUs.
-- Capacity risk.
-- Trust status.
+### Impact
 
-## Queue Scope Controls
+- affected GPUs, racks, and kW
+- GPU capacity percentage
+- power and cooling redundancy
+- thermal exposure
+- vendor ETA and mitigation state
+- attached telemetry evidence
+- progressively disclosed priority-score inputs
 
-Queue scope controls are explicit buttons below the summary cards. They are allowed only when the scope meaning and returned queue rows match clearly.
+### Evidence
 
-Supported queue scopes:
-
-- All queue resets the queue filters.
-- Critical asset delay applies `critical_asset_delayed=true`.
-- Vendor ETA missed applies `vendor_eta_missed=true`.
-- Spare/vendor wait applies `stage=SPARE_VENDOR_WAITING`.
-- Evidence review applies `evidence_review=true`.
-- N-1 exposure applies `redundancy_lost=true`.
-
-Capacity at risk and affected GPUs remain read-only summaries because all current queue rows can have positive impact values, so those controls would not meaningfully narrow the queue.
-
-## Work Queue
-
-The queue ranks open incidents by return-to-service delay, blocker stage, zone impact, urgency, repeat failure, spare risk, capacity exposure, redundancy risk, thermal risk, vendor ETA risk, and mitigation credit.
-
-The queue is the primary work surface. On desktop, it uses a compact comparison table with one shared header row so operators can scan incidents against the same fields without repeated mini-headers. On mobile, each row stacks into a card-like layout with the same field order. Each row has an explicit `View details` link in a stable action column on desktop, and an action row on mobile, that opens the dedicated selected-incident page.
-
-Desktop queue columns:
-
-- Rank
-- Priority
-- Incident
-- Asset
-- Zone
-- Blocker
-- Time
-- Action
-
-Each queue row is organized as a compact selection record:
-
-- which incident is open
-- which asset is affected
-- which zone is affected
-- where recovery is blocked
-
-On the main queue, incident summary, next action, impact, and trust are exposed through the selected Queue Intelligence preview rather than separate desktop columns. This keeps the table compact while preserving the same data for row-level triage.
-
-`recommended_action` is the next operational follow-up based on the active workflow blocker. Impact exposure such as GPU capacity, redundancy loss, thermal breach, vendor ETA, and mitigation state explains why the incident matters, but it should not replace the workflow action unless the active blocker is spare/vendor follow-up.
-
-## Detail Page
-
-The detail page opens from a queue row link and supports direct reload, browser back/forward, and new-tab comparison. It is a focused inspection page, not a popup, drawer, or separate ontology workspace.
-
-Detail tabs:
-
-- Summary
-- Impact
-- Trust
-- Dependencies
-
-The `Summary` tab is a compact operational brief with constrained content width. It tells the incident story in this order:
-
-- incident summary
-- next operational action
-- at-a-glance context for asset/zone, current blocker, time in blocker, impact, and trust
-- why the incident matters
-- recovery blocker evidence from compact stage cards where each stage and duration stay together
-- work order and spare context as compact cards
-
-Trust supports the operational decision. It should not be presented before the action, impact, and blocker are clear.
-
-## Impact
-
-Impact is a selected-incident detail tab with a restrained evidence-report layout. It answers whether the selected incident creates material operational exposure without turning every metric into a separate card.
-
-- impact question
-- neutral at-a-glance fact strip for redundancy, capacity risk, affected GPUs, and thermal breach
-- row-based operational state evidence for vendor, mitigation, power redundancy, and cooling redundancy
-- row-based telemetry evidence
-- compact priority score strip
-
-## Trust
-
-Trust is a selected-incident detail tab with the same compact operational-brief structure as Summary. It separates source-quality and confidence review from the summary action so operators can decide whether the recommendation needs source-system review before use.
-
-- impact confidence
-- impact evidence issues
-- source quality flags
+- evidence verdict in operational language
+- impact confidence and source quality
 - validation records
-- meaningful empty states when no evidence issues are present
+- incident-to-asset evidence status
+- impact evidence issues
+- progressively disclosed SHACL, provenance, direct-fact, and inferred-fact
+  details for specialist review
 
-## Dependencies
+### Dependencies
 
-Dependencies is a selected-incident detail tab with a path-evidence layout. It lists compact power and cooling dependency paths and selected incident impact context so topology explains blast-radius evidence without becoming the visual center of the workbench. This is not a free-form graph editor or ontology map; it is supporting context for follow-up prioritization.
+- direct infrastructure dependency paths
+- active incidents on related paths
+- inferred downstream assets
+- blast-radius incident count
+- progressively disclosed reasoning findings
 
-- dependency question
-- neutral dependency fact strip for path count, active path incidents, capacity risk, and redundancy state
-- compact power and cooling path cards as the primary content
+Topology supports the recovery decision; it is not a free-form graph editor.
 
-## Trust Wording
+## Review Inbox
 
-User-facing trust labels should explain operational meaning before exposing internal source names.
+The Review Inbox separates specialist decisions from recovery prioritization.
+It groups:
 
-- `PASS` appears as `Trusted`
-- `FAILED` appears as `Needs review`
-- `TRUSTED` appears as `Trusted`
-- `WARNING` appears as `Review evidence`
-- unverified impact context appears as `Unverified`
+- evidence reviews
+- validation reviews
+- governed-action reviews
+- AI proposal reviews when present in approved review read models
+- promotion and reasoning lifecycle reviews
 
-The data trust panel explains source data issues found in the latest analysis run. Internal table and check names can remain available as secondary detail, but the first visible label should use operational language such as `Incident source feed`, `Stage event history`, or `Stage events arrived out of order`.
+Each review item shows the required decision, reason, operational risk,
+related object, evidence completeness, requester, age when available, and an
+available or explicitly disabled action.
 
-The impact trust section explains whether the selected incident's impact context is trusted, needs review, or is unverified for the same latest pipeline run.
+Repeated semantic observations are collapsed only when review kind, action,
+target, and release identify the same decision. Distinct targets remain
+separate. Category filters and search persist in the URL, and the inbox renders
+20 decisions per page so large reasoning releases do not create an unbounded
+document.
+
+## Platform Status
+
+Platform Status reports technical health without mixing it with incident
+severity:
+
+- semantic-service connectivity
+- latest pipeline state
+- data-quality and trust findings
+- analysis and topology coverage
+- controlled graph lifecycle review state
+- source and reconciliation findings
+
+Graph URIs and release details are hidden under specialist disclosures.
+Data-quality rows are deduplicated by stable finding identifier, ordered by
+severity and recency, and rendered 15 per page. Graph lifecycle details show a
+bounded preview and route full decision work to the Review Inbox.
+
+## Terminology
+
+Use operational labels first:
+
+- `Recovery case`, not `semantic finding`
+- `Evidence`, not `trust graph`
+- `Restore blocked`, not raw readiness enum values
+- `Evidence trusted`, `Evidence review`, or `Evidence unverified`
+- `Recovery stage`, not workflow URI
+- `Owner / dependency`, not backend relation names
+
+Technical names may appear only in advanced evidence, audit, or platform-health
+details where specialist users need them.
+
+## Visual System
+
+- neutral gray-blue application canvas
+- white operational surfaces
+- restrained teal interaction accent
+- red only for active critical danger
+- amber for intervention or review
+- green for restored, validated, trusted, or healthy
+- blue for informational and selected state
+- gray for unavailable, unknown, or inactive state
+- tabular numerals for rank, time, capacity, GPU counts, and timestamps
+- structured rows and tables before nested cards
+- status communication never depends on color alone
+
+The shell uses a persistent navigation rail on wide screens and a dismissible
+navigation drawer on smaller screens. Recovery tables become structured mobile
+records without changing field order or meaning.
+
+## Interaction and Accessibility
+
+- keyboard-selectable queue rows
+- recovery-case tabs use roving focus, arrow-key wrapping, Home/End navigation,
+  and explicit tab-to-panel relationships
+- visible focus indicators
+- URL-persisted search, filters, sort, case tabs, and deep links
+- browser back, forward, reload, and new-tab support
+- non-color icons and text for every status
+- descriptive action and icon-button labels
+- a skip-to-content link
+- responsive layouts at large desktop, standard desktop, laptop, and mobile
+- meaningful loading, empty, error, stale, and partial-data states
+- confirmation before governed action requests
+
+## Acceptance Criteria
+
+The interface is accepted when:
+
+- the recovery queue is visible in the first viewport;
+- an operator can identify the top case, blocker, exposure, owner/dependency,
+  evidence caveat, and next action within approximately ten seconds;
+- specialist review and platform-health content no longer interrupts recovery
+  triage;
+- every screen has one clear primary task;
+- technical semantic evidence remains discoverable without dominating default
+  views;
+- existing semantic query and governed-action contracts remain unchanged; and
+- the primary workflow is understandable without knowledge of RDF, SHACL,
+  SPARQL, or ontology internals.
