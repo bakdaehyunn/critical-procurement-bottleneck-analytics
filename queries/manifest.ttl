@@ -24,6 +24,7 @@ dcai-query:manifest
     dcai-query:fixtureProvenanceSourceRecords,
     dcai-query:semanticFollowUpQueueList,
     dcai-query:semanticDashboardOverview,
+    dcai-query:semanticPlatformStatus,
     dcai-query:semanticFilterMetadata,
     dcai-query:semanticFollowUpDetail,
     dcai-query:semanticImpactSummary,
@@ -197,6 +198,14 @@ dcai-query:semanticImpactSummary
   dcai-query:queryPath "queries/read-model/semantic_impact_summary.select.rq" ;
   dcai-query:queryMode "SELECT" ;
   dcai-query:graphScope "fixture or promoted canonical graph, reasoning graph" ;
+  dcai-query:implementationStatus "phase16-approved" .
+
+dcai-query:semanticPlatformStatus
+  rdf:type dcai-query:QueryEntry ;
+  dcterms:title "Semantic platform status read model" ;
+  dcai-query:queryPath "queries/read-model/semantic_platform_status.select.rq" ;
+  dcai-query:queryMode "SELECT" ;
+  dcai-query:graphScope "managed source, canonical, provenance, reasoning, and fixture graphs" ;
   dcai-query:implementationStatus "phase16-approved" .
 
 dcai-query:semanticTopologyDependencies

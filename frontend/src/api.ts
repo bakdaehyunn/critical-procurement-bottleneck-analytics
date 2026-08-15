@@ -2,7 +2,7 @@ import type {
   OntologyActionLifecycleState,
 } from './ontologyActionApi'
 import { semanticQueryCatalog } from './semanticQueryCatalog'
-import { postSemanticQuery } from './semanticQueryClient'
+import { postSemanticQuery, postSemanticQueryPage, type SemanticPageInfo } from './semanticQueryClient'
 
 export {
   submitOntologyActionRequest,
@@ -38,6 +38,39 @@ export type Overview = {
   vendor_eta_missed_count: number
   latest_pipeline_run_status: string | null
   data_quality_status: string
+}
+
+export type PlatformStatus = {
+  service_boundary: string
+  platform_verdict: 'OPERATIONAL' | 'DEGRADED' | 'UNKNOWN'
+  reason_code: string
+  source_freshness_status: string
+  latest_source_import_at: string | null
+  source_system_count: number
+  latest_canonical_release_id: string | null
+  latest_promotion_at: string | null
+  promotion_status: string
+  latest_reasoning_run_id: string | null
+  latest_analysis_at: string | null
+  analysis_status: string
+  pipeline_status: string
+  reconciliation_status: string
+  graph_validation_status: string
+  source_record_count: number
+  incident_count: number
+  incident_with_provenance_count: number
+  asset_count: number
+  asset_with_provenance_count: number
+}
+
+export type PagedResult<T> = {
+  records: T[]
+  page_info: SemanticPageInfo
+}
+
+export type RecoveryQueueSnapshot = {
+  overview: Overview
+  followUps: FollowUpItem[]
 }
 
 export type FollowUpItem = {
@@ -504,7 +537,7 @@ export type OntologyReviewQueueItem = {
   reasoning_audit_graph_uri: string | null
   reasoning_graph_uri: string | null
   evidence_summary: string
-  action_status: 'DISABLED'
+  action_status: string
   disabled_reason: string
   incident_count: number
   asset_count: number
@@ -667,6 +700,29 @@ type SemanticDashboardOverviewRecord = {
   vendorEtaMissedCount?: number
   repeatFailureAssetCount?: number
   engineerAssignmentDelayHours?: number
+}
+
+type SemanticPlatformStatusRecord = {
+  serviceBoundary: string
+  platformVerdict: 'OPERATIONAL' | 'DEGRADED' | 'UNKNOWN'
+  reasonCode: string
+  sourceFreshnessStatus: string
+  latestSourceImportAt?: string
+  sourceSystemCount: number
+  latestCanonicalReleaseId?: string
+  latestPromotionAt?: string
+  promotionStatus: string
+  latestReasoningRunId?: string
+  latestAnalysisAt?: string
+  analysisStatus: string
+  pipelineStatus: string
+  reconciliationStatus: string
+  graphValidationStatus: string
+  sourceRecordCount: number
+  incidentCount: number
+  incidentWithProvenanceCount: number
+  assetCount: number
+  assetWithProvenanceCount: number
 }
 
 type SemanticFollowUpQueueRecord = {
@@ -1124,6 +1180,84 @@ type SemanticOntologyReviewQueueRecord = {
   prioritySortOrder: number
 }
 
+async function fetchFollowUpReadModel(): Promise<{ overviewRecord?: SemanticDashboardOverviewRecord; followUps: FollowUpItem[] }> {
+  const [overviewRecords, queueRecords, detailRecords, dependencyRecords] = await Promise.all([
+    postSemanticQuery<SemanticDashboardOverviewRecord>(semanticQueryCatalog.dashboardOverview),
+    postSemanticQuery<SemanticFollowUpQueueRecord>(semanticQueryCatalog.followUpQueueList),
+    postSemanticQuery<SemanticFollowUpDetailRecord>(semanticQueryCatalog.followUpDetail),
+    postSemanticQuery<SemanticTopologyDependencyRecord>(semanticQueryCatalog.topologyDependencies),
+  ])
+  return {
+    overviewRecord: overviewRecords[0],
+    followUps: buildFollowUps(queueRecords, detailRecords, dependencyRecords),
+  }
+}
+
+export async function fetchRecoveryQueueSnapshot(): Promise<RecoveryQueueSnapshot> {
+  const { overviewRecord, followUps } = await fetchFollowUpReadModel()
+  return {
+    overview: buildOverview(overviewRecord, followUps),
+    followUps,
+  }
+}
+
+export async function fetchReviewAttentionSignals(): Promise<FollowUpItem[]> {
+  return (await fetchFollowUpReadModel()).followUps
+}
+
+export async function fetchQualityCheckPage(page: number, pageSize: number): Promise<PagedResult<DataQualityCheck>> {
+  const result = await postSemanticQueryPage<SemanticTrustFindingRecord>(semanticQueryCatalog.trustFindingList, page, pageSize)
+  return { records: result.records.map(mapTrustFinding), page_info: result.pageInfo }
+}
+
+export async function fetchActionReviewQueuePage(page: number, pageSize: number): Promise<PagedResult<OntologyActionReviewQueueItem>> {
+  const result = await postSemanticQueryPage<SemanticActionReviewQueueRecord>(semanticQueryCatalog.actionReviewQueueByIncident, page, pageSize)
+  return { records: result.records.map(mapActionReviewQueue), page_info: result.pageInfo }
+}
+
+export async function fetchAiProposalReviewQueuePage(page: number, pageSize: number): Promise<PagedResult<AiProposalItem>> {
+  const result = await postSemanticQueryPage<SemanticAiProposalRecord>(semanticQueryCatalog.aiProposalReviewQueue, page, pageSize)
+  return { records: result.records.map(mapAiProposal), page_info: result.pageInfo }
+}
+
+export async function fetchOntologyReviewQueuePage(
+  kind: 'promotion' | 'reasoning',
+  page: number,
+  pageSize: number,
+): Promise<PagedResult<OntologyReviewQueueItem>> {
+  const queryId = kind === 'promotion' ? semanticQueryCatalog.promotionReviewQueue : semanticQueryCatalog.reasoningReviewQueue
+  const result = await postSemanticQueryPage<SemanticOntologyReviewQueueRecord>(queryId, page, pageSize)
+  return { records: buildOntologyReviewQueue(result.records), page_info: result.pageInfo }
+}
+
+export async function fetchPlatformStatus(): Promise<PlatformStatus> {
+  const records = await postSemanticQuery<SemanticPlatformStatusRecord>(semanticQueryCatalog.platformStatus)
+  const record = records[0]
+  if (!record) throw new Error('The semantic platform status read model returned no evidence.')
+  return {
+    service_boundary: record.serviceBoundary,
+    platform_verdict: record.platformVerdict,
+    reason_code: record.reasonCode,
+    source_freshness_status: record.sourceFreshnessStatus,
+    latest_source_import_at: record.latestSourceImportAt ?? null,
+    source_system_count: record.sourceSystemCount,
+    latest_canonical_release_id: record.latestCanonicalReleaseId ?? null,
+    latest_promotion_at: record.latestPromotionAt ?? null,
+    promotion_status: record.promotionStatus,
+    latest_reasoning_run_id: record.latestReasoningRunId ?? null,
+    latest_analysis_at: record.latestAnalysisAt ?? null,
+    analysis_status: record.analysisStatus,
+    pipeline_status: record.pipelineStatus,
+    reconciliation_status: record.reconciliationStatus,
+    graph_validation_status: record.graphValidationStatus,
+    source_record_count: record.sourceRecordCount,
+    incident_count: record.incidentCount,
+    incident_with_provenance_count: record.incidentWithProvenanceCount,
+    asset_count: record.assetCount,
+    asset_with_provenance_count: record.assetWithProvenanceCount,
+  }
+}
+
 export async function fetchDashboardData(filters: DashboardFilters = {}): Promise<DashboardData> {
   const [
     overviewRecords,
@@ -1437,7 +1571,7 @@ function buildOntologyReviewQueue(records: SemanticOntologyReviewQueueRecord[]):
       reasoning_audit_graph_uri: record.reasoningAuditGraphUri ?? null,
       reasoning_graph_uri: record.reasoningGraphUri ?? null,
       evidence_summary: record.evidenceSummary,
-      action_status: 'DISABLED' as const,
+      action_status: record.actionStatus,
       disabled_reason: record.disabledReason,
       incident_count: record.incidentCount,
       asset_count: record.assetCount,

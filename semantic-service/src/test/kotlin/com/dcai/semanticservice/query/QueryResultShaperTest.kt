@@ -14,6 +14,7 @@ class QueryResultShaperTest {
             "fixtureProvenanceSourceRecords" to definition("fixtureProvenanceSourceRecords", "fixture source graph, fixture canonical graph"),
             "semanticFollowUpQueueList" to definition("semanticFollowUpQueueList", "fixture canonical graph"),
             "semanticDashboardOverview" to definition("semanticDashboardOverview", "fixture canonical graph"),
+            "semanticPlatformStatus" to definition("semanticPlatformStatus", "managed platform graphs"),
             "semanticFilterMetadata" to definition("semanticFilterMetadata", "fixture canonical graph"),
             "semanticFollowUpDetail" to definition("semanticFollowUpDetail", "fixture canonical graph"),
             "semanticImpactSummary" to definition("semanticImpactSummary", "fixture canonical graph"),
@@ -181,6 +182,47 @@ class QueryResultShaperTest {
     }
 
     @Test
+    fun shapesAuthoritativePlatformStatusRows() {
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticPlatformStatus",
+                mode = QueryMode.SELECT,
+                rows = listOf(
+                    mapOf(
+                        "serviceBoundary" to "APPROVED_QUERY_API",
+                        "platformVerdict" to "OPERATIONAL",
+                        "reasonCode" to "PLATFORM_EVIDENCE_CURRENT",
+                        "sourceFreshnessStatus" to "OBSERVED",
+                        "latestSourceImportAt" to "2026-06-14T10:00:00Z",
+                        "sourceSystemCount" to "3",
+                        "latestCanonicalReleaseId" to "source-v2",
+                        "latestPromotionAt" to "2026-06-14T10:05:00Z",
+                        "promotionStatus" to "PROMOTED",
+                        "latestReasoningRunId" to "reasoning-v2",
+                        "latestAnalysisAt" to "2026-06-14T10:10:00Z",
+                        "analysisStatus" to "AVAILABLE",
+                        "pipelineStatus" to "SUCCESS",
+                        "reconciliationStatus" to "PASSED",
+                        "graphValidationStatus" to "UNKNOWN",
+                        "sourceRecordCount" to "24",
+                        "incidentCount" to "4",
+                        "incidentWithProvenanceCount" to "4",
+                        "assetCount" to "6",
+                        "assetWithProvenanceCount" to "6",
+                    ),
+                ),
+            ),
+        )
+
+        val record = assertIs<PlatformStatusEnvelope>(envelope).records.single()
+        assertEquals(QueryResultType.PLATFORM_STATUS, envelope.resultType)
+        assertEquals("OPERATIONAL", record.platformVerdict)
+        assertEquals("source-v2", record.latestCanonicalReleaseId)
+        assertEquals("UNKNOWN", record.graphValidationStatus)
+        assertEquals(4, record.incidentWithProvenanceCount)
+    }
+
+    @Test
     fun shapesFilterMetadataRows() {
         val envelope = shaper.shape(
             QueryExecutionReport(
@@ -299,6 +341,41 @@ class QueryResultShaperTest {
         assertEquals("WARNING", typed.records.single().severity)
         assertEquals("FAILED", typed.records.single().status)
         assertEquals("2026-01-08T02:20:00Z", typed.records.single().createdAt)
+    }
+
+    @Test
+    fun keepsLatestAuthoritativeTrustFindingVersion() {
+        val base = mapOf(
+            "graph" to "urn:dcai:graph:reasoning:run-1",
+            "trustFinding" to "urn:dcai:trust-finding:TRUST-0001",
+            "trustFindingId" to "TRUST-0001",
+            "summary" to "Earlier critical observation.",
+            "sourceFact" to "urn:dcai:source-fact:1",
+            "severity" to "CRITICAL",
+            "status" to "FAILED",
+            "createdAt" to "2026-01-08T02:20:00Z",
+        )
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticTrustFindingList",
+                mode = QueryMode.SELECT,
+                rows = listOf(
+                    base,
+                    base + mapOf(
+                        "graph" to "urn:dcai:graph:reasoning:run-2",
+                        "summary" to "Latest observation passed.",
+                        "severity" to "INFO",
+                        "status" to "PASSED",
+                        "createdAt" to "2026-01-09T02:20:00Z",
+                    ),
+                ),
+            ),
+        )
+
+        val record = assertIs<TrustFindingsEnvelope>(envelope).records.single()
+        assertEquals("Latest observation passed.", record.summary)
+        assertEquals("PASSED", record.status)
+        assertEquals("INFO", record.severity)
     }
 
     @Test
@@ -643,6 +720,25 @@ class QueryResultShaperTest {
     }
 
     @Test
+    fun keepsOneLatestActionAuditRecordPerExecution() {
+        val base = actionAuditHistoryRow()
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticActionAuditHistoryByIncident",
+                mode = QueryMode.SELECT,
+                rows = listOf(
+                    base,
+                    base + mapOf("graph" to "urn:dcai:graph:action-audit:newer", "executedAt" to "2026-06-15T10:30:00Z"),
+                ),
+            ),
+        )
+
+        val records = assertIs<ActionAuditHistoryEnvelope>(envelope).records
+        assertEquals(1, records.size)
+        assertEquals("urn:dcai:graph:action-audit:newer", records.single().graphUri)
+    }
+
+    @Test
     fun shapesActionAvailabilityRows() {
         val envelope = shaper.shape(
             QueryExecutionReport(
@@ -660,6 +756,28 @@ class QueryResultShaperTest {
         assertEquals("RestoreReadinessFinding", record.detailRole)
         assertEquals("targetObject", record.detailKind)
         assertEquals(100, record.detailSortOrder)
+    }
+
+    @Test
+    fun resolvesSourceBackedActionTargetMarkers() {
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticAvailableActionsByFinding",
+                mode = QueryMode.SELECT,
+                rows = listOf(
+                    actionAvailabilityRow() + mapOf(
+                        "detailLabel" to "Source-backed restore readiness finding",
+                        "detailValue" to "__SOURCE_BACKED_TARGET__",
+                        "restoreReadiness" to "urn:dcai:reasoning:restore-readiness:INC-0001",
+                        "restoreReadinessSummary" to "Restore remains blocked by validation evidence.",
+                    ),
+                ),
+            ),
+        )
+
+        val record = assertIs<ActionAvailabilityEnvelope>(envelope).records.single()
+        assertEquals("urn:dcai:reasoning:restore-readiness:INC-0001", record.detailValue)
+        assertEquals("Restore remains blocked by validation evidence.", record.detailLabel)
     }
 
     @Test
@@ -718,6 +836,28 @@ class QueryResultShaperTest {
         assertEquals("QUEUED", record.currentState)
         assertEquals("INC-0001", record.incidentId)
         assertEquals("managed action-audit lifecycle state", typed.provenance.graphScope)
+    }
+
+    @Test
+    fun keepsLatestActionLifecycleStatePerExecution() {
+        val base = actionReviewQueueRow()
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticActionReviewQueueByIncident",
+                mode = QueryMode.SELECT,
+                rows = listOf(
+                    base,
+                    base + mapOf(
+                        "currentState" to "IN_REVIEW",
+                        "stateGeneratedAt" to "2026-06-14T10:25:33Z",
+                    ),
+                ),
+            ),
+        )
+
+        val records = assertIs<ActionReviewQueueEnvelope>(envelope).records
+        assertEquals(1, records.size)
+        assertEquals("IN_REVIEW", records.single().currentState)
     }
 
     @Test
@@ -803,6 +943,23 @@ class QueryResultShaperTest {
     }
 
     @Test
+    fun returnsOneAiReviewItemPerProposal() {
+        val base = aiProposalRow()
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticAiProposalReviewQueue",
+                mode = QueryMode.SELECT,
+                rows = listOf(
+                    base,
+                    base + mapOf("targetObject" to "urn:dcai:reasoning:restore-readiness:INC-001"),
+                ),
+            ),
+        )
+
+        assertEquals(1, assertIs<AiProposalReviewQueueEnvelope>(envelope).records.size)
+    }
+
+    @Test
     fun shapesAiProposalDetailRows() {
         val envelope = shaper.shape(
             QueryExecutionReport(
@@ -838,6 +995,33 @@ class QueryResultShaperTest {
         assertEquals("ReasoningActivity", record.targetType)
         assertEquals(3, record.generatedFactCount)
         assertEquals("reasoning review state", typed.provenance.graphScope)
+    }
+
+    @Test
+    fun mergesOntologyReviewObservationsToAuthoritativeState() {
+        val base = ontologyReviewQueueRow()
+        val envelope = shaper.shape(
+            QueryExecutionReport(
+                queryId = "semanticReasoningReviewQueue",
+                mode = QueryMode.SELECT,
+                rows = listOf(
+                    base,
+                    base + mapOf(
+                        "reviewStatus" to "APPROVED_GRAPH_PRESENT",
+                        "reasoningGraph" to "urn:dcai:graph:reasoning:local-controlled-reasoning-v1",
+                        "incidentCount" to "1",
+                        "generatedFactCount" to "1",
+                        "prioritySortOrder" to "430",
+                    ),
+                ),
+            ),
+        )
+
+        val record = assertIs<OntologyReviewQueueEnvelope>(envelope).records.single()
+        assertEquals("APPROVED_GRAPH_PRESENT", record.reviewStatus)
+        assertEquals(2, record.incidentCount)
+        assertEquals(3, record.generatedFactCount)
+        assertEquals("urn:dcai:graph:reasoning:local-controlled-reasoning-v1", record.reasoningGraphUri)
     }
 
     private fun followUpQueueRow(): Map<String, String> {

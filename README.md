@@ -127,7 +127,9 @@ See `docs/01_architecture.md` for the source-to-question mapping and trust risks
 - Shape graph bindings into typed Kotlin result envelopes
 - Serialize all endpoint responses through the semantic response serializer
 - Reject raw SPARQL, unapproved query IDs, graph writes, public exposure, and non-loopback endpoint binding
-- Provide graph-backed read models for dashboard overview, follow-up queue, filters, selected detail, impact, topology, trust findings, validation summary, incident evidence, dependency impact, and blast radius
+- Provide graph-backed read models for the recovery queue and case, governed
+  review queues, action audit history, AI proposal review, platform status,
+  impact, topology, trust, validation, dependency impact, and blast radius
 
 ## Production Story
 
@@ -143,16 +145,6 @@ The practical production path is intentionally modest:
 - deployment and rollback notes
 
 Kubernetes, Airflow, Kafka, and OpenTelemetry can be added later if they solve a specific operational need. They are deployment and integration choices, not the story. The story is faster, more trusted return-to-service follow-up.
-
-Run semantic-service checks:
-
-```bash
-docker run --rm \
-  -v "$PWD":/workspace \
-  -w /workspace/semantic-service \
-  gradle:8.10.2-jdk17 \
-  gradle --no-daemon test
-```
 
 Run Fuseki locally:
 
@@ -183,6 +175,7 @@ Approved product read-model query IDs include:
 
 - `semanticFollowUpQueueList`
 - `semanticDashboardOverview`
+- `semanticPlatformStatus`
 - `semanticFilterMetadata`
 - `semanticFollowUpDetail`
 - `semanticImpactSummary`
@@ -197,81 +190,107 @@ Approved product read-model query IDs include:
 - `semanticIncidentTimeline`
 - `semanticDependencyImpactByAsset`
 - `semanticBlastRadiusByAsset`
+- `semanticPromotionReviewQueue`
+- `semanticReasoningReviewQueue`
+- `semanticAvailableActionsByFinding`
+- `semanticActionReviewQueueByIncident`
+- `semanticActionTransitionHistoryByIncident`
+- `semanticAiProposalReviewQueue`
+- `semanticAiProposalDetailByIncident`
 
-The endpoint is internal/loopback only. It accepts approved query IDs, not raw SPARQL text.
+The complete approved catalog lives in `queries/manifest.ttl`. The endpoint is
+internal/loopback only. It accepts approved query IDs, not raw SPARQL text.
 
-## Semantic Workbench
+Read models can opt into server-side paging with a one-based `page` and a
+`pageSize` from 1 to 100. Paged responses add backward-compatible `pageInfo`
+containing the current page, page size, page count, and post-shaping total;
+unpaged response envelopes remain unchanged.
 
-The React frontend is built as a semantic operations workbench:
+## Return-to-Service Operations Console
 
-- Read-only graph finding summaries for restore readiness, trust review,
-  redundancy exposure, dependency roles, capacity risk, and affected GPUs
-- Semantic finding scope controls aligned with live graph vocabulary such as
-  restore blocked, trust review, redundancy lost, vendor/parts escalation,
-  recovery, and validation
-- A compact findings table with incident, asset, zone, blocker, time, and
-  detail links backed by approved semantic query IDs
-- Dedicated finding detail route with a Summary explanation canvas plus Impact,
-  Trust, and Dependencies tabs
-- Detail evidence for stage history, work order context, impact snapshot
-  context, telemetry evidence, vendor/mitigation status, impact trust flags,
-  graph-derived dependency paths, SHACL validation status, semantic incident
-  evidence, provenance chain, and SPARQL-backed blast-radius context
-- Internal ontology action layer for governed operator actions such as restore
-  blocker acknowledgement, evidence review assignment, validation review,
-  reasoning finding approval/rejection, reasoning refresh request, and promotion
-  batch approval. The current executable slice supports internal audit-only
-  requests for restore blocker acknowledgement, evidence review assignment, and
-  validation review; it does not expose public write endpoints or mutate
-  canonical/reasoning/operations graphs.
-- Controlled action affordances in selected finding Summary and Trust views.
-  These are backed by the approved `semanticAvailableActionsByFinding` read
-  model and show action labels, target ontology objects, required parameters,
-  preconditions, provenance requirements, and disabled reasons. Supported
-  audit-only actions can be submitted through the private loopback endpoint as
-  managed action-audit graph requests.
-- Action notifications and action-audit history in the selected finding action
-  panel, backed by approved semantic query IDs for managed action-audit graph
-  releases, incident targets, and target object URIs. They show pending local
-  notifications, action status, actor, action type, validation result,
-  provenance links, idempotency key, and graph lifecycle context without
-  external system writeback.
-- Internal ontology action lifecycle review in the selected finding action
-  panel. Queued local actions can move through controlled `QUEUED`,
-  `IN_REVIEW`, `APPROVED`, `REJECTED`, and `CLOSED` states through the private
-  loopback transition endpoint. Transition history is read back through
-  approved semantic query IDs and remains confined to the managed action-audit
-  graph; it does not mutate canonical, reasoning, operations, production, or
-  external source-system state.
-- Simulated operations dispatch visibility for approved local ontology actions.
-  When a local action reaches `APPROVED`, the managed action-audit graph records
-  internal `NOC_QUEUE`, `WORK_ORDER_QUEUE`, and `VALIDATION_REVIEW_QUEUE`
-  dispatch facts with provenance. These are displayed in the selected finding
-  action panel and are not external notifications or source-system writeback.
-- Read-only internal lifecycle review queues in the semantic operations workbench, backed by
-  `semanticPromotionReviewQueue` and `semanticReasoningReviewQueue`. They show
-  promotion batch, reasoning refresh, and reasoning approval state from managed
-  graph facts while keeping all actions disabled.
-- Dynamic ontology playback in the selected finding Summary view, backed by
-  managed action-audit playback facts and approved query IDs for event
-  timeline, graph state changes, reasoning/trust changes, and action lifecycle
-  changes. It shows how source-system exports promote into canonical graph
-  facts, reasoning deltas, blast-radius changes, and local action state over
-  deterministic replay steps without exposing raw SPARQL or public writes.
-- AI governance proposal review in the selected finding action panel.
-  Controlled local AI proposal fixtures are validated with provenance, SHACL,
-  confidence, risk, and model/prompt metadata gates, then written only to
-  managed ai-audit graphs. Pending proposals can be approved or rejected through
-  the private internal review endpoint. Rejections write only ai-audit review
-  facts; approved action recommendations create governed local action-audit
-  requests and still do not mutate canonical, reasoning, operations,
-  production, or external source-system state.
+The React frontend is a queue-first operations console. Operational decisions
+come before ontology vocabulary; semantic evidence remains available where it
+helps an operator judge urgency, impact, or trust.
 
-Run the frontend build:
+### Recovery Queue (`/`)
+
+- Ranks recovery cases by intervention priority in the first viewport
+- Compares the active blocker, time in stage, GPU and power exposure,
+  redundancy, owner or dependency, and evidence status
+- Keeps search, sorting, and filters in the URL for reloadable and shareable
+  operational views
+- Updates a selected-case decision preview without accidental row navigation;
+  opening the full case remains an explicit action
+
+### Recovery Case (`/recovery-cases/{incident_id}`)
+
+- Keeps stage, time blocked, owner, exposure, restore readiness, evidence, and
+  recommended action visible above the workspace tabs
+- Organizes the case into Overview, Recovery & Actions, Impact, Evidence, and
+  Dependencies; `?tab=` preserves deep links and browser history
+- Uses keyboard-accessible tabs with roving focus, arrow-key wrapping, Home/End
+  navigation, and explicit tab-to-panel relationships
+- Collects editable actor, reason, team, assignee, status, or summary fields
+  before supported governed actions are submitted
+- Shows valid action lifecycle transitions and audit history without mutating
+  canonical, reasoning, operations, production, or external source-system state
+
+The legacy `/findings/{incident_id}` path remains a compatibility alias.
+
+### Review Inbox (`/reviews`)
+
+- Separates governed actions, AI proposals, promotion reviews, reasoning
+  reviews, and case-attention signals into explicit categories
+- Treats `PENDING_HUMAN_REVIEW` AI proposals as actionable and provides
+  reviewer/reason forms for approval or rejection
+- Enables only valid governed-action lifecycle transitions; promotion and
+  reasoning reviews remain read-only because no write contract exists
+- Uses stable read-model deduplication and service-owned paging so result totals
+  describe authoritative decisions rather than duplicated bindings or a single
+  client-loaded page
+- Persists category, page, and committed search state in the URL
+
+### Platform Status (`/platform-status`)
+
+- Separates technical platform health from incident severity
+- Reports source-backed service connectivity, source freshness, graph release,
+  reasoning, reconciliation, data quality, and topology coverage
+- Uses the tri-state verdict `Operational`, `Degraded`, or `Unknown`; missing
+  persisted validation evidence is never presented as success
+- Shows bounded lifecycle previews and routes full review work to Review Inbox
+- Uses stable finding identity and service-owned paging for large result sets
+
+Across all workspaces, loading, empty, partial, stale, and error states are
+route-specific. The console includes visible focus states, a skip link,
+descriptive controls, responsive table-to-record layouts, and browser history
+behavior for URL-addressable state.
+
+## Verification
+
+Run frontend unit tests, lint, and the production build:
 
 ```bash
 cd frontend
+npm test
+npm run lint
 npm run build
+```
+
+Run semantic-service tests from the repository root:
+
+```bash
+docker run --rm \
+  -v "$PWD":/workspace \
+  -w /workspace/semantic-service \
+  gradle:8.10.2-jdk17 \
+  gradle --no-daemon test
+```
+
+Run the SPARQL parser check after installing the RDF tooling described in
+`docs/06_verification_plan.md`:
+
+```bash
+PYTHONPATH=/tmp/dcai-rdf-tools python3 queries/validate_sparql.py
 ```
 
 ## Tech Stack

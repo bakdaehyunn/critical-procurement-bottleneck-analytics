@@ -91,7 +91,8 @@ Tabs are URL-addressable through `?tab=` and use the following hierarchy:
 - progressively disclosed audit and transition history
 
 Supported action requests retain the existing private semantic action contract.
-They require confirmation and create local audited requests only. They do not
+They require editable actor, reason, and action-specific inputs before they
+create local audited requests. They do not
 mutate canonical, reasoning, operations, or external source-system state.
 
 ### Impact
@@ -127,40 +128,47 @@ Topology supports the recovery decision; it is not a free-form graph editor.
 ## Review Inbox
 
 The Review Inbox separates specialist decisions from recovery prioritization.
-It groups:
+It separates authoritative queues into:
 
-- evidence reviews
-- validation reviews
 - governed-action reviews
-- AI proposal reviews when present in approved review read models
-- promotion and reasoning lifecycle reviews
+- AI proposal reviews from the approved global proposal queue
+- read-only promotion lifecycle reviews
+- read-only reasoning lifecycle reviews
+- case-attention signals derived from current evidence or validation state;
+  these navigate to the case and are not persisted review records
 
-Each review item shows the required decision, reason, operational risk,
-related object, evidence completeness, requester, age when available, and an
-available or explicitly disabled action.
+Each authoritative review item shows only source-backed actor, state, target,
+reason, and timestamp fields. Governed actions support only valid lifecycle
+transitions. AI proposals support approve or reject with an editable reviewer
+and reason. Promotion and reasoning controls remain disabled and explain that
+the current service exposes no write contract.
 
-Repeated semantic observations are collapsed only when review kind, action,
-target, and release identify the same decision. Distinct targets remain
-separate. Category filters and search persist in the URL, and the inbox renders
-20 decisions per page so large reasoning releases do not create an unbounded
-document.
+Repeated semantic observations are collapsed at the semantic read-model
+boundary only when stable decision identity matches; distinct targets remain
+separate. Category, page, and committed search state persist in the URL. The
+service returns 20 decisions per page plus `pageInfo`, so large releases do not
+create an unbounded document or a misleading client-side total.
 
 ## Platform Status
 
 Platform Status reports technical health without mixing it with incident
 severity:
 
-- semantic-service connectivity
-- latest pipeline state
+- semantic-service connectivity at the successful query boundary
+- source-backed tri-state platform verdict (`Operational`, `Degraded`, or
+  `Unknown`)
+- latest source import, canonical promotion, and reasoning-run state
 - data-quality and trust findings
 - analysis and topology coverage
 - controlled graph lifecycle review state
 - source and reconciliation findings
 
 Graph URIs and release details are hidden under specialist disclosures.
-Data-quality rows are deduplicated by stable finding identifier, ordered by
-severity and recency, and rendered 15 per page. Graph lifecycle details show a
-bounded preview and route full decision work to the Review Inbox.
+Data-quality rows are deduplicated by stable finding identifier at the
+read-model boundary and rendered from service-owned pages of 15. Platform
+Status never infers graph-validation success: it renders `Unknown` when no
+authoritative report is persisted. Graph lifecycle details show a bounded
+preview and route full decision work to the Review Inbox.
 
 ## Terminology
 
@@ -207,7 +215,9 @@ records without changing field order or meaning.
 - a skip-to-content link
 - responsive layouts at large desktop, standard desktop, laptop, and mobile
 - meaningful loading, empty, error, stale, and partial-data states
-- confirmation before governed action requests
+- explicit editable governed-action forms before audited requests
+- search is committed on Enter or blur rather than writing browser history per
+  keystroke
 
 ## Acceptance Criteria
 

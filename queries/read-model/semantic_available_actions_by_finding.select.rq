@@ -20,6 +20,14 @@ SELECT DISTINCT
   ?detailLabel
   ?detailValue
   ?detailSortOrder
+  ?restoreReadiness
+  ?restoreReadinessSummary
+  ?recoveryBlocker
+  ?blockerSummary
+  ?trustFinding
+  ?trustSummary
+  ?validationEvidence
+  ?validationStatus
 WHERE {
   GRAPH ?graph {
     ?incident rdf:type dcai:InfrastructureIncident ;
@@ -97,27 +105,21 @@ WHERE {
       }
     }
     UNION {
-      BIND("targetObject" AS ?detailKind)
-      BIND("RestoreReadinessFinding" AS ?detailRole)
-      BIND(COALESCE(?restoreReadinessSummary, "Restore readiness finding") AS ?detailLabel)
-      BIND(STR(?restoreReadiness) AS ?detailValue)
-      BIND(100 AS ?detailSortOrder)
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("targetObject" "RestoreReadinessFinding" "Source-backed restore readiness finding" "__SOURCE_BACKED_TARGET__" 100)
+      }
       FILTER(BOUND(?restoreReadiness))
     }
     UNION {
-      BIND("targetObject" AS ?detailKind)
-      BIND("RecoveryBlocker" AS ?detailRole)
-      BIND(COALESCE(?blockerSummary, COALESCE(?stageLabel, STR(?stage))) AS ?detailLabel)
-      BIND(STR(?recoveryBlocker) AS ?detailValue)
-      BIND(101 AS ?detailSortOrder)
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("targetObject" "RecoveryBlocker" "Source-backed recovery blocker" "__SOURCE_BACKED_TARGET__" 101)
+      }
       FILTER(BOUND(?recoveryBlocker))
     }
     UNION {
-      BIND("targetObject" AS ?detailKind)
-      BIND("InfrastructureIncident" AS ?detailRole)
-      BIND(?incidentId AS ?detailLabel)
-      BIND(STR(?incident) AS ?detailValue)
-      BIND(102 AS ?detailSortOrder)
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("targetObject" "InfrastructureIncident" "Source-backed incident" "__SOURCE_BACKED_TARGET__" 102)
+      }
     }
     UNION {
       BIND("disabledReason" AS ?detailKind)
@@ -163,26 +165,20 @@ WHERE {
       }
     }
     UNION {
-      BIND("targetObject" AS ?detailKind)
-      BIND("TrustFinding" AS ?detailRole)
-      BIND(COALESCE(?trustSummary, "Trust finding") AS ?detailLabel)
-      BIND(STR(?trustFinding) AS ?detailValue)
-      BIND(100 AS ?detailSortOrder)
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("targetObject" "TrustFinding" "Source-backed trust finding" "__SOURCE_BACKED_TARGET__" 100)
+      }
       FILTER(BOUND(?trustFinding))
     }
     UNION {
-      BIND("targetObject" AS ?detailKind)
-      BIND("InfrastructureIncident" AS ?detailRole)
-      BIND(?incidentId AS ?detailLabel)
-      BIND(STR(?incident) AS ?detailValue)
-      BIND(101 AS ?detailSortOrder)
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("targetObject" "InfrastructureIncident" "Source-backed incident" "__SOURCE_BACKED_TARGET__" 101)
+      }
     }
     UNION {
-      BIND("targetObject" AS ?detailKind)
-      BIND("SourceRecord" AS ?detailRole)
-      BIND("Source evidence" AS ?detailLabel)
-      BIND(STR(?sourceRecord) AS ?detailValue)
-      BIND(102 AS ?detailSortOrder)
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("targetObject" "SourceRecord" "Source evidence" "__SOURCE_BACKED_TARGET__" 102)
+      }
     }
     UNION {
       BIND("disabledReason" AS ?detailKind)
@@ -228,26 +224,20 @@ WHERE {
       }
     }
     UNION {
-      BIND("targetObject" AS ?detailKind)
-      BIND("ValidationEvidence" AS ?detailRole)
-      BIND(COALESCE(?validationStatus, "Validation evidence") AS ?detailLabel)
-      BIND(STR(?validationEvidence) AS ?detailValue)
-      BIND(100 AS ?detailSortOrder)
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("targetObject" "ValidationEvidence" "Source-backed validation evidence" "__SOURCE_BACKED_TARGET__" 100)
+      }
       FILTER(BOUND(?validationEvidence))
     }
     UNION {
-      BIND("targetObject" AS ?detailKind)
-      BIND("InfrastructureIncident" AS ?detailRole)
-      BIND(?incidentId AS ?detailLabel)
-      BIND(STR(?incident) AS ?detailValue)
-      BIND(101 AS ?detailSortOrder)
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("targetObject" "InfrastructureIncident" "Source-backed incident" "__SOURCE_BACKED_TARGET__" 101)
+      }
     }
     UNION {
-      BIND("targetObject" AS ?detailKind)
-      BIND("RestoreReadinessFinding" AS ?detailRole)
-      BIND(COALESCE(?restoreReadinessSummary, "Restore readiness finding") AS ?detailLabel)
-      BIND(STR(?restoreReadiness) AS ?detailValue)
-      BIND(102 AS ?detailSortOrder)
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("targetObject" "RestoreReadinessFinding" "Source-backed restore readiness finding" "__SOURCE_BACKED_TARGET__" 102)
+      }
       FILTER(BOUND(?restoreReadiness))
     }
     UNION {
@@ -287,18 +277,14 @@ WHERE {
       }
     }
     UNION {
-      BIND("targetObject" AS ?detailKind)
-      BIND("InfrastructureIncident" AS ?detailRole)
-      BIND(?incidentId AS ?detailLabel)
-      BIND(STR(?incident) AS ?detailValue)
-      BIND(100 AS ?detailSortOrder)
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("targetObject" "InfrastructureIncident" "Source-backed incident" "__SOURCE_BACKED_TARGET__" 100)
+      }
     }
     UNION {
-      BIND("targetObject" AS ?detailKind)
-      BIND("InfrastructureAsset" AS ?detailRole)
-      BIND(?assetId AS ?detailLabel)
-      BIND(STR(?asset) AS ?detailValue)
-      BIND(101 AS ?detailSortOrder)
+      VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
+        ("targetObject" "InfrastructureAsset" "Source-backed asset" "__SOURCE_BACKED_TARGET__" 101)
+      }
     }
     UNION {
       BIND(?sharedKind AS ?detailKind)

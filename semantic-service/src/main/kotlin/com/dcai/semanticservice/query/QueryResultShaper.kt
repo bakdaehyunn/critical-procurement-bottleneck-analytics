@@ -17,6 +17,7 @@ class QueryResultShaper(
             "fixtureProvenanceSourceRecords" -> shapeProvenanceSourceRecords(report, definition)
             "semanticFollowUpQueueList" -> shapeFollowUpQueue(report, definition)
             "semanticDashboardOverview" -> shapeDashboardOverview(report, definition)
+            "semanticPlatformStatus" -> shapePlatformStatus(report, definition)
             "semanticFilterMetadata" -> shapeFilterMetadata(report, definition)
             "semanticFollowUpDetail" -> shapeFollowUpDetail(report, definition)
             "semanticImpactSummary" -> shapeImpactSummary(report, definition)
@@ -187,6 +188,40 @@ class QueryResultShaper(
         )
     }
 
+    private fun shapePlatformStatus(
+        report: QueryExecutionReport,
+        definition: ApprovedQueryDefinition,
+    ): PlatformStatusEnvelope {
+        return PlatformStatusEnvelope(
+            queryId = report.queryId,
+            records = report.rows.map { row ->
+                PlatformStatusRecord(
+                    serviceBoundary = row.required("serviceBoundary"),
+                    platformVerdict = row.required("platformVerdict"),
+                    reasonCode = row.required("reasonCode"),
+                    sourceFreshnessStatus = row.required("sourceFreshnessStatus"),
+                    latestSourceImportAt = row.optional("latestSourceImportAt"),
+                    sourceSystemCount = row.requiredInt("sourceSystemCount"),
+                    latestCanonicalReleaseId = row.optional("latestCanonicalReleaseId"),
+                    latestPromotionAt = row.optional("latestPromotionAt"),
+                    promotionStatus = row.required("promotionStatus"),
+                    latestReasoningRunId = row.optional("latestReasoningRunId"),
+                    latestAnalysisAt = row.optional("latestAnalysisAt"),
+                    analysisStatus = row.required("analysisStatus"),
+                    pipelineStatus = row.required("pipelineStatus"),
+                    reconciliationStatus = row.required("reconciliationStatus"),
+                    graphValidationStatus = row.required("graphValidationStatus"),
+                    sourceRecordCount = row.requiredInt("sourceRecordCount"),
+                    incidentCount = row.requiredInt("incidentCount"),
+                    incidentWithProvenanceCount = row.requiredInt("incidentWithProvenanceCount"),
+                    assetCount = row.requiredInt("assetCount"),
+                    assetWithProvenanceCount = row.requiredInt("assetWithProvenanceCount"),
+                )
+            },
+            provenance = provenance(definition),
+        )
+    }
+
     private fun shapeFilterMetadata(
         report: QueryExecutionReport,
         definition: ApprovedQueryDefinition,
@@ -328,21 +363,25 @@ class QueryResultShaper(
         report: QueryExecutionReport,
         definition: ApprovedQueryDefinition,
     ): TrustFindingsEnvelope {
+        val records = report.rows.map { row ->
+            TrustFindingRecord(
+                graphUri = row.required("graph"),
+                trustFindingUri = row.required("trustFinding"),
+                trustFindingId = row.optional("trustFindingId"),
+                summary = row.required("summary"),
+                sourceFactUri = row.required("sourceFact"),
+                activityUri = row.optional("activity"),
+                severity = row.optional("severity"),
+                status = row.optional("status"),
+                createdAt = row.optional("createdAt"),
+            )
+        }.groupBy { record -> record.trustFindingId ?: record.trustFindingUri }
+            .values
+            .map { versions -> versions.maxWithOrNull(compareBy<TrustFindingRecord> { it.createdAt.orEmpty() }.thenBy { it.graphUri })!! }
+            .sortedWith(compareByDescending<TrustFindingRecord> { it.createdAt.orEmpty() }.thenBy { it.trustFindingId ?: it.trustFindingUri })
         return TrustFindingsEnvelope(
             queryId = report.queryId,
-            records = report.rows.map { row ->
-                TrustFindingRecord(
-                    graphUri = row.required("graph"),
-                    trustFindingUri = row.required("trustFinding"),
-                    trustFindingId = row.optional("trustFindingId"),
-                    summary = row.required("summary"),
-                    sourceFactUri = row.required("sourceFact"),
-                    activityUri = row.optional("activity"),
-                    severity = row.optional("severity"),
-                    status = row.optional("status"),
-                    createdAt = row.optional("createdAt"),
-                )
-            },
+            records = records,
             provenance = provenance(definition),
         )
     }
@@ -602,36 +641,40 @@ class QueryResultShaper(
         report: QueryExecutionReport,
         definition: ApprovedQueryDefinition,
     ): OntologyReviewQueueEnvelope {
+        val records = report.rows.map { row ->
+            OntologyReviewQueueRecord(
+                graphUri = row.required("graph"),
+                queueId = row.required("queueId"),
+                queueKind = row.required("queueKind"),
+                reviewActionId = row.required("reviewActionId"),
+                reviewActionLabel = row.required("reviewActionLabel"),
+                reviewStatus = row.required("reviewStatus"),
+                targetUri = row.required("targetUri"),
+                targetType = row.required("targetType"),
+                targetLabel = row.required("targetLabel"),
+                releaseId = row.required("releaseId"),
+                sourceGraphUri = row.optional("sourceGraph"),
+                canonicalGraphUri = row.optional("canonicalGraph"),
+                provenanceGraphUri = row.optional("provenanceGraph"),
+                reasoningAuditGraphUri = row.optional("reasoningAuditGraph"),
+                reasoningGraphUri = row.optional("reasoningGraph"),
+                evidenceSummary = row.required("evidenceSummary"),
+                actionStatus = row.required("actionStatus"),
+                disabledReason = row.required("disabledReason"),
+                incidentCount = row.requiredInt("incidentCount"),
+                assetCount = row.requiredInt("assetCount"),
+                sourceRecordCount = row.requiredInt("sourceRecordCount"),
+                activityCount = row.requiredInt("activityCount"),
+                generatedFactCount = row.requiredInt("generatedFactCount"),
+                prioritySortOrder = row.requiredInt("prioritySortOrder"),
+            )
+        }.groupBy { record -> "${record.queueKind}|${record.reviewActionId}|${record.targetUri}|${record.releaseId}" }
+            .values
+            .map(::mergeOntologyReviewVersions)
+            .sortedWith(compareBy<OntologyReviewQueueRecord> { it.prioritySortOrder }.thenBy { it.targetLabel })
         return OntologyReviewQueueEnvelope(
             queryId = report.queryId,
-            records = report.rows.map { row ->
-                OntologyReviewQueueRecord(
-                    graphUri = row.required("graph"),
-                    queueId = row.required("queueId"),
-                    queueKind = row.required("queueKind"),
-                    reviewActionId = row.required("reviewActionId"),
-                    reviewActionLabel = row.required("reviewActionLabel"),
-                    reviewStatus = row.required("reviewStatus"),
-                    targetUri = row.required("targetUri"),
-                    targetType = row.required("targetType"),
-                    targetLabel = row.required("targetLabel"),
-                    releaseId = row.required("releaseId"),
-                    sourceGraphUri = row.optional("sourceGraph"),
-                    canonicalGraphUri = row.optional("canonicalGraph"),
-                    provenanceGraphUri = row.optional("provenanceGraph"),
-                    reasoningAuditGraphUri = row.optional("reasoningAuditGraph"),
-                    reasoningGraphUri = row.optional("reasoningGraph"),
-                    evidenceSummary = row.required("evidenceSummary"),
-                    actionStatus = row.required("actionStatus"),
-                    disabledReason = row.required("disabledReason"),
-                    incidentCount = row.requiredInt("incidentCount"),
-                    assetCount = row.requiredInt("assetCount"),
-                    sourceRecordCount = row.requiredInt("sourceRecordCount"),
-                    activityCount = row.requiredInt("activityCount"),
-                    generatedFactCount = row.requiredInt("generatedFactCount"),
-                    prioritySortOrder = row.requiredInt("prioritySortOrder"),
-                )
-            },
+            records = records,
             provenance = provenance(definition),
         )
     }
@@ -640,37 +683,41 @@ class QueryResultShaper(
         report: QueryExecutionReport,
         definition: ApprovedQueryDefinition,
     ): ActionAuditHistoryEnvelope {
+        val records = report.rows.map { row ->
+            ActionAuditHistoryRecord(
+                graphUri = row.required("graph"),
+                actionAuditReleaseId = row.required("actionAuditReleaseId"),
+                executionUri = row.required("execution"),
+                executionId = row.required("executionId"),
+                requestUri = row.required("request"),
+                requestId = row.required("requestId"),
+                validationReportUri = row.required("validationReport"),
+                actionTypeUri = row.required("actionType"),
+                actionTypeId = row.required("actionTypeId"),
+                actionTypeLabel = row.optional("actionTypeLabel"),
+                idempotencyKey = row.required("idempotencyKey"),
+                actorId = row.required("actorId"),
+                actionReason = row.required("actionReason"),
+                actionStatus = row.required("actionStatus"),
+                requestedAt = row.required("requestedAt"),
+                executedAt = row.required("executedAt"),
+                targetObjectUri = row.optional("targetObject"),
+                validationStatus = row.required("validationStatus"),
+                validationSummary = row.optional("validationSummary"),
+                sourceRecordUri = row.optional("sourceRecord"),
+                assignedTeam = row.optional("assignedTeam"),
+                assigneeId = row.optional("assigneeId"),
+                reviewedStatus = row.optional("reviewedStatus"),
+                reviewSummary = row.optional("reviewSummary"),
+                supportingEvidenceUri = row.optional("supportingEvidence"),
+            )
+        }.groupBy { it.executionUri }
+            .values
+            .map { versions -> versions.maxWith(compareBy<ActionAuditHistoryRecord> { it.executedAt }.thenBy { it.requestedAt }) }
+            .sortedByDescending { it.requestedAt }
         return ActionAuditHistoryEnvelope(
             queryId = report.queryId,
-            records = report.rows.map { row ->
-                ActionAuditHistoryRecord(
-                    graphUri = row.required("graph"),
-                    actionAuditReleaseId = row.required("actionAuditReleaseId"),
-                    executionUri = row.required("execution"),
-                    executionId = row.required("executionId"),
-                    requestUri = row.required("request"),
-                    requestId = row.required("requestId"),
-                    validationReportUri = row.required("validationReport"),
-                    actionTypeUri = row.required("actionType"),
-                    actionTypeId = row.required("actionTypeId"),
-                    actionTypeLabel = row.optional("actionTypeLabel"),
-                    idempotencyKey = row.required("idempotencyKey"),
-                    actorId = row.required("actorId"),
-                    actionReason = row.required("actionReason"),
-                    actionStatus = row.required("actionStatus"),
-                    requestedAt = row.required("requestedAt"),
-                    executedAt = row.required("executedAt"),
-                    targetObjectUri = row.optional("targetObject"),
-                    validationStatus = row.required("validationStatus"),
-                    validationSummary = row.optional("validationSummary"),
-                    sourceRecordUri = row.optional("sourceRecord"),
-                    assignedTeam = row.optional("assignedTeam"),
-                    assigneeId = row.optional("assigneeId"),
-                    reviewedStatus = row.optional("reviewedStatus"),
-                    reviewSummary = row.optional("reviewSummary"),
-                    supportingEvidenceUri = row.optional("supportingEvidence"),
-                )
-            },
+            records = records,
             provenance = provenance(definition),
         )
     }
@@ -679,33 +726,102 @@ class QueryResultShaper(
         report: QueryExecutionReport,
         definition: ApprovedQueryDefinition,
     ): ActionAvailabilityEnvelope {
+        val queryRecords = report.rows.mapNotNull { row ->
+            if (!row.hasAllActionAvailabilityBindings()) return@mapNotNull null
+            val detailRole = row.required("detailRole")
+            val rawDetailValue = row.required("detailValue")
+            val sourceBackedTarget = if (rawDetailValue == SOURCE_BACKED_ACTION_TARGET) {
+                row.resolveSourceBackedActionTarget(detailRole) ?: return@mapNotNull null
+            } else {
+                null
+            }
+            row.actionAvailabilityRecord(
+                detailKind = row.required("detailKind"),
+                detailRole = detailRole,
+                detailLabel = sourceBackedTarget?.first ?: row.required("detailLabel"),
+                detailValue = sourceBackedTarget?.second ?: rawDetailValue,
+                detailSortOrder = row.requiredInt("detailSortOrder"),
+            )
+        }
+        val authoritativeTargets = report.rows.flatMap { row -> row.authoritativeActionTargets() }
         return ActionAvailabilityEnvelope(
             queryId = report.queryId,
-            records = report.rows.mapNotNull { row ->
-                if (!row.hasAllActionAvailabilityBindings()) {
-                    return@mapNotNull null
-                }
-                ActionAvailabilityRecord(
-                    graphUri = row.required("graph"),
-                    incidentUri = row.required("incident"),
-                    incidentId = row.required("incidentId"),
-                    assetUri = row.required("asset"),
-                    assetId = row.required("assetId"),
-                    sourceRecordUri = row.required("sourceRecord"),
-                    actionId = row.required("actionId"),
-                    actionLabel = row.required("actionLabel"),
-                    actionDescription = row.required("actionDescription"),
-                    actionStatus = row.required("actionStatus"),
-                    uiPlacement = row.required("uiPlacement"),
-                    detailKind = row.required("detailKind"),
-                    detailRole = row.required("detailRole"),
-                    detailLabel = row.required("detailLabel"),
-                    detailValue = row.required("detailValue"),
-                    detailSortOrder = row.requiredInt("detailSortOrder"),
-                )
+            records = (queryRecords + authoritativeTargets).distinctBy {
+                listOf(it.graphUri, it.incidentUri, it.actionId, it.uiPlacement, it.detailKind, it.detailRole, it.detailValue)
             },
             provenance = provenance(definition),
         )
+    }
+
+    private fun Map<String, String>.authoritativeActionTargets(): List<ActionAvailabilityRecord> {
+        if (!hasAllActionAvailabilityBaseBindings()) return emptyList()
+        val targets = when (required("actionId")) {
+            "AcknowledgeRestoreBlocker" -> listOfNotNull(
+                resolveSourceBackedActionTarget("RestoreReadinessFinding")?.let { Triple("RestoreReadinessFinding", it, 100) },
+                resolveSourceBackedActionTarget("RecoveryBlocker")?.let { Triple("RecoveryBlocker", it, 101) },
+            )
+            "AssignEvidenceReview" -> listOfNotNull(
+                resolveSourceBackedActionTarget("TrustFinding")?.let { Triple("TrustFinding", it, 100) },
+            )
+            "RecordValidationReview" -> listOfNotNull(
+                resolveSourceBackedActionTarget("ValidationEvidence")?.let { Triple("ValidationEvidence", it, 100) },
+            )
+            else -> emptyList()
+        }
+        return targets.map { (role, target, sortOrder) ->
+            actionAvailabilityRecord("targetObject", role, target.first, target.second, sortOrder)
+        }
+    }
+
+    private fun Map<String, String>.actionAvailabilityRecord(
+        detailKind: String,
+        detailRole: String,
+        detailLabel: String,
+        detailValue: String,
+        detailSortOrder: Int,
+    ): ActionAvailabilityRecord {
+        return ActionAvailabilityRecord(
+            graphUri = required("graph"),
+            incidentUri = required("incident"),
+            incidentId = required("incidentId"),
+            assetUri = required("asset"),
+            assetId = required("assetId"),
+            sourceRecordUri = required("sourceRecord"),
+            actionId = required("actionId"),
+            actionLabel = required("actionLabel"),
+            actionDescription = required("actionDescription"),
+            actionStatus = required("actionStatus"),
+            uiPlacement = required("uiPlacement"),
+            detailKind = detailKind,
+            detailRole = detailRole,
+            detailLabel = detailLabel,
+            detailValue = detailValue,
+            detailSortOrder = detailSortOrder,
+        )
+    }
+
+    private fun Map<String, String>.resolveSourceBackedActionTarget(role: String): Pair<String, String>? {
+        return when (role) {
+            "InfrastructureIncident" -> required("incidentId") to required("incident")
+            "InfrastructureAsset" -> required("assetId") to required("asset")
+            "SourceRecord" -> "Source evidence" to required("sourceRecord")
+            "RestoreReadinessFinding" -> (optional("restoreReadinessSummary") ?: "Restore readiness finding") to optional("restoreReadiness")
+            "RecoveryBlocker" -> (optional("blockerSummary") ?: "Recovery blocker") to optional("recoveryBlocker")
+            "TrustFinding" -> (optional("trustSummary") ?: "Trust finding") to optional("trustFinding")
+            "ValidationEvidence" -> (optional("validationStatus") ?: "Validation evidence") to optional("validationEvidence")
+            else -> null
+        }?.let { (label, value) -> value?.let { label to it } }
+    }
+
+    private fun Map<String, String>.hasAllActionAvailabilityBaseBindings(): Boolean {
+        return listOf(
+            "graph", "incident", "incidentId", "asset", "assetId", "sourceRecord",
+            "actionId", "actionLabel", "actionDescription", "actionStatus", "uiPlacement",
+        ).all { key -> !this[key].isNullOrBlank() }
+    }
+
+    companion object {
+        private const val SOURCE_BACKED_ACTION_TARGET = "__SOURCE_BACKED_TARGET__"
     }
 
     private fun shapeActionNotificationQueue(
@@ -750,29 +866,33 @@ class QueryResultShaper(
         report: QueryExecutionReport,
         definition: ApprovedQueryDefinition,
     ): ActionReviewQueueEnvelope {
+        val records = report.rows.map { row ->
+            ActionReviewQueueRecord(
+                graphUri = row.required("graph"),
+                actionAuditReleaseId = row.required("actionAuditReleaseId"),
+                notificationUri = row.required("notification"),
+                notificationId = row.required("notificationId"),
+                executionUri = row.required("execution"),
+                executionId = row.required("executionId"),
+                requestUri = row.required("request"),
+                requestId = row.required("requestId"),
+                actionTypeUri = row.required("actionType"),
+                actionTypeId = row.required("actionTypeId"),
+                actorId = row.required("actorId"),
+                actionReason = row.required("actionReason"),
+                currentState = row.required("currentState"),
+                stateGeneratedAt = row.required("stateGeneratedAt"),
+                incidentUri = row.required("incident"),
+                incidentId = row.required("incidentId"),
+                sourceRecordUri = row.optional("sourceRecord"),
+            )
+        }.groupBy { record -> record.executionUri }
+            .values
+            .map { versions -> versions.maxWithOrNull(compareBy<ActionReviewQueueRecord> { it.stateGeneratedAt }.thenBy { it.graphUri })!! }
+            .sortedWith(compareByDescending<ActionReviewQueueRecord> { it.stateGeneratedAt }.thenBy { it.executionUri })
         return ActionReviewQueueEnvelope(
             queryId = report.queryId,
-            records = report.rows.map { row ->
-                ActionReviewQueueRecord(
-                    graphUri = row.required("graph"),
-                    actionAuditReleaseId = row.required("actionAuditReleaseId"),
-                    notificationUri = row.required("notification"),
-                    notificationId = row.required("notificationId"),
-                    executionUri = row.required("execution"),
-                    executionId = row.required("executionId"),
-                    requestUri = row.required("request"),
-                    requestId = row.required("requestId"),
-                    actionTypeUri = row.required("actionType"),
-                    actionTypeId = row.required("actionTypeId"),
-                    actorId = row.required("actorId"),
-                    actionReason = row.required("actionReason"),
-                    currentState = row.required("currentState"),
-                    stateGeneratedAt = row.required("stateGeneratedAt"),
-                    incidentUri = row.required("incident"),
-                    incidentId = row.required("incidentId"),
-                    sourceRecordUri = row.optional("sourceRecord"),
-                )
-            },
+            records = records,
             provenance = provenance(definition),
         )
     }
@@ -889,7 +1009,7 @@ class QueryResultShaper(
     ): AiProposalReviewQueueEnvelope {
         return AiProposalReviewQueueEnvelope(
             queryId = report.queryId,
-            records = report.rows.map(::aiProposalRecord),
+            records = distinctAiProposals(report.rows),
             provenance = provenance(definition),
         )
     }
@@ -900,9 +1020,48 @@ class QueryResultShaper(
     ): AiProposalDetailEnvelope {
         return AiProposalDetailEnvelope(
             queryId = report.queryId,
-            records = report.rows.map(::aiProposalRecord),
+            records = distinctAiProposals(report.rows),
             provenance = provenance(definition),
         )
+    }
+
+    private fun distinctAiProposals(rows: List<Map<String, String>>): List<AiProposalRecord> {
+        return rows.map(::aiProposalRecord)
+            .groupBy { record -> record.proposalUri }
+            .values
+            .map { versions -> versions.maxWithOrNull(compareBy<AiProposalRecord> { it.generatedAt }.thenBy { it.targetObjectUri })!! }
+            .sortedWith(compareByDescending<AiProposalRecord> { it.generatedAt }.thenBy { it.proposalUri })
+    }
+
+    private fun mergeOntologyReviewVersions(versions: List<OntologyReviewQueueRecord>): OntologyReviewQueueRecord {
+        val authoritative = versions.maxWithOrNull(
+            compareBy<OntologyReviewQueueRecord> { reviewStatusRank(it.reviewStatus) }
+                .thenBy { it.activityCount }
+                .thenBy { it.generatedFactCount },
+        )!!
+        return authoritative.copy(
+            sourceGraphUri = versions.firstNotNullOfOrNull { it.sourceGraphUri?.takeIf(String::isNotBlank) },
+            canonicalGraphUri = versions.firstNotNullOfOrNull { it.canonicalGraphUri?.takeIf(String::isNotBlank) },
+            provenanceGraphUri = versions.firstNotNullOfOrNull { it.provenanceGraphUri?.takeIf(String::isNotBlank) },
+            reasoningAuditGraphUri = versions.firstNotNullOfOrNull { it.reasoningAuditGraphUri?.takeIf(String::isNotBlank) },
+            reasoningGraphUri = versions.firstNotNullOfOrNull { it.reasoningGraphUri?.takeIf(String::isNotBlank) },
+            incidentCount = versions.maxOf { it.incidentCount },
+            assetCount = versions.maxOf { it.assetCount },
+            sourceRecordCount = versions.maxOf { it.sourceRecordCount },
+            activityCount = versions.maxOf { it.activityCount },
+            generatedFactCount = versions.maxOf { it.generatedFactCount },
+            prioritySortOrder = versions.minOf { it.prioritySortOrder },
+        )
+    }
+
+    private fun reviewStatusRank(status: String): Int {
+        val normalized = status.uppercase()
+        return when {
+            normalized.contains("APPROVED") || normalized.contains("REFRESHED") -> 3
+            normalized.contains("REJECTED") || normalized.contains("CLOSED") -> 2
+            normalized.contains("PENDING") -> 1
+            else -> 0
+        }
     }
 
     private fun aiProposalRecord(row: Map<String, String>): AiProposalRecord {

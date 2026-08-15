@@ -21,6 +21,7 @@ class ApprovedQueryCatalogTest {
                 "fixtureProvenanceSourceRecords",
                 "semanticFollowUpQueueList",
                 "semanticDashboardOverview",
+                "semanticPlatformStatus",
                 "semanticFilterMetadata",
                 "semanticFollowUpDetail",
                 "semanticImpactSummary",

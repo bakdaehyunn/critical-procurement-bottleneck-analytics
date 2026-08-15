@@ -23,6 +23,7 @@ import com.dcai.semanticservice.query.IncidentEvidenceEnvelope
 import com.dcai.semanticservice.query.IncidentTimelineEnvelope
 import com.dcai.semanticservice.query.NamedGraphInventoryEnvelope
 import com.dcai.semanticservice.query.OntologyReviewQueueEnvelope
+import com.dcai.semanticservice.query.PlatformStatusEnvelope
 import com.dcai.semanticservice.query.ProvenanceSourceRecordsEnvelope
 import com.dcai.semanticservice.query.QueryResultEnvelope
 import com.dcai.semanticservice.query.QueryResultEnvelopeProvenance
@@ -117,6 +118,30 @@ class SemanticResponseSerializer {
                     record.vendorEtaMissedCount?.let { put("vendorEtaMissedCount", it) }
                     record.repeatFailureAssetCount?.let { put("repeatFailureAssetCount", it) }
                     record.engineerAssignmentDelayHours?.let { put("engineerAssignmentDelayHours", it) }
+                }
+            }
+            is PlatformStatusEnvelope -> envelope.records.map { record ->
+                buildMap {
+                    put("serviceBoundary", record.serviceBoundary)
+                    put("platformVerdict", record.platformVerdict)
+                    put("reasonCode", record.reasonCode)
+                    put("sourceFreshnessStatus", record.sourceFreshnessStatus)
+                    record.latestSourceImportAt?.let { put("latestSourceImportAt", it) }
+                    put("sourceSystemCount", record.sourceSystemCount)
+                    record.latestCanonicalReleaseId?.let { put("latestCanonicalReleaseId", it) }
+                    record.latestPromotionAt?.let { put("latestPromotionAt", it) }
+                    put("promotionStatus", record.promotionStatus)
+                    record.latestReasoningRunId?.let { put("latestReasoningRunId", it) }
+                    record.latestAnalysisAt?.let { put("latestAnalysisAt", it) }
+                    put("analysisStatus", record.analysisStatus)
+                    put("pipelineStatus", record.pipelineStatus)
+                    put("reconciliationStatus", record.reconciliationStatus)
+                    put("graphValidationStatus", record.graphValidationStatus)
+                    put("sourceRecordCount", record.sourceRecordCount)
+                    put("incidentCount", record.incidentCount)
+                    put("incidentWithProvenanceCount", record.incidentWithProvenanceCount)
+                    put("assetCount", record.assetCount)
+                    put("assetWithProvenanceCount", record.assetWithProvenanceCount)
                 }
             }
             is FilterMetadataEnvelope -> envelope.records.map { record ->

@@ -43,7 +43,7 @@ import {
   readinessTone,
   titleCase,
 } from '../../utils/format'
-import { actionAvailability, buildActionSubmission } from './actionUtils'
+import { actionAvailability, buildActionSubmission, type ActionInputValues } from './actionUtils'
 
 type CaseTab = 'overview' | 'recovery' | 'impact' | 'evidence' | 'dependencies'
 const tabs: { id: CaseTab; label: string }[] = [
@@ -65,6 +65,7 @@ export function RecoveryCasePage() {
   const [dependencies, setDependencies] = useState<InfrastructureDependency[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [partialError, setPartialError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const tabRefs = useRef<Partial<Record<CaseTab, HTMLButtonElement | null>>>({})
 
@@ -74,16 +75,19 @@ export function RecoveryCasePage() {
       if (!incidentId) return
       setLoading(true)
       setError(null)
+      setPartialError(null)
       try {
         const requestDetail = await fetchRequestDetail(incidentId)
-        const [context, topology] = await Promise.all([
+        if (!cancelled) setDetail(requestDetail)
+        const [context, topology] = await Promise.allSettled([
           fetchRequestSemanticContext(requestDetail.request.incident_id, requestDetail.request.asset_id),
           fetchTopologyDependencies(),
         ])
         if (!cancelled) {
-          setDetail(requestDetail)
-          setSemantic(context)
-          setDependencies(topology)
+          if (context.status === 'fulfilled') setSemantic(context.value)
+          if (topology.status === 'fulfilled') setDependencies(topology.value)
+          const failed = [context.status === 'rejected' ? 'semantic evidence' : null, topology.status === 'rejected' ? 'dependency topology' : null].filter(Boolean)
+          setPartialError(failed.length ? `${failed.join(' and ')} could not be refreshed. Core case data remains available.` : null)
         }
       } catch (requestError) {
         if (!cancelled) setError(requestError instanceof Error ? requestError.message : 'Recovery case is unavailable.')
@@ -99,7 +103,7 @@ export function RecoveryCasePage() {
     const next = new URLSearchParams(searchParams)
     if (tab === 'overview') next.delete('tab')
     else next.set('tab', tab)
-    setSearchParams(next, { replace: true })
+    setSearchParams(next)
   }
 
   const selectAndFocusTab = (tab: CaseTab) => {
@@ -121,6 +125,7 @@ export function RecoveryCasePage() {
         {detail ? (
           <>
             <CaseHeader detail={detail} onBack={() => navigate(-1)} onRefresh={() => setReloadKey((value) => value + 1)} loading={loading} />
+            {partialError ? <div className="inline-notice warning" role="status"><AlertTriangle size={16} />{partialError}</div> : null}
             <nav className="case-tabs" role="tablist" aria-label="Recovery case workspaces">
               {tabs.map((tab, index) => (
                 <button
@@ -262,18 +267,31 @@ function RecoveryTab({ detail, onActionComplete }: { detail: RequestDetail; onAc
 
 function ActionPanel({ detail, onActionComplete }: { detail: RequestDetail; onActionComplete: () => void }) {
   const [submitting, setSubmitting] = useState<string | null>(null)
+  const [editing, setEditing] = useState<OntologyActionAffordance | null>(null)
+  const [values, setValues] = useState<ActionInputValues>({ actorId: '', actionReason: '' })
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const openAction = (action: OntologyActionAffordance) => {
+    setError(null)
+    setEditing(action)
+    setValues({
+      actorId: '',
+      actionReason: '',
+      assignedTeam: action.action_id === 'AssignEvidenceReview' ? 'OPS_VALIDATION' : undefined,
+      reviewedStatus: action.action_id === 'RecordValidationReview' ? 'NEEDS_REVIEW' : undefined,
+      reviewSummary: action.action_id === 'RecordValidationReview' ? '' : undefined,
+    })
+  }
   const requestAction = async (action: OntologyActionAffordance) => {
-    const submission = buildActionSubmission(action)
-    if (!submission) return
-    if (!window.confirm(`${action.label}\n\nThis creates an audited local request only. Continue?`)) return
+    const submission = buildActionSubmission(action, values)
+    if (!submission) { setError('Complete all required action fields before submitting.'); return }
     setSubmitting(action.action_id)
     setNotice(null)
     setError(null)
     try {
       const result = await submitOntologyActionRequest(submission)
       setNotice(`${action.label} requested · ${result.requestId}`)
+      setEditing(null)
       onActionComplete()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Action request failed.')
@@ -286,9 +304,10 @@ function ActionPanel({ detail, onActionComplete }: { detail: RequestDetail; onAc
       <div className="section-heading"><div><h2>Available interventions</h2><p>Governed local actions preserve provenance and do not write back to source systems.</p></div><StatusBadge label="Audit only" tone="info" /></div>
       {notice ? <div className="inline-notice success" role="status"><CheckCircle2 size={16} />{notice}</div> : null}
       {error ? <div className="inline-notice critical" role="alert"><AlertTriangle size={16} />{error}</div> : null}
+      {editing ? <div className="action-request-form" aria-label={`${editing.label} request form`}><div className="section-heading"><div><h3>{editing.label}</h3><p>Enter accountable operator inputs. Submission creates an audited local request only.</p></div><button className="button secondary" type="button" disabled={Boolean(submitting)} onClick={() => setEditing(null)}>Cancel</button></div><div className="decision-form-grid"><label><span>Actor ID</span><input value={values.actorId} onChange={(event) => setValues((current) => ({ ...current, actorId: event.target.value }))} required /></label>{editing.action_id === 'AssignEvidenceReview' ? <><label><span>Assigned team</span><input value={values.assignedTeam ?? ''} onChange={(event) => setValues((current) => ({ ...current, assignedTeam: event.target.value }))} required /></label><label><span>Assignee ID (optional)</span><input value={values.assigneeId ?? ''} onChange={(event) => setValues((current) => ({ ...current, assigneeId: event.target.value }))} /></label></> : null}{editing.action_id === 'RecordValidationReview' ? <label><span>Reviewed status</span><select value={values.reviewedStatus ?? ''} onChange={(event) => setValues((current) => ({ ...current, reviewedStatus: event.target.value }))}><option value="NEEDS_REVIEW">Needs review</option><option value="PASSED">Passed</option><option value="FAILED">Failed</option></select></label> : null}<label className="wide"><span>Action reason</span><textarea value={values.actionReason} onChange={(event) => setValues((current) => ({ ...current, actionReason: event.target.value }))} required /></label>{editing.action_id === 'RecordValidationReview' ? <label className="wide"><span>Review summary</span><textarea value={values.reviewSummary ?? ''} onChange={(event) => setValues((current) => ({ ...current, reviewSummary: event.target.value }))} required /></label> : null}<div className="decision-form-actions wide"><button className="button primary" type="button" disabled={Boolean(submitting)} onClick={() => void requestAction(editing)}>{submitting ? 'Requesting…' : 'Submit audited request'}</button></div></div></div> : null}
       {detail.ontology_actions.length ? <div className="action-list">{detail.ontology_actions.map((action) => {
         const availability = actionAvailability(action)
-        return <article key={action.action_id}><div className="action-icon"><Wrench size={17} /></div><div className="action-copy"><strong>{action.label}</strong><p>{action.description}</p><small>{availability.reason}</small></div><button type="button" className="button secondary" disabled={!availability.available || Boolean(submitting)} onClick={() => void requestAction(action)}>{submitting === action.action_id ? 'Requesting…' : 'Request action'}<ArrowRight size={14} /></button></article>
+        return <article key={action.action_id}><div className="action-icon"><Wrench size={17} /></div><div className="action-copy"><strong>{action.label}</strong><p>{action.description}</p><small>{availability.reason}</small></div><button type="button" className="button secondary" disabled={!availability.available || Boolean(submitting)} onClick={() => openAction(action)}>Configure request<ArrowRight size={14} /></button></article>
       })}</div> : <EmptyState title="No governed intervention available" description="The current case has no action affordance from the approved semantic action catalog." />}
     </section>
   )
@@ -296,8 +315,9 @@ function ActionPanel({ detail, onActionComplete }: { detail: RequestDetail; onAc
 
 function AuditHistory({ detail }: { detail: RequestDetail }) {
   const rows = detail.action_audit_history
-  if (!rows.length) return <EmptyState title="No audited requests yet" description="Governed action requests will appear here with actor, status, and provenance." />
-  return <div className="audit-table-wrap"><table className="audit-table"><thead><tr><th>Action</th><th>Status</th><th>Actor</th><th>Requested</th><th>Validation</th></tr></thead><tbody>{rows.map((row) => <tr key={row.execution_uri}><td>{row.action_type_label ?? titleCase(row.action_type_id)}</td><td><StatusBadge label={titleCase(row.action_status)} tone={statusTone(row.action_status)} /></td><td>{row.actor_id}</td><td>{formatDateTime(row.requested_at)}</td><td>{titleCase(row.validation_status)}</td></tr>)}</tbody></table></div>
+  const transitions = detail.action_transition_history
+  if (!rows.length && !transitions.length) return <EmptyState title="No governed history yet" description="Governed action requests and lifecycle transitions will appear here with actor, status, and provenance." />
+  return <div className="workspace-stack">{rows.length ? <div className="audit-table-wrap"><table className="audit-table"><thead><tr><th>Action</th><th>Status</th><th>Actor</th><th>Requested</th><th>Validation</th></tr></thead><tbody>{rows.map((row) => <tr key={row.execution_uri}><td>{row.action_type_label ?? titleCase(row.action_type_id)}</td><td><StatusBadge label={titleCase(row.action_status)} tone={statusTone(row.action_status)} /></td><td>{row.actor_id}</td><td>{formatDateTime(row.requested_at)}</td><td>{titleCase(row.validation_status)}</td></tr>)}</tbody></table></div> : null}{transitions.length ? <div className="audit-table-wrap"><table className="audit-table"><thead><tr><th>Transition</th><th>Actor</th><th>Reason</th><th>Recorded</th></tr></thead><tbody>{transitions.map((row) => <tr key={row.transition_uri}><td>{row.from_state ? titleCase(row.from_state) : 'Initial'} → {titleCase(row.to_state)}</td><td>{row.actor_id}</td><td>{row.transition_reason}</td><td>{formatDateTime(row.generated_at)}</td></tr>)}</tbody></table></div> : null}</div>
 }
 
 function ImpactTab({ detail }: { detail: RequestDetail }) {

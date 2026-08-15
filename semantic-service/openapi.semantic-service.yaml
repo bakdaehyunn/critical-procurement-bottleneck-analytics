@@ -174,6 +174,7 @@ components:
         - $ref: "#/components/schemas/ProvenanceSourceRecordsResponse"
         - $ref: "#/components/schemas/FollowUpQueueResponse"
         - $ref: "#/components/schemas/DashboardOverviewResponse"
+        - $ref: "#/components/schemas/PlatformStatusResponse"
         - $ref: "#/components/schemas/FilterMetadataResponse"
         - $ref: "#/components/schemas/FollowUpDetailResponse"
         - $ref: "#/components/schemas/ImpactSummaryResponse"
@@ -206,6 +207,7 @@ components:
           provenance-source-records: "#/components/schemas/ProvenanceSourceRecordsResponse"
           follow-up-queue: "#/components/schemas/FollowUpQueueResponse"
           dashboard-overview: "#/components/schemas/DashboardOverviewResponse"
+          platform-status: "#/components/schemas/PlatformStatusResponse"
           filter-metadata: "#/components/schemas/FilterMetadataResponse"
           follow-up-detail: "#/components/schemas/FollowUpDetailResponse"
           impact-summary: "#/components/schemas/ImpactSummaryResponse"
@@ -249,6 +251,7 @@ components:
             - provenance-source-records
             - follow-up-queue
             - dashboard-overview
+            - platform-status
             - filter-metadata
             - follow-up-detail
             - impact-summary
@@ -282,6 +285,17 @@ components:
             type: object
         provenance:
           $ref: "#/components/schemas/SemanticResponseProvenance"
+        pageInfo:
+          $ref: "#/components/schemas/SemanticPageInfo"
+      additionalProperties: false
+    SemanticPageInfo:
+      type: object
+      required: [page, pageSize, pageCount, totalRecords]
+      properties:
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 100 }
+        pageCount: { type: integer, minimum: 1 }
+        totalRecords: { type: integer, minimum: 0 }
       additionalProperties: false
     NamedGraphInventoryResponse:
       allOf:
@@ -523,6 +537,41 @@ components:
           type: integer
         engineerAssignmentDelayHours:
           type: number
+      additionalProperties: false
+    PlatformStatusResponse:
+      allOf:
+        - $ref: "#/components/schemas/QueryResultEnvelopeBase"
+        - type: object
+          properties:
+            resultType: { type: string, enum: [platform-status] }
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/PlatformStatusRecord"
+    PlatformStatusRecord:
+      type: object
+      required: [serviceBoundary, platformVerdict, reasonCode, sourceFreshnessStatus, sourceSystemCount, promotionStatus, analysisStatus, pipelineStatus, reconciliationStatus, graphValidationStatus, sourceRecordCount, incidentCount, incidentWithProvenanceCount, assetCount, assetWithProvenanceCount]
+      properties:
+        serviceBoundary: { type: string }
+        platformVerdict: { type: string, enum: [OPERATIONAL, DEGRADED, UNKNOWN] }
+        reasonCode: { type: string }
+        sourceFreshnessStatus: { type: string }
+        latestSourceImportAt: { type: string, format: date-time }
+        sourceSystemCount: { type: integer, minimum: 0 }
+        latestCanonicalReleaseId: { type: string }
+        latestPromotionAt: { type: string, format: date-time }
+        promotionStatus: { type: string }
+        latestReasoningRunId: { type: string }
+        latestAnalysisAt: { type: string, format: date-time }
+        analysisStatus: { type: string }
+        pipelineStatus: { type: string }
+        reconciliationStatus: { type: string }
+        graphValidationStatus: { type: string }
+        sourceRecordCount: { type: integer, minimum: 0 }
+        incidentCount: { type: integer, minimum: 0 }
+        incidentWithProvenanceCount: { type: integer, minimum: 0 }
+        assetCount: { type: integer, minimum: 0 }
+        assetWithProvenanceCount: { type: integer, minimum: 0 }
       additionalProperties: false
     FilterMetadataResponse:
       allOf:

@@ -28,6 +28,7 @@ Supported Phase 18 response result types:
 - `provenance-source-records`
 - `follow-up-queue`
 - `dashboard-overview`
+- `platform-status`
 - `filter-metadata`
 - `follow-up-detail`
 - `impact-summary`
@@ -99,6 +100,12 @@ Response DTO:
 - `recordCount`: number of typed records
 - `records`: typed records matching `resultType`
 - `provenance`: `queryId`, `graphScope`, and `contractVersion`
+- `pageInfo`: optional paging metadata (`page`, `pageSize`, `pageCount`, and
+  `totalRecords`) returned only for paged requests; unpaged response envelopes
+  retain their original shape
+
+Paging parameters are `page` (one-based, default `1`) and `pageSize` (1–100).
+Paging is applied after typed shaping and stable-identity deduplication.
 
 Named graph inventory record:
 
@@ -165,6 +172,15 @@ Dashboard overview record:
   `vendorEtaMissedCount`
 - optional specialty counters: `repeatFailureAssetCount` and
   `engineerAssignmentDelayHours`
+
+Platform status record:
+
+- tri-state `platformVerdict`: `OPERATIONAL`, `DEGRADED`, or `UNKNOWN`
+- persisted source freshness, canonical promotion, reasoning-run, and
+  reconciliation evidence with latest identifiers and timestamps
+- source, incident, asset, and provenance coverage counts
+- `graphValidationStatus` remains `UNKNOWN` when no authoritative persisted
+  validation report exists
 
 Filter metadata record:
 

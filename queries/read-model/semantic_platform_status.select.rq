@@ -1,0 +1,127 @@
+PREFIX dcai: <urn:dcai:ontology:>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT
+  ?serviceBoundary
+  ?platformVerdict
+  ?reasonCode
+  ?sourceFreshnessStatus
+  ?latestSourceImportAt
+  ?sourceSystemCount
+  ?latestCanonicalReleaseId
+  ?latestPromotionAt
+  ?promotionStatus
+  ?latestReasoningRunId
+  ?latestAnalysisAt
+  ?analysisStatus
+  ?pipelineStatus
+  ?reconciliationStatus
+  ?graphValidationStatus
+  ?sourceRecordCount
+  ?incidentCount
+  ?incidentWithProvenanceCount
+  ?assetCount
+  ?assetWithProvenanceCount
+WHERE {
+  {
+    SELECT
+      (MAX(?importedAt) AS ?latestSourceImportAt)
+      (COUNT(DISTINCT ?sourceSystem) AS ?sourceSystemCount)
+      (COUNT(DISTINCT ?sourceRecord) AS ?sourceRecordCount)
+    WHERE {
+      GRAPH ?sourceGraph {
+        ?sourceExtract rdf:type dcai:SourceExtract ;
+          dcai:hasSourceSystem ?sourceSystem ;
+          prov:wasGeneratedBy ?importActivity .
+        ?importActivity rdf:type dcai:ImportActivity ;
+          prov:generatedAtTime ?importedAt .
+        OPTIONAL { ?sourceRecord rdf:type dcai:SourceRecord . }
+      }
+      FILTER(STRSTARTS(STR(?sourceGraph), "urn:dcai:graph:source:") || STRSTARTS(STR(?sourceGraph), "urn:dcai:graph:fixture:source:"))
+    }
+  }
+  OPTIONAL {
+    SELECT ?latestCanonicalReleaseId (MAX(?promotedAt) AS ?latestPromotionAt)
+    WHERE {
+      GRAPH ?provenanceGraph {
+        ?promotionActivity rdf:type dcai:PromotionActivity ;
+          dcai:hasIdentifier ?latestCanonicalReleaseId ;
+          prov:generatedAtTime ?promotedAt .
+      }
+      FILTER(STRSTARTS(STR(?provenanceGraph), "urn:dcai:graph:provenance:") || STRSTARTS(STR(?provenanceGraph), "urn:dcai:graph:fixture:provenance:"))
+    }
+    GROUP BY ?latestCanonicalReleaseId
+    ORDER BY DESC(?latestPromotionAt)
+    LIMIT 1
+  }
+  OPTIONAL {
+    SELECT ?latestReasoningRunId (MAX(?analysisAt) AS ?latestAnalysisAt)
+    WHERE {
+      GRAPH ?reasoningGraph {
+        ?reasoningActivity rdf:type dcai:ReasoningActivity ;
+          dcai:hasIdentifier ?latestReasoningRunId ;
+          prov:generatedAtTime ?analysisAt ;
+          prov:generated ?finding .
+      }
+      FILTER(
+        STRSTARTS(STR(?reasoningGraph), "urn:dcai:graph:reasoning:") ||
+        STRSTARTS(STR(?reasoningGraph), "urn:dcai:graph:reasoning-audit:") ||
+        STRSTARTS(STR(?reasoningGraph), "urn:dcai:graph:fixture:canonical:")
+      )
+    }
+    GROUP BY ?latestReasoningRunId
+    ORDER BY DESC(?latestAnalysisAt)
+    LIMIT 1
+  }
+  {
+    SELECT
+      (COUNT(DISTINCT ?incident) AS ?incidentCount)
+      (COUNT(DISTINCT ?incidentWithProvenance) AS ?incidentWithProvenanceCount)
+      (COUNT(DISTINCT ?asset) AS ?assetCount)
+      (COUNT(DISTINCT ?assetWithProvenance) AS ?assetWithProvenanceCount)
+    WHERE {
+      GRAPH ?canonicalGraph {
+        OPTIONAL { ?incident rdf:type dcai:InfrastructureIncident . }
+        OPTIONAL {
+          ?incidentWithProvenance rdf:type dcai:InfrastructureIncident ;
+            prov:wasDerivedFrom ?incidentSourceRecord .
+        }
+        OPTIONAL { ?asset rdf:type dcai:InfrastructureAsset . }
+        OPTIONAL {
+          ?assetWithProvenance rdf:type dcai:InfrastructureAsset ;
+            prov:wasDerivedFrom ?assetSourceRecord .
+        }
+      }
+      FILTER(STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:canonical:") || STRSTARTS(STR(?canonicalGraph), "urn:dcai:graph:fixture:canonical:"))
+    }
+  }
+
+  BIND("APPROVED_QUERY_API" AS ?serviceBoundary)
+  BIND(IF(BOUND(?latestSourceImportAt), "OBSERVED", "UNKNOWN") AS ?sourceFreshnessStatus)
+  BIND(IF(BOUND(?latestPromotionAt), "PROMOTED", "UNKNOWN") AS ?promotionStatus)
+  BIND(IF(BOUND(?latestAnalysisAt), "AVAILABLE", "UNKNOWN") AS ?analysisStatus)
+  BIND(IF(BOUND(?latestAnalysisAt), "SUCCESS", "UNKNOWN") AS ?pipelineStatus)
+  BIND(
+    IF(
+      (?incidentCount + ?assetCount) = 0,
+      "UNKNOWN",
+      IF(?incidentCount = ?incidentWithProvenanceCount && ?assetCount = ?assetWithProvenanceCount, "PASSED", "NEEDS_REVIEW")
+    ) AS ?reconciliationStatus
+  )
+  BIND("UNKNOWN" AS ?graphValidationStatus)
+  BIND(
+    IF(
+      ?reconciliationStatus = "NEEDS_REVIEW",
+      "DEGRADED",
+      IF(BOUND(?latestSourceImportAt) && BOUND(?latestPromotionAt) && BOUND(?latestAnalysisAt), "OPERATIONAL", "UNKNOWN")
+    ) AS ?platformVerdict
+  )
+  BIND(
+    IF(
+      ?reconciliationStatus = "NEEDS_REVIEW",
+      "RECONCILIATION_INCOMPLETE",
+      IF(!BOUND(?latestSourceImportAt), "SOURCE_FRESHNESS_UNKNOWN", IF(!BOUND(?latestPromotionAt), "PROMOTION_NOT_OBSERVED", IF(!BOUND(?latestAnalysisAt), "ANALYSIS_NOT_OBSERVED", "PLATFORM_EVIDENCE_CURRENT")))
+    ) AS ?reasonCode
+  )
+}

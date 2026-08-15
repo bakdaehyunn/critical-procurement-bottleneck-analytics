@@ -56,6 +56,59 @@ class PrivateSemanticQueryEndpointTest {
     }
 
     @Test
+    fun returnsBackwardCompatiblePagedPayloadWithoutPassingPagingToSparql() {
+        val executor = CapturingQueryExecutor(
+            QueryExecutionReport(
+                queryId = "fixtureNamedGraphInventory",
+                mode = QueryMode.SELECT,
+                rows = (1..5).map { index ->
+                    mapOf(
+                        "graph" to "urn:dcai:graph:fixture:canonical:$index",
+                        "subjectCount" to index.toString(),
+                    )
+                },
+            ),
+        )
+        val endpoint = PrivateSemanticQueryEndpoint(
+            queryExecutor = executor,
+            queryResultShaper = QueryResultShaper(manifestWith("fixtureNamedGraphInventory")),
+        )
+
+        val response = endpoint.handle(
+            post(
+                path = "/semantic/query/fixtureNamedGraphInventory",
+                body = """{"parameters":{"page":"2","pageSize":"2"}}""",
+            ),
+        )
+
+        assertEquals(200, response.statusCode)
+        assertEquals(emptyMap(), executor.lastParameters)
+        assertEquals(2, response.payload["recordCount"])
+        val records = response.payload["records"] as List<*>
+        assertEquals(2, records.size)
+        assertTrue(response.jsonBody().contains("\"totalRecords\":5"))
+        assertTrue(response.jsonBody().contains("\"pageCount\":3"))
+    }
+
+    @Test
+    fun rejectsInvalidPagingParameters() {
+        val response = endpointWith(
+            QueryExecutionReport(
+                queryId = "fixtureNamedGraphInventory",
+                mode = QueryMode.SELECT,
+            ),
+        ).handle(
+            post(
+                path = "/semantic/query/fixtureNamedGraphInventory",
+                body = """{"parameters":{"page":"0","pageSize":"500"}}""",
+            ),
+        )
+
+        assertEquals(400, response.statusCode)
+        assertErrorCode("contract-validation-failed", response)
+    }
+
+    @Test
     fun returnsSerializedFollowUpQueuePayloadForApprovedProductReadModel() {
         val endpoint = endpointWith(
             QueryExecutionReport(

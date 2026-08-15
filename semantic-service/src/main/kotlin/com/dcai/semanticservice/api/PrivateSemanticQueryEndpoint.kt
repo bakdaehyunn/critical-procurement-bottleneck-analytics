@@ -65,11 +65,15 @@ class PrivateSemanticQueryEndpoint(
         }
 
         return try {
-            val report = queryExecutor.execute(queryId, request.parameters())
+            val parameters = request.parameters()
+            val pageRequest = SemanticPageRequest.from(parameters)
+            val queryParameters = parameters - SemanticPageRequest.PARAMETER_NAMES
+            val report = queryExecutor.execute(queryId, queryParameters)
             val envelope = queryResultShaper.shape(report)
+            val payload = responseSerializer.serialize(envelope)
             PrivateSemanticQueryResponse(
                 statusCode = 200,
-                payload = responseSerializer.serialize(envelope),
+                payload = pageRequest?.applyTo(payload) ?: payload,
             )
         } catch (error: IllegalArgumentException) {
             val code = if (error.message.orEmpty().contains("Missing required binding")) {
@@ -148,6 +152,7 @@ class PrivateSemanticQueryEndpoint(
             "fixtureProvenanceSourceRecords",
             "semanticFollowUpQueueList",
             "semanticDashboardOverview",
+            "semanticPlatformStatus",
             "semanticFilterMetadata",
             "semanticFollowUpDetail",
             "semanticImpactSummary",
@@ -179,6 +184,46 @@ class PrivateSemanticQueryEndpoint(
             "semanticAiProposalReviewQueue",
             "semanticAiProposalDetailByIncident",
         )
+    }
+}
+
+private data class SemanticPageRequest(
+    val page: Int,
+    val pageSize: Int,
+) {
+    fun applyTo(payload: Map<String, Any>): Map<String, Any> {
+        val records = payload["records"] as? List<*> ?: emptyList<Any>()
+        val totalRecords = records.size
+        val pageCount = maxOf(1, (totalRecords + pageSize - 1) / pageSize)
+        val start = ((page - 1) * pageSize).coerceAtMost(totalRecords)
+        val end = (start + pageSize).coerceAtMost(totalRecords)
+        val pageRecords = records.subList(start, end)
+        return payload + mapOf(
+            "recordCount" to pageRecords.size,
+            "records" to pageRecords,
+            "pageInfo" to mapOf(
+                "page" to page,
+                "pageSize" to pageSize,
+                "pageCount" to pageCount,
+                "totalRecords" to totalRecords,
+            ),
+        )
+    }
+
+    companion object {
+        const val PAGE_PARAMETER = "page"
+        const val PAGE_SIZE_PARAMETER = "pageSize"
+        val PARAMETER_NAMES = setOf(PAGE_PARAMETER, PAGE_SIZE_PARAMETER)
+
+        fun from(parameters: Map<String, String>): SemanticPageRequest? {
+            if (PARAMETER_NAMES.none(parameters::containsKey)) return null
+            val page = parameters[PAGE_PARAMETER]?.toIntOrNull() ?: 1
+            val pageSize = parameters[PAGE_SIZE_PARAMETER]?.toIntOrNull()
+                ?: throw IllegalArgumentException("Paged semantic queries require an integer pageSize.")
+            require(page >= 1) { "Semantic query page must be at least 1." }
+            require(pageSize in 1..100) { "Semantic query pageSize must be between 1 and 100." }
+            return SemanticPageRequest(page = page, pageSize = pageSize)
+        }
     }
 }
 

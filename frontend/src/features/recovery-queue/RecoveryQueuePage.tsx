@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   AlertTriangle,
   ArrowRight,
@@ -15,10 +15,10 @@ import {
   X,
 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
-import type { FollowUpItem } from '../../api'
+import { fetchFilterMetadata, fetchRecoveryQueueSnapshot, type FollowUpItem } from '../../api'
 import { AppShell } from '../../app/AppShell'
 import { ErrorState, LoadingState, Metric, PageHeader, StatusBadge } from '../../components/ui'
-import { useDashboard } from '../../hooks/useDashboard'
+import { useAsyncResource } from '../../hooks/useAsyncResource'
 import {
   dependencyOwner,
   evidenceLabel,
@@ -67,7 +67,10 @@ function filteredRows(rows: FollowUpItem[], params: URLSearchParams) {
 }
 
 export function RecoveryQueuePage() {
-  const { data, metadata, loading, error, refreshedAt, refresh } = useDashboard()
+  const queue = useAsyncResource(useCallback(() => fetchRecoveryQueueSnapshot(), []))
+  const filterMetadata = useAsyncResource(useCallback(() => fetchFilterMetadata(), []))
+  const { data, loading, error, stale, refreshedAt } = queue
+  const metadata = filterMetadata.data
   const [searchParams, setSearchParams] = useSearchParams()
   const [showFilters, setShowFilters] = useState(false)
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null)
@@ -75,17 +78,22 @@ export function RecoveryQueuePage() {
   const selected = rows.find((row) => row.incident_id === selectedIncidentId) ?? rows[0] ?? null
   const filterCount = activeFilterCount(searchParams)
 
-  const setParam = (key: string, value?: string) => {
+  const setParam = (key: string, value?: string, replace = false) => {
     const next = new URLSearchParams(searchParams)
     if (value) next.set(key, value)
     else next.delete(key)
-    setSearchParams(next, { replace: true })
+    setSearchParams(next, { replace })
   }
 
   const clearFilters = () => {
     const next = new URLSearchParams()
     if (searchParams.get('sort')) next.set('sort', searchParams.get('sort')!)
-    setSearchParams(next, { replace: true })
+    setSearchParams(next)
+  }
+
+  const refresh = () => {
+    queue.refresh()
+    filterMetadata.refresh()
   }
 
   const critical = rows.filter((row) => row.priority_level === 'CRITICAL').length
@@ -101,18 +109,20 @@ export function RecoveryQueuePage() {
         description="Prioritized interventions for safely returning AI infrastructure to service."
         actions={(
           <div className="freshness-actions">
-            <div className={`freshness ${error ? 'warning' : ''}`}>
+            <div className={`freshness ${error || stale ? 'warning' : ''}`}>
               <span className="freshness-dot" />
-              <div><strong>{error ? 'Connection issue' : 'Semantic snapshot current'}</strong><span>{relativeTime(refreshedAt)}</span></div>
+              <div><strong>{stale ? 'Showing stale snapshot' : error ? 'Connection issue' : 'Semantic snapshot loaded'}</strong><span>{relativeTime(refreshedAt)}</span></div>
             </div>
-            <button className="icon-button" type="button" onClick={() => void refresh()} aria-label="Refresh operations data" title="Refresh operations data">
+            <button className="icon-button" type="button" onClick={refresh} aria-label="Refresh operations data" title="Refresh operations data">
               <RefreshCcw size={17} className={loading ? 'spin' : ''} />
             </button>
           </div>
         )}
       />
 
-      {error && !data ? <ErrorState message={error} retry={() => void refresh()} /> : null}
+      {error && !data ? <ErrorState message={error} retry={refresh} /> : null}
+      {error && data ? <div className="inline-notice warning" role="status"><AlertTriangle size={16} />Refresh failed. The last successful recovery snapshot remains visible.</div> : null}
+      {filterMetadata.error ? <div className="inline-notice warning" role="status"><AlertTriangle size={16} />Filter metadata is unavailable. The recovery queue remains usable with its current URL state.</div> : null}
       {loading && !data ? <LoadingState label="Loading the recovery queue" /> : null}
 
       {data ? (
@@ -130,10 +140,12 @@ export function RecoveryQueuePage() {
               <Search size={17} />
               <span className="sr-only">Search recovery cases</span>
               <input
+                key={searchParams.get('q') ?? ''}
                 type="search"
                 placeholder="Search incident, asset, zone, or action"
-                value={searchParams.get('q') ?? ''}
-                onChange={(event) => setParam('q', event.target.value)}
+                defaultValue={searchParams.get('q') ?? ''}
+                onBlur={(event) => { if (event.currentTarget.value !== (searchParams.get('q') ?? '')) setParam('q', event.currentTarget.value || undefined) }}
+                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); setParam('q', event.currentTarget.value || undefined) } }}
               />
               {searchParams.get('q') ? <button type="button" onClick={() => setParam('q')} aria-label="Clear search"><X size={15} /></button> : null}
             </label>

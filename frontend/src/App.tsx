@@ -1,6 +1,5 @@
 import { Route, Routes } from 'react-router-dom'
 import { AppShell } from './app/AppShell'
-import { DashboardProvider } from './hooks/DashboardProvider'
 import { PlatformStatusPage } from './features/platform-status/PlatformStatusPage'
 import { RecoveryCasePage } from './features/recovery-case/RecoveryCasePage'
 import { RecoveryQueuePage } from './features/recovery-queue/RecoveryQueuePage'
@@ -22,7 +21,6 @@ function NotFoundPage() {
 
 export default function App() {
   return (
-    <DashboardProvider>
       <Routes>
         <Route path="/" element={<RecoveryQueuePage />} />
         <Route path="/recovery-cases/:incidentId" element={<RecoveryCasePage />} />
@@ -31,6 +29,5 @@ export default function App() {
         <Route path="/platform-status" element={<PlatformStatusPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
-    </DashboardProvider>
   )
 }

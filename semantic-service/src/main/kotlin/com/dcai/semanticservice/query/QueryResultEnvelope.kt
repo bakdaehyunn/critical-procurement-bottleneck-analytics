@@ -25,6 +25,7 @@ enum class QueryResultType(
     PROVENANCE_SOURCE_RECORDS("provenance-source-records"),
     FOLLOW_UP_QUEUE("follow-up-queue"),
     DASHBOARD_OVERVIEW("dashboard-overview"),
+    PLATFORM_STATUS("platform-status"),
     FILTER_METADATA("filter-metadata"),
     FOLLOW_UP_DETAIL("follow-up-detail"),
     IMPACT_SUMMARY("impact-summary"),
@@ -172,6 +173,38 @@ data class DashboardOverviewRecord(
     val vendorEtaMissedCount: Int? = null,
     val repeatFailureAssetCount: Int? = null,
     val engineerAssignmentDelayHours: Double? = null,
+)
+
+data class PlatformStatusEnvelope(
+    override val queryId: String,
+    val records: List<PlatformStatusRecord>,
+    override val provenance: QueryResultEnvelopeProvenance,
+) : QueryResultEnvelope {
+    override val resultType: QueryResultType = QueryResultType.PLATFORM_STATUS
+    override val recordCount: Int = records.size
+}
+
+data class PlatformStatusRecord(
+    val serviceBoundary: String,
+    val platformVerdict: String,
+    val reasonCode: String,
+    val sourceFreshnessStatus: String,
+    val latestSourceImportAt: String? = null,
+    val sourceSystemCount: Int,
+    val latestCanonicalReleaseId: String? = null,
+    val latestPromotionAt: String? = null,
+    val promotionStatus: String,
+    val latestReasoningRunId: String? = null,
+    val latestAnalysisAt: String? = null,
+    val analysisStatus: String,
+    val pipelineStatus: String,
+    val reconciliationStatus: String,
+    val graphValidationStatus: String,
+    val sourceRecordCount: Int,
+    val incidentCount: Int,
+    val incidentWithProvenanceCount: Int,
+    val assetCount: Int,
+    val assetWithProvenanceCount: Int,
 )
 
 data class FilterMetadataEnvelope(

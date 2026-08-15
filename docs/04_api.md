@@ -59,6 +59,16 @@ Every response envelope includes:
 - `provenance.contractVersion`
 - `provenance.graphScope`
 
+Paged callers supply `pageSize` (1–100) and an optional one-based `page`. The
+response then adds backward-compatible `pageInfo` with `page`, `pageSize`,
+`pageCount`, and the post-shaping `totalRecords`; unpaged envelopes are
+unchanged.
+
+`semanticPlatformStatus` is the approved read-only platform-health query. Its
+verdict is `OPERATIONAL`, `DEGRADED`, or `UNKNOWN` and is based only on
+persisted source import, promotion, reasoning, and reconciliation evidence.
+Graph validation remains `UNKNOWN` unless an authoritative report is persisted.
+
 Semantic errors use stable machine-readable codes such as
 `unapproved-query-id`, `missing-required-binding`, `graph-unavailable`, and
 `internal-semantic-service-error`.
