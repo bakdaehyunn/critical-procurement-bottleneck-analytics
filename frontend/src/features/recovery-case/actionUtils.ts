@@ -1,4 +1,5 @@
-import type { OntologyActionAffordance, OntologyActionSubmission } from '../../api'
+import type { OntologyActionAffordance } from './recoveryCaseModel'
+import type { OntologyActionSubmission } from '../../ontologyActionApi'
 
 const supportedActions = new Set(['AcknowledgeRestoreBlocker', 'AssignEvidenceReview', 'RecordValidationReview'])
 

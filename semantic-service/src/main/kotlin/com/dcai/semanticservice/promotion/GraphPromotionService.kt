@@ -1,5 +1,7 @@
 package com.dcai.semanticservice.promotion
 
+import com.dcai.semanticservice.graph.ManagedGraphKind
+import com.dcai.semanticservice.graph.ManagedGraphUri
 import com.dcai.semanticservice.graph.ManagedGraphWriteCoordinator
 import com.dcai.semanticservice.graph.NamedGraphStore
 import com.dcai.semanticservice.ingestion.SourceExtractBatch
@@ -77,24 +79,9 @@ data class ProductionGraphUris(
     val provenanceGraphUri: String,
 ) {
     init {
-        require(sourceGraphUri.startsWith(SOURCE_PREFIX)) {
-            "sourceGraphUri must use $SOURCE_PREFIX"
-        }
-        require(sourceGraphUri.length > SOURCE_PREFIX.length) {
-            "sourceGraphUri must include a release-specific suffix"
-        }
-        require(canonicalGraphUri.startsWith(CANONICAL_PREFIX)) {
-            "canonicalGraphUri must use $CANONICAL_PREFIX"
-        }
-        require(canonicalGraphUri.length > CANONICAL_PREFIX.length) {
-            "canonicalGraphUri must include a release-specific suffix"
-        }
-        require(provenanceGraphUri.startsWith(PROVENANCE_PREFIX)) {
-            "provenanceGraphUri must use $PROVENANCE_PREFIX"
-        }
-        require(provenanceGraphUri.length > PROVENANCE_PREFIX.length) {
-            "provenanceGraphUri must include a release-specific suffix"
-        }
+        ManagedGraphUri.requireKind(sourceGraphUri, ManagedGraphKind.SOURCE, "sourceGraphUri")
+        ManagedGraphUri.requireKind(canonicalGraphUri, ManagedGraphKind.CANONICAL, "canonicalGraphUri")
+        ManagedGraphUri.requireKind(provenanceGraphUri, ManagedGraphKind.PROVENANCE, "provenanceGraphUri")
     }
 
     fun models(mapping: SourceExtractRdfMapping): LinkedHashMap<String, Model> {
@@ -106,18 +93,11 @@ data class ProductionGraphUris(
     }
 
     companion object {
-        const val SOURCE_PREFIX = "urn:dcai:graph:source:"
-        const val CANONICAL_PREFIX = "urn:dcai:graph:canonical:"
-        const val PROVENANCE_PREFIX = "urn:dcai:graph:provenance:"
-
         fun forRelease(releaseId: String): ProductionGraphUris {
-            require(releaseId.matches(Regex("[A-Za-z0-9._-]+"))) {
-                "releaseId must contain only letters, numbers, dot, underscore, or hyphen"
-            }
             return ProductionGraphUris(
-                sourceGraphUri = "$SOURCE_PREFIX$releaseId",
-                canonicalGraphUri = "$CANONICAL_PREFIX$releaseId",
-                provenanceGraphUri = "$PROVENANCE_PREFIX$releaseId",
+                sourceGraphUri = ManagedGraphUri.of(ManagedGraphKind.SOURCE, releaseId, "releaseId").value,
+                canonicalGraphUri = ManagedGraphUri.of(ManagedGraphKind.CANONICAL, releaseId, "releaseId").value,
+                provenanceGraphUri = ManagedGraphUri.of(ManagedGraphKind.PROVENANCE, releaseId, "releaseId").value,
             )
         }
     }

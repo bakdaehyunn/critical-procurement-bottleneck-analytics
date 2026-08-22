@@ -7,10 +7,13 @@ import com.dcai.semanticservice.actions.OntologyActionRequest
 import com.dcai.semanticservice.actions.OntologyActionSubmitter
 import com.dcai.semanticservice.actions.OntologyActionType
 import com.dcai.semanticservice.graph.ManagedGraphWriteCoordinator
+import com.dcai.semanticservice.graph.ManagedGraphKind
+import com.dcai.semanticservice.graph.ManagedGraphUri
+import com.dcai.semanticservice.graph.ControlledIdentifier
 import com.dcai.semanticservice.graph.NamedGraphSnapshot
 import com.dcai.semanticservice.graph.NamedGraphStore
-import com.dcai.semanticservice.ingestion.Dcai
-import com.dcai.semanticservice.ingestion.Prov
+import com.dcai.semanticservice.ontology.Dcai
+import com.dcai.semanticservice.ontology.Prov
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.Instant
@@ -64,21 +67,11 @@ data class AiGovernanceReviewGraphUris(
     val actionAuditGraphUri: String,
 ) {
     init {
-        require(canonicalGraphUri.startsWith(AiGovernanceGraphUris.CANONICAL_PREFIX) && canonicalGraphUri.length > AiGovernanceGraphUris.CANONICAL_PREFIX.length) {
-            "canonicalGraphUri must use ${AiGovernanceGraphUris.CANONICAL_PREFIX}"
-        }
-        require(provenanceGraphUri.startsWith(AiGovernanceGraphUris.PROVENANCE_PREFIX) && provenanceGraphUri.length > AiGovernanceGraphUris.PROVENANCE_PREFIX.length) {
-            "provenanceGraphUri must use ${AiGovernanceGraphUris.PROVENANCE_PREFIX}"
-        }
-        require(reasoningGraphUri == null || reasoningGraphUri.startsWith(AiGovernanceGraphUris.REASONING_PREFIX) && reasoningGraphUri.length > AiGovernanceGraphUris.REASONING_PREFIX.length) {
-            "reasoningGraphUri must use ${AiGovernanceGraphUris.REASONING_PREFIX}"
-        }
-        require(aiAuditGraphUri.startsWith(AiGovernanceGraphUris.AI_AUDIT_PREFIX) && aiAuditGraphUri.length > AiGovernanceGraphUris.AI_AUDIT_PREFIX.length) {
-            "aiAuditGraphUri must use ${AiGovernanceGraphUris.AI_AUDIT_PREFIX}"
-        }
-        require(actionAuditGraphUri.startsWith(OntologyActionGraphUris.ACTION_AUDIT_PREFIX) && actionAuditGraphUri.length > OntologyActionGraphUris.ACTION_AUDIT_PREFIX.length) {
-            "actionAuditGraphUri must use ${OntologyActionGraphUris.ACTION_AUDIT_PREFIX}"
-        }
+        ManagedGraphUri.requireKind(canonicalGraphUri, ManagedGraphKind.CANONICAL, "canonicalGraphUri")
+        ManagedGraphUri.requireKind(provenanceGraphUri, ManagedGraphKind.PROVENANCE, "provenanceGraphUri")
+        reasoningGraphUri?.let { ManagedGraphUri.requireKind(it, ManagedGraphKind.REASONING, "reasoningGraphUri") }
+        ManagedGraphUri.requireKind(aiAuditGraphUri, ManagedGraphKind.AI_AUDIT, "aiAuditGraphUri")
+        ManagedGraphUri.requireKind(actionAuditGraphUri, ManagedGraphKind.ACTION_AUDIT, "actionAuditGraphUri")
     }
 
     fun actionGraphs(): OntologyActionGraphUris {
@@ -98,21 +91,12 @@ data class AiGovernanceReviewGraphUris(
             actionAuditReleaseId: String,
         ): AiGovernanceReviewGraphUris {
             return AiGovernanceReviewGraphUris(
-                canonicalGraphUri = "${AiGovernanceGraphUris.CANONICAL_PREFIX}${requireControlledId(sourceReleaseId, "sourceReleaseId")}",
-                provenanceGraphUri = "${AiGovernanceGraphUris.PROVENANCE_PREFIX}$sourceReleaseId",
-                reasoningGraphUri = reasoningRunId?.let {
-                    "${AiGovernanceGraphUris.REASONING_PREFIX}${requireControlledId(it, "reasoningRunId")}"
-                },
-                aiAuditGraphUri = "${AiGovernanceGraphUris.AI_AUDIT_PREFIX}${requireControlledId(aiAuditReleaseId, "aiAuditReleaseId")}",
-                actionAuditGraphUri = "${OntologyActionGraphUris.ACTION_AUDIT_PREFIX}${requireControlledId(actionAuditReleaseId, "actionAuditReleaseId")}",
+                canonicalGraphUri = ManagedGraphUri.of(ManagedGraphKind.CANONICAL, sourceReleaseId, "sourceReleaseId").value,
+                provenanceGraphUri = ManagedGraphUri.of(ManagedGraphKind.PROVENANCE, sourceReleaseId, "sourceReleaseId").value,
+                reasoningGraphUri = reasoningRunId?.let { ManagedGraphUri.of(ManagedGraphKind.REASONING, it, "reasoningRunId").value },
+                aiAuditGraphUri = ManagedGraphUri.of(ManagedGraphKind.AI_AUDIT, aiAuditReleaseId, "aiAuditReleaseId").value,
+                actionAuditGraphUri = ManagedGraphUri.of(ManagedGraphKind.ACTION_AUDIT, actionAuditReleaseId, "actionAuditReleaseId").value,
             )
-        }
-
-        private fun requireControlledId(value: String, label: String): String {
-            require(value.matches(Regex("[A-Za-z0-9._-]+"))) {
-                "$label must contain only letters, numbers, dot, underscore, or hyphen"
-            }
-            return value
         }
     }
 }
@@ -315,9 +299,9 @@ class AiGovernanceReviewService(
         proposalFacts: AiProposalFacts,
     ): List<String> {
         val errors = mutableListOf<String>()
-        if (!CONTROLLED_TOKEN.matches(request.reviewId)) errors += "reviewId must use the controlled local identifier vocabulary"
-        if (!CONTROLLED_TOKEN.matches(request.idempotencyKey)) errors += "idempotencyKey must use the controlled local identifier vocabulary"
-        if (!CONTROLLED_TOKEN.matches(request.actorId)) errors += "actorId must use the controlled local identifier vocabulary"
+        if (!ControlledIdentifier.isLocal(request.reviewId)) errors += "reviewId must use the controlled local identifier vocabulary"
+        if (!ControlledIdentifier.isLocal(request.idempotencyKey)) errors += "idempotencyKey must use the controlled local identifier vocabulary"
+        if (!ControlledIdentifier.isLocal(request.actorId)) errors += "actorId must use the controlled local identifier vocabulary"
         if (proposalFacts.reviewStatus != "PENDING_HUMAN_REVIEW") {
             errors += "AI proposal has already been reviewed: ${proposalFacts.reviewStatus}"
         }
@@ -473,6 +457,5 @@ class AiGovernanceReviewService(
     )
 
     private companion object {
-        private val CONTROLLED_TOKEN = Regex("[A-Za-z0-9._:-]+")
     }
 }

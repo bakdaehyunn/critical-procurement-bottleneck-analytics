@@ -116,7 +116,7 @@ See `docs/01_architecture.md` for the source-to-question mapping and trust risks
 - `queries/manifest.ttl`: approved read-only query catalog plus reference-only historical query metadata
 - `reasoning/`: executable Kotlin reasoning pipeline contracts, validation gates, rollback-safe promotion, and reference-only historical query/rule boundaries
 - `semantic-service/`: Kotlin/JVM runtime that loads approved queries, talks to Fuseki/TDB2, shapes typed result envelopes, serializes success/error responses, and serves the private semantic query endpoint
-- `frontend/`: React/Vite semantic operations workbench that reads the semantic-service private endpoint through `VITE_SEMANTIC_API_BASE_URL`
+- `frontend/`: React/Vite semantic operations workbench with feature-owned Recovery Queue, Recovery Case, Review Inbox, and Platform Status repositories
 
 ## Semantic-Service Responsibilities
 
@@ -124,6 +124,8 @@ See `docs/01_architecture.md` for the source-to-question mapping and trust risks
 - Connect to Fuseki/TDB2 through a read-only graph access boundary
 - Load controlled RDF fixtures through validation/provenance gates
 - Execute only approved read-only SPARQL query IDs from the manifest
+- Bind every approved query definition to one registry-owned result codec,
+  feature owner, private-endpoint policy, and optional stable paging policy
 - Shape graph bindings into typed Kotlin result envelopes
 - Serialize all endpoint responses through the semantic response serializer
 - Reject raw SPARQL, unapproved query IDs, graph writes, public exposure, and non-loopback endpoint binding
@@ -178,13 +180,8 @@ Approved product read-model query IDs include:
 - `semanticPlatformStatus`
 - `semanticFilterMetadata`
 - `semanticFollowUpDetail`
-- `semanticImpactSummary`
 - `semanticTopologyDependencies`
 - `semanticTrustFindingList`
-- `semanticStageBottlenecks`
-- `semanticAssetDelaySummary`
-- `semanticZoneDelaySummary`
-- `semanticSpareWaitSummary`
 - `semanticValidationSummary`
 - `semanticIncidentEvidence`
 - `semanticIncidentTimeline`
@@ -200,11 +197,15 @@ Approved product read-model query IDs include:
 
 The complete approved catalog lives in `queries/manifest.ttl`. The endpoint is
 internal/loopback only. It accepts approved query IDs, not raw SPARQL text.
+Legacy and diagnostic read models remain backend/internal contracts and are not
+published in the frontend catalog.
 
 Read models can opt into server-side paging with a one-based `page` and a
 `pageSize` from 1 to 100. Paged responses add backward-compatible `pageInfo`
-containing the current page, page size, page count, and post-shaping total;
-unpaged response envelopes remain unchanged.
+containing the current page, page size, page count, and stable-identity total.
+The service counts decision identities in Fuseki, selects a bounded identity
+page with deterministic ordering, and retrieves only rows for that page before
+typed shaping; unpaged response envelopes remain unchanged.
 
 ## Return-to-Service Operations Console
 
@@ -230,6 +231,12 @@ helps an operator judge urgency, impact, or trust.
   Dependencies; `?tab=` preserves deep links and browser history
 - Uses keyboard-accessible tabs with roving focus, arrow-key wrapping, Home/End
   navigation, and explicit tab-to-panel relationships
+- Loads the core case independently, then refreshes timeline, evidence/trust,
+  impact reasoning, governed actions, AI governance, playback, and topology as
+  isolated resources. Optional failures keep the core case usable, and each
+  approved query is issued at most once per refresh.
+- Keeps absent operational measurements and evidence verdicts explicitly
+  unknown; missing graph facts are never presented as zero or trusted.
 - Collects editable actor, reason, team, assignee, status, or summary fields
   before supported governed actions are submitted
 - Shows valid action lifecycle transitions and audit history without mutating

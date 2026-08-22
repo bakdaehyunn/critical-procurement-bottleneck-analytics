@@ -1,10 +1,11 @@
 package com.dcai.semanticservice.dynamic
 
 import com.dcai.semanticservice.actions.OntologyActionGraphUris
+import com.dcai.semanticservice.graph.ControlledIdentifier
 import com.dcai.semanticservice.graph.ManagedGraphWriteCoordinator
 import com.dcai.semanticservice.graph.NamedGraphStore
-import com.dcai.semanticservice.ingestion.Dcai
-import com.dcai.semanticservice.ingestion.Prov
+import com.dcai.semanticservice.ontology.Dcai
+import com.dcai.semanticservice.ontology.Prov
 import com.dcai.semanticservice.ingestion.SourceExtractBatch
 import com.dcai.semanticservice.promotion.GraphPromotionResult
 import com.dcai.semanticservice.promotion.ProductionGraphPromotionPlan
@@ -214,8 +215,8 @@ data class DynamicPlaybackScenario(
     val steps: List<DynamicPlaybackStep>,
 ) {
     init {
-        require(scenarioId.matches(CONTROLLED_ID)) { "scenarioId must use the controlled local identifier vocabulary" }
-        require(playbackBatchId.matches(CONTROLLED_ID)) { "playbackBatchId must use the controlled local identifier vocabulary" }
+        ControlledIdentifier.requireRelease(scenarioId, "scenarioId")
+        ControlledIdentifier.requireRelease(playbackBatchId, "playbackBatchId")
         require(steps.isNotEmpty()) { "dynamic playback scenario must contain at least one step" }
         require(steps.map { it.step } == steps.map { it.step }.sorted()) { "dynamic playback steps must be ordered" }
     }
@@ -230,8 +231,8 @@ data class DynamicPlaybackStep(
 ) {
     init {
         require(step > 0) { "step must be positive" }
-        require(sourceReleaseId.matches(CONTROLLED_ID)) { "sourceReleaseId must use the controlled local identifier vocabulary" }
-        require(reasoningRunId.matches(CONTROLLED_ID)) { "reasoningRunId must use the controlled local identifier vocabulary" }
+        ControlledIdentifier.requireRelease(sourceReleaseId, "sourceReleaseId")
+        ControlledIdentifier.requireRelease(reasoningRunId, "reasoningRunId")
         require(sourceBatch.batchId == sourceReleaseId) { "sourceBatch.batchId must match sourceReleaseId" }
     }
 }
@@ -258,8 +259,8 @@ data class DynamicPlaybackEventRecord(
     val reasoningGraphUri: String = "urn:dcai:graph:reasoning:pending",
 ) {
     init {
-        require(eventId.matches(CONTROLLED_ID)) { "eventId must use the controlled local identifier vocabulary" }
-        require(incidentId.matches(CONTROLLED_ID)) { "incidentId must use the controlled local identifier vocabulary" }
+        ControlledIdentifier.requireRelease(eventId, "eventId")
+        ControlledIdentifier.requireRelease(incidentId, "incidentId")
         require(eventKind.isNotBlank()) { "eventKind must not be blank" }
         require(sourceFamily.isNotBlank()) { "sourceFamily must not be blank" }
         require(sourceRecordUri.isNotBlank()) { "sourceRecordUri must not be blank" }
@@ -293,5 +294,3 @@ data class DynamicPlaybackResult(
     val rollbackSucceeded: Boolean = false,
     val errors: List<String> = emptyList(),
 )
-
-private val CONTROLLED_ID = Regex("[A-Za-z0-9._-]+")

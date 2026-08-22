@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { OntologyActionAffordance } from '../../api'
+import type { OntologyActionAffordance } from './recoveryCaseModel'
 import { actionAvailability, buildActionSubmission } from './actionUtils'
 
 function action(actionId: string, role: string): OntologyActionAffordance {

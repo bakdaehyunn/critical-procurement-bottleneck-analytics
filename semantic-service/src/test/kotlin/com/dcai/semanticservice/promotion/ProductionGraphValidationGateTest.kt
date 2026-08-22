@@ -1,14 +1,14 @@
 package com.dcai.semanticservice.promotion
 
 import com.dcai.semanticservice.ingestion.SourceExtractRdfMapper
-import com.dcai.semanticservice.runtime.SemanticServiceApplication
+import com.dcai.semanticservice.runtime.SemanticServiceComposition
 import com.dcai.semanticservice.testfixtures.ProductionSourceExtractFixtures
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ProductionGraphValidationGateTest {
-    private val repoRoot = SemanticServiceApplication.locateRepoRoot()
+    private val repoRoot = SemanticServiceComposition.locateRepoRoot()
     private val gate = ProductionGraphValidationGate(repoRoot)
 
     @Test

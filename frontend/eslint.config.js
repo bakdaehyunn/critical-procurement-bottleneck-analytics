@@ -19,4 +19,20 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    files: ['src/features/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{
+          group: [
+            '../platform-status/**',
+            '../recovery-case/**',
+            '../recovery-queue/**',
+            '../review-inbox/**',
+          ],
+          message: 'Import another feature through its public index, not an internal module.',
+        }],
+      }],
+    },
+  },
 ])

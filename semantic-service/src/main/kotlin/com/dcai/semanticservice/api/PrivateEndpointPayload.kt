@@ -1,5 +1,6 @@
 package com.dcai.semanticservice.api
 
+import com.dcai.semanticservice.graph.ControlledIdentifier
 internal object PrivateEndpointPayload {
     fun containsRawSparql(body: String): Boolean {
         val normalized = body.lowercase()
@@ -87,13 +88,13 @@ internal data class PrivateStringPayload(
 
     fun requiredControlled(key: String): String {
         return required(key).also { value ->
-            require(CONTROLLED_TOKEN.matches(value)) { "$key must use the controlled local identifier vocabulary" }
+            ControlledIdentifier.requireLocal(value, key)
         }
     }
 
     fun optionalControlled(key: String): String? {
         return values[key]?.trim()?.takeIf(String::isNotBlank)?.also { value ->
-            require(CONTROLLED_TOKEN.matches(value)) { "$key must use the controlled local identifier vocabulary" }
+            ControlledIdentifier.requireLocal(value, key)
         }
     }
 
@@ -109,7 +110,4 @@ internal data class PrivateStringPayload(
         }
     }
 
-    private companion object {
-        private val CONTROLLED_TOKEN = Regex("[A-Za-z0-9._:-]+")
-    }
 }

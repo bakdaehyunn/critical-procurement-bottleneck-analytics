@@ -1,9 +1,10 @@
 package com.dcai.semanticservice.actions
 
 import com.dcai.semanticservice.graph.ManagedGraphWriteCoordinator
+import com.dcai.semanticservice.graph.ControlledIdentifier
 import com.dcai.semanticservice.graph.NamedGraphStore
-import com.dcai.semanticservice.ingestion.Dcai
-import com.dcai.semanticservice.ingestion.Prov
+import com.dcai.semanticservice.ontology.Dcai
+import com.dcai.semanticservice.ontology.Prov
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import org.apache.jena.datatypes.xsd.XSDDatatype
@@ -116,10 +117,10 @@ class OntologyActionTransitionService(
         targetExecution: Resource,
     ): List<String> {
         val errors = mutableListOf<String>()
-        if (!CONTROLLED_TOKEN.matches(request.idempotencyKey)) {
+        if (!ControlledIdentifier.isLocal(request.idempotencyKey)) {
             errors += "idempotencyKey must contain only letters, numbers, dot, underscore, colon, or hyphen"
         }
-        if (!CONTROLLED_TOKEN.matches(request.actorId)) {
+        if (!ControlledIdentifier.isLocal(request.actorId)) {
             errors += "actorId must use the controlled local identifier vocabulary"
         }
         if (!model.contains(targetExecution, RDF.type, Dcai.OntologyActionExecution)) {
@@ -226,7 +227,6 @@ class OntologyActionTransitionService(
     }
 
     private companion object {
-        private val CONTROLLED_TOKEN = Regex("[A-Za-z0-9._:-]+")
         private val SIMULATED_DISPATCH_CHANNELS = listOf(
             "NOC_QUEUE",
             "WORK_ORDER_QUEUE",

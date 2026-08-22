@@ -31,6 +31,7 @@ class StaticContractValidator(
         }
 
         errors += findForbiddenRuntimeMarkers(repoRoot)
+        errors += OpenApiEndpointContractValidator().validate(repoRoot)
 
         return ContractValidationReport(
             checkedArtifacts = loadedContracts.map { it.artifact.path },

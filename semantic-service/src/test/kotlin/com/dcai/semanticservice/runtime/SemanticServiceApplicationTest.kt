@@ -52,10 +52,67 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+private fun runSemanticWorkflow(
+    repoRoot: Path = SemanticServiceComposition.locateRepoRoot(),
+    graphClient: ReadOnlyGraphClient? = null,
+    fixtureLoader: FixtureGraphLoader? = null,
+    fixtureLoadPlan: FixtureGraphLoadPlan? = null,
+    queryExecutor: ReadOnlyQueryExecutor? = null,
+    queryId: String? = null,
+    queryResultShaper: QueryResultShaper? = null,
+    sourcePromoter: SourceGraphPromoter? = null,
+    sourcePromotionPlan: ProductionGraphPromotionPlan? = null,
+    reasoningRefresher: ReasoningRefresher? = null,
+    reasoningPromotionPlan: ReasoningPromotionPlan? = null,
+    lifecycleInspector: GraphLifecycleInspector? = null,
+    lifecycleInspectionPlan: GraphLifecycleInspectionPlan? = null,
+    ontologyActionSubmitter: OntologyActionSubmitter? = null,
+    ontologyActionAuditPlan: OntologyActionAuditPlan? = null,
+    actionAuditInspector: OntologyActionAuditInspector? = null,
+    actionAuditInspectionPlan: OntologyActionAuditInspectionPlan? = null,
+    dynamicPlaybackRunner: DynamicPlaybackRunner? = null,
+    dynamicPlaybackPlan: DynamicPlaybackPlan? = null,
+): SemanticServiceRuntimeReport {
+    val operations = buildList {
+        graphClient?.let { add(SemanticRuntimeOperation.CheckGraph(it)) }
+        fixtureLoader?.let {
+            add(SemanticRuntimeOperation.LoadFixtures(it, fixtureLoadPlan ?: FixtureGraphLoadPlan.default(repoRoot)))
+        }
+        queryId?.let {
+            add(
+                SemanticRuntimeOperation.ExecuteQuery(
+                    executor = requireNotNull(queryExecutor),
+                    shaper = requireNotNull(queryResultShaper),
+                    queryId = it,
+                ),
+            )
+        }
+        sourcePromotionPlan?.let {
+            add(SemanticRuntimeOperation.PromoteSource(requireNotNull(sourcePromoter), it))
+        }
+        reasoningPromotionPlan?.let {
+            add(SemanticRuntimeOperation.RefreshReasoning(requireNotNull(reasoningRefresher), it))
+        }
+        lifecycleInspectionPlan?.let {
+            add(SemanticRuntimeOperation.InspectLifecycle(requireNotNull(lifecycleInspector), it))
+        }
+        ontologyActionAuditPlan?.let {
+            add(SemanticRuntimeOperation.SubmitOntologyAction(requireNotNull(ontologyActionSubmitter), it))
+        }
+        actionAuditInspectionPlan?.let {
+            add(SemanticRuntimeOperation.InspectActionAudit(requireNotNull(actionAuditInspector), it))
+        }
+        dynamicPlaybackPlan?.let {
+            add(SemanticRuntimeOperation.RunDynamicPlayback(requireNotNull(dynamicPlaybackRunner), it))
+        }
+    }
+    return SemanticServiceWorkflow().run(repoRoot, operations)
+}
+
 class SemanticServiceApplicationTest {
     @Test
     fun startsRunnableContractValidationBaseline() {
-        val report = SemanticServiceApplication.run()
+        val report = runSemanticWorkflow()
 
         assertTrue(report.isReady, report.contractValidation.errors.joinToString(separator = "\n"))
         assertEquals("contract-validation-runtime", report.mode)
@@ -66,7 +123,7 @@ class SemanticServiceApplicationTest {
 
     @Test
     fun canRunReadOnlyGraphConnectivityBoundary() {
-        val report = SemanticServiceApplication.run(
+        val report = runSemanticWorkflow(
             graphClient = StaticReadOnlyGraphClient(
                 GraphConnectionCheck(
                     reachable = true,
@@ -87,7 +144,7 @@ class SemanticServiceApplicationTest {
 
     @Test
     fun canRunControlledFixtureLoadingBoundary() {
-        val report = SemanticServiceApplication.run(
+        val report = runSemanticWorkflow(
             fixtureLoader = StaticFixtureGraphLoader(
                 FixtureLoadSummary(
                     listOf(
@@ -126,7 +183,7 @@ class SemanticServiceApplicationTest {
                 ),
             ),
         )
-        val report = SemanticServiceApplication.run(
+        val report = runSemanticWorkflow(
             queryExecutor = StaticReadOnlyQueryExecutor(
                 QueryExecutionReport(
                     queryId = "fixtureNamedGraphInventory",
@@ -159,7 +216,7 @@ class SemanticServiceApplicationTest {
 
     @Test
     fun canRunControlledSourcePromotionCommandBoundary() {
-        val report = SemanticServiceApplication.run(
+        val report = runSemanticWorkflow(
             sourcePromoter = StaticSourceGraphPromoter(
                 GraphPromotionResult(
                     promoted = true,
@@ -192,7 +249,7 @@ class SemanticServiceApplicationTest {
 
     @Test
     fun canRunReasoningRefreshCommandBoundary() {
-        val report = SemanticServiceApplication.run(
+        val report = runSemanticWorkflow(
             reasoningRefresher = StaticReasoningRefresher(
                 ReasoningPromotionResult(
                     promoted = true,
@@ -229,7 +286,7 @@ class SemanticServiceApplicationTest {
 
     @Test
     fun failedReasoningRefreshBlocksRuntimeReport() {
-        val report = SemanticServiceApplication.run(
+        val report = runSemanticWorkflow(
             reasoningRefresher = StaticReasoningRefresher(
                 ReasoningPromotionResult(
                     promoted = false,
@@ -256,7 +313,7 @@ class SemanticServiceApplicationTest {
 
     @Test
     fun failedSourcePromotionSkipsCombinedReasoningRefresh() {
-        val report = SemanticServiceApplication.run(
+        val report = runSemanticWorkflow(
             sourcePromoter = StaticSourceGraphPromoter(
                 GraphPromotionResult(
                     promoted = false,
@@ -290,7 +347,7 @@ class SemanticServiceApplicationTest {
 
     @Test
     fun canRunGraphLifecycleInspectionBoundary() {
-        val repoRoot = SemanticServiceApplication.locateRepoRoot()
+        val repoRoot = SemanticServiceComposition.locateRepoRoot()
         val releaseId = "local-controlled-source-v1"
         val runId = "local-controlled-reasoning-v1"
         val productionGraphs = ProductionGraphUris.forRelease(releaseId)
@@ -306,7 +363,7 @@ class SemanticServiceApplicationTest {
                 provenanceModel = mapping.provenanceModel,
             ),
         )
-        val report = SemanticServiceApplication.run(
+        val report = runSemanticWorkflow(
             lifecycleInspector = GraphLifecycleInspector(
                 InMemoryNamedGraphStore(
                     mapOf(
@@ -333,7 +390,7 @@ class SemanticServiceApplicationTest {
 
     @Test
     fun canRunInternalOntologyActionAuditBoundary() {
-        val report = SemanticServiceApplication.run(
+        val report = runSemanticWorkflow(
             ontologyActionSubmitter = StaticOntologyActionSubmitter(
                 OntologyActionAuditResult(
                     audited = true,
@@ -343,8 +400,8 @@ class SemanticServiceApplicationTest {
                 ),
             ),
             ontologyActionAuditPlan = OntologyActionAuditPlan(
-                request = SemanticServiceApplication.loadOntologyActionRequest(
-                    repoRoot = SemanticServiceApplication.locateRepoRoot(),
+                request = SemanticServiceComposition.loadOntologyActionRequest(
+                    repoRoot = SemanticServiceComposition.locateRepoRoot(),
                     actionRequestFile = "fixtures/action-requests/acknowledge-restore-blocker.properties",
                 ),
                 graphs = com.dcai.semanticservice.actions.OntologyActionGraphUris.forRelease(
@@ -376,7 +433,7 @@ class SemanticServiceApplicationTest {
             idempotencyKeyCount = 1,
             latestGeneratedAt = "2026-06-09T02:00:00Z",
         )
-        val report = SemanticServiceApplication.run(
+        val report = runSemanticWorkflow(
             actionAuditInspector = StaticActionAuditInspector(result),
             actionAuditInspectionPlan = OntologyActionAuditInspectionPlan("local-action-audit-v1"),
         )
@@ -472,7 +529,7 @@ class SemanticServiceApplicationTest {
     fun generatedSourceScenarioOutputDirectoryDefaultsUnderControlledFixtureDirectory() {
         assertEquals(
             "fixtures/source-extracts/generated-scenarios/stress-seed-99",
-            SemanticServiceApplication.defaultGeneratedSourceScenarioDirectory(
+            SemanticServiceComposition.defaultGeneratedSourceScenarioDirectory(
                 com.dcai.semanticservice.connectors.RecordedSourceScenarioProfile.STRESS,
                 99,
             ),
@@ -490,13 +547,13 @@ class SemanticServiceApplicationTest {
 
         assertEquals(
             repoRoot.resolve("fixtures/source-extracts/local-controlled-source-v1.properties"),
-            SemanticServiceApplication.resolveControlledSourceExtractPath(
+            SemanticServiceComposition.resolveControlledSourceExtractPath(
                 repoRoot = repoRoot,
                 sourceExtractPathArgument = "fixtures/source-extracts/local-controlled-source-v1.properties",
             ),
         )
         assertFailsWith<IllegalArgumentException> {
-            SemanticServiceApplication.resolveControlledSourceExtractPath(
+            SemanticServiceComposition.resolveControlledSourceExtractPath(
                 repoRoot = repoRoot,
                 sourceExtractPathArgument = "../uncontrolled.properties",
             )
@@ -505,9 +562,9 @@ class SemanticServiceApplicationTest {
 
     @Test
     fun fileBackedSourceReleaseIdMustMatchBatchId() {
-        val repoRoot = SemanticServiceApplication.locateRepoRoot()
+        val repoRoot = SemanticServiceComposition.locateRepoRoot()
 
-        val batch = SemanticServiceApplication.loadSourceExtractBatch(
+        val batch = SemanticServiceComposition.loadSourceExtractBatch(
             repoRoot = repoRoot,
             sourceReleaseId = "local-controlled-source-v1",
             sourceExtractFile = "fixtures/source-extracts/local-controlled-source-v1.properties",
@@ -515,7 +572,7 @@ class SemanticServiceApplicationTest {
 
         assertEquals("local-controlled-source-v1", batch.batchId)
         assertFailsWith<IllegalArgumentException> {
-            SemanticServiceApplication.loadSourceExtractBatch(
+            SemanticServiceComposition.loadSourceExtractBatch(
                 repoRoot = repoRoot,
                 sourceReleaseId = "different-release",
                 sourceExtractFile = "fixtures/source-extracts/local-controlled-source-v1.properties",
@@ -525,9 +582,9 @@ class SemanticServiceApplicationTest {
 
     @Test
     fun directoryBackedSourcePromotionLoadsRecordedConnectorReport() {
-        val repoRoot = SemanticServiceApplication.locateRepoRoot()
+        val repoRoot = SemanticServiceComposition.locateRepoRoot()
 
-        val input = SemanticServiceApplication.loadSourceExtractInput(
+        val input = SemanticServiceComposition.loadSourceExtractInput(
             repoRoot = repoRoot,
             sourceReleaseId = "recorded-local-ops-v1",
             sourceExtractFile = null,
@@ -538,7 +595,7 @@ class SemanticServiceApplicationTest {
         assertEquals(21, input.recordedConnectorReport?.acceptedRows)
         assertEquals(2, input.recordedConnectorReport?.rejectedRowCount)
         assertFailsWith<IllegalArgumentException> {
-            SemanticServiceApplication.loadSourceExtractInput(
+            SemanticServiceComposition.loadSourceExtractInput(
                 repoRoot = repoRoot,
                 sourceReleaseId = "different-release",
                 sourceExtractFile = null,
@@ -549,7 +606,7 @@ class SemanticServiceApplicationTest {
 
     @Test
     fun canRunControlledDynamicPlaybackCommandBoundary() {
-        val report = SemanticServiceApplication.run(
+        val report = runSemanticWorkflow(
             dynamicPlaybackRunner = StaticDynamicPlaybackRunner(
                 DynamicPlaybackResult(
                     played = true,
@@ -596,8 +653,8 @@ class SemanticServiceApplicationTest {
     @Test
     fun rejectsConflictingSourceExtractInputs() {
         assertFailsWith<IllegalArgumentException> {
-            SemanticServiceApplication.loadSourceExtractInput(
-                repoRoot = SemanticServiceApplication.locateRepoRoot(),
+            SemanticServiceComposition.loadSourceExtractInput(
+                repoRoot = SemanticServiceComposition.locateRepoRoot(),
                 sourceReleaseId = "recorded-local-ops-v1",
                 sourceExtractFile = "fixtures/source-extracts/local-controlled-source-v1.properties",
                 sourceExtractDirectory = "fixtures/source-extracts/recorded-source-systems/local-ops-v1",
@@ -607,7 +664,7 @@ class SemanticServiceApplicationTest {
 
     @Test
     fun locatesRepositoryRootFromSemanticServiceDirectory() {
-        val repoRoot = SemanticServiceApplication.locateRepoRoot()
+        val repoRoot = SemanticServiceComposition.locateRepoRoot()
 
         assertTrue(repoRoot.resolve("semantic-service/openapi.semantic-service.yaml").exists())
         assertTrue(repoRoot.resolve("ontology/modules").exists())

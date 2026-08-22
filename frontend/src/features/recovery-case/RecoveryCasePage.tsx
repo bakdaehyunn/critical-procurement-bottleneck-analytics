@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -26,11 +26,8 @@ import {
   type OntologyActionAffordance,
   type RequestDetail,
   type RequestSemanticContext,
-  fetchRequestDetail,
-  fetchRequestSemanticContext,
-  fetchTopologyDependencies,
-  submitOntologyActionRequest,
-} from '../../api'
+} from './recoveryCaseModel'
+import { submitOntologyActionRequest } from '../../ontologyActionApi'
 import { AppShell } from '../../app/AppShell'
 import { Disclosure, EmptyState, ErrorState, LoadingState, Metric, StatusBadge, type Tone } from '../../components/ui'
 import {
@@ -44,66 +41,19 @@ import {
   titleCase,
 } from '../../utils/format'
 import { actionAvailability, buildActionSubmission, type ActionInputValues } from './actionUtils'
-
-type CaseTab = 'overview' | 'recovery' | 'impact' | 'evidence' | 'dependencies'
-const tabs: { id: CaseTab; label: string }[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'recovery', label: 'Recovery & Actions' },
-  { id: 'impact', label: 'Impact' },
-  { id: 'evidence', label: 'Evidence' },
-  { id: 'dependencies', label: 'Dependencies' },
-]
+import { useRecoveryCase } from './useRecoveryCase'
+import { caseTabSearchParams, keyboardCaseTab, recoveryCaseTabs, resolveCaseTab, type CaseTab } from './recoveryCaseTabs'
 
 export function RecoveryCasePage() {
   const { incidentId } = useParams()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const requestedTab = searchParams.get('tab') as CaseTab | null
-  const activeTab = tabs.some((tab) => tab.id === requestedTab) ? requestedTab! : 'overview'
-  const [detail, setDetail] = useState<RequestDetail | null>(null)
-  const [semantic, setSemantic] = useState<RequestSemanticContext | null>(null)
-  const [dependencies, setDependencies] = useState<InfrastructureDependency[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [partialError, setPartialError] = useState<string | null>(null)
-  const [reloadKey, setReloadKey] = useState(0)
+  const activeTab = resolveCaseTab(searchParams.get('tab'))
+  const { detail, semantic, selectedDependencies, loading, error, partialError, refresh } = useRecoveryCase(incidentId)
   const tabRefs = useRef<Partial<Record<CaseTab, HTMLButtonElement | null>>>({})
 
-  useEffect(() => {
-    let cancelled = false
-    async function loadCase() {
-      if (!incidentId) return
-      setLoading(true)
-      setError(null)
-      setPartialError(null)
-      try {
-        const requestDetail = await fetchRequestDetail(incidentId)
-        if (!cancelled) setDetail(requestDetail)
-        const [context, topology] = await Promise.allSettled([
-          fetchRequestSemanticContext(requestDetail.request.incident_id, requestDetail.request.asset_id),
-          fetchTopologyDependencies(),
-        ])
-        if (!cancelled) {
-          if (context.status === 'fulfilled') setSemantic(context.value)
-          if (topology.status === 'fulfilled') setDependencies(topology.value)
-          const failed = [context.status === 'rejected' ? 'semantic evidence' : null, topology.status === 'rejected' ? 'dependency topology' : null].filter(Boolean)
-          setPartialError(failed.length ? `${failed.join(' and ')} could not be refreshed. Core case data remains available.` : null)
-        }
-      } catch (requestError) {
-        if (!cancelled) setError(requestError instanceof Error ? requestError.message : 'Recovery case is unavailable.')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    void loadCase()
-    return () => { cancelled = true }
-  }, [incidentId, reloadKey])
-
   const selectTab = (tab: CaseTab) => {
-    const next = new URLSearchParams(searchParams)
-    if (tab === 'overview') next.delete('tab')
-    else next.set('tab', tab)
-    setSearchParams(next)
+    setSearchParams(caseTabSearchParams(searchParams, tab))
   }
 
   const selectAndFocusTab = (tab: CaseTab) => {
@@ -111,23 +61,18 @@ export function RecoveryCasePage() {
     tabRefs.current[tab]?.focus()
   }
 
-  const selectedDependencies = useMemo(() => {
-    if (!detail) return []
-    return dependencies.filter((item) => item.dependent_asset_id === detail.request.asset_id || item.dependency_asset_id === detail.request.asset_id)
-  }, [dependencies, detail])
-
   return (
     <AppShell>
       <div className="case-page">
         <div className="case-breadcrumbs"><Link to="/"><ArrowLeft size={14} /> Recovery Queue</Link><ChevronRight size={14} /><span>{detail?.request.request_number ?? incidentId}</span></div>
         {loading && !detail ? <LoadingState label="Loading recovery case" /> : null}
-        {error && !detail ? <ErrorState message={error} retry={() => setReloadKey((value) => value + 1)} /> : null}
+        {error && !detail ? <ErrorState message={error} retry={refresh} /> : null}
         {detail ? (
           <>
-            <CaseHeader detail={detail} onBack={() => navigate(-1)} onRefresh={() => setReloadKey((value) => value + 1)} loading={loading} />
+            <CaseHeader detail={detail} onBack={() => navigate(-1)} onRefresh={refresh} loading={loading} />
             {partialError ? <div className="inline-notice warning" role="status"><AlertTriangle size={16} />{partialError}</div> : null}
             <nav className="case-tabs" role="tablist" aria-label="Recovery case workspaces">
-              {tabs.map((tab, index) => (
+              {recoveryCaseTabs.map((tab, index) => (
                 <button
                   key={tab.id}
                   ref={(element) => { tabRefs.current[tab.id] = element }}
@@ -140,21 +85,17 @@ export function RecoveryCasePage() {
                   className={activeTab === tab.id ? 'active' : ''}
                   onClick={() => selectTab(tab.id)}
                   onKeyDown={(event) => {
-                    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+                    const nextTab = keyboardCaseTab(index, event.key)
+                    if (!nextTab) return
                     event.preventDefault()
-                    const nextTab = event.key === 'Home'
-                      ? tabs[0]
-                      : event.key === 'End'
-                        ? tabs[tabs.length - 1]
-                        : tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length]
-                    selectAndFocusTab(nextTab.id)
+                    selectAndFocusTab(nextTab)
                   }}
                 >{tab.label}</button>
               ))}
             </nav>
             <section id={`case-panel-${activeTab}`} className="case-workspace" role="tabpanel" aria-labelledby={`case-tab-${activeTab}`}>
               {activeTab === 'overview' ? <OverviewTab detail={detail} semantic={semantic} /> : null}
-              {activeTab === 'recovery' ? <RecoveryTab detail={detail} onActionComplete={() => setReloadKey((value) => value + 1)} /> : null}
+              {activeTab === 'recovery' ? <RecoveryTab detail={detail} onActionComplete={refresh} /> : null}
               {activeTab === 'impact' ? <ImpactTab detail={detail} /> : null}
               {activeTab === 'evidence' ? <EvidenceTab detail={detail} semantic={semantic} /> : null}
               {activeTab === 'dependencies' ? <DependenciesTab detail={detail} semantic={semantic} dependencies={selectedDependencies} /> : null}
@@ -168,7 +109,7 @@ export function RecoveryCasePage() {
 
 function CaseHeader({ detail, onBack, onRefresh, loading }: { detail: RequestDetail; onBack: () => void; onRefresh: () => void; loading: boolean }) {
   const row = detail.request
-  const owner = detail.work_orders[0]?.assigned_team ?? (row.dependency_roles[0] ? titleCase(row.dependency_roles[0]) : 'Facilities operations')
+  const owner = detail.work_orders[0]?.assigned_team ?? 'Unknown'
   return (
     <header className="case-header">
       <div className="case-header-main">
@@ -188,14 +129,14 @@ function CaseHeader({ detail, onBack, onRefresh, loading }: { detail: RequestDet
         <div><dt>Current stage</dt><dd>{titleCase(row.current_stage)}</dd></div>
         <div><dt>Time blocked</dt><dd>{formatHours(row.hours_in_current_stage)}</dd></div>
         <div><dt>Owner</dt><dd>{owner}</dd></div>
-        <div><dt>Exposure</dt><dd>{row.affected_gpu_count} GPUs · {row.estimated_capacity_risk_kw.toFixed(0)} kW</dd></div>
+        <div><dt>Exposure</dt><dd>{knownMetric(row.affected_gpu_count)} GPUs · {knownMetric(row.estimated_capacity_risk_kw, ' kW')}</dd></div>
       </dl>
       <div className="case-primary-action"><span>Recommended next action</span><strong>{row.recommended_action}</strong></div>
     </header>
   )
 }
 
-function OverviewTab({ detail, semantic }: { detail: RequestDetail; semantic: RequestSemanticContext | null }) {
+function OverviewTab({ detail, semantic }: { detail: RequestDetail; semantic: Partial<RequestSemanticContext> | null }) {
   const row = detail.request
   return (
     <div className="workspace-stack">
@@ -205,9 +146,9 @@ function OverviewTab({ detail, semantic }: { detail: RequestDetail; semantic: Re
       </section>
       <section className="case-metrics four">
         <Metric label="Blocker" value={titleCase(row.current_stage)} detail={`${formatHours(row.hours_in_current_stage)} in current stage`} tone="critical" icon={<Clock3 size={17} />} />
-        <Metric label="Affected GPUs" value={row.affected_gpu_count} detail={`${row.estimated_capacity_risk_kw.toFixed(0)} kW exposed`} tone="warning" icon={<Cpu size={17} />} />
+        <Metric label="Affected GPUs" value={knownMetric(row.affected_gpu_count)} detail={`${knownMetric(row.estimated_capacity_risk_kw, ' kW')} exposed`} tone={row.affected_gpu_count == null ? 'neutral' : 'warning'} icon={<Cpu size={17} />} />
         <Metric label="Redundancy" value={titleCase(row.redundancy_state)} detail={row.mitigation_status ? `Mitigation: ${titleCase(row.mitigation_status)}` : 'No mitigation state'} tone={row.redundancy_state?.includes('LOST') ? 'critical' : 'neutral'} icon={<ShieldCheck size={17} />} />
-        <Metric label="Evidence" value={evidenceLabel(detail.impact_confidence_status, detail.impact_trust_flags.length)} detail={semantic?.incidentEvidence.found ? 'Incident evidence linked' : 'Evidence link requires review'} tone={evidenceTone(detail.impact_confidence_status, detail.impact_trust_flags.length)} icon={<Database size={17} />} />
+        <Metric label="Evidence" value={evidenceLabel(detail.impact_confidence_status, detail.impact_trust_flags.length)} detail={semantic?.incidentEvidence?.found ? 'Incident evidence linked' : 'Evidence link requires review'} tone={evidenceTone(detail.impact_confidence_status, detail.impact_trust_flags.length)} icon={<Database size={17} />} />
       </section>
       <section className="workspace-section">
         <div className="section-heading"><div><h2>Recovery progress</h2><p>The active stage and threshold breach are kept together for rapid shift handoff.</p></div></div>
@@ -226,11 +167,11 @@ function RecoveryTimeline({ detail }: { detail: RequestDetail }) {
     <ol className="recovery-timeline" aria-label="Recovery stage timeline">
       {detail.stage_lead_times.map((stage, index) => {
         const active = !stage.exited_at || stage.stage === detail.request.current_stage
-        const delayed = stage.delay_hours > 0
+        const delayed = stage.delay_hours != null && stage.delay_hours > 0
         return (
           <li key={`${stage.stage}-${stage.entered_at}-${index}`} className={`${active ? 'active' : 'complete'} ${delayed ? 'delayed' : ''}`}>
             <div className="timeline-marker">{active ? <CircleDot size={17} /> : <CheckCircle2 size={16} />}</div>
-            <div><span>{titleCase(stage.stage)}</span><strong>{formatHours(stage.duration_hours)}</strong><small>{delayed ? `${formatHours(stage.delay_hours)} over threshold` : `Threshold ${formatHours(stage.threshold_hours)}`}</small></div>
+            <div><span>{titleCase(stage.stage)}</span><strong>{formatHours(stage.duration_hours)}</strong><small>{delayed ? `${formatHours(stage.delay_hours)} over threshold` : stage.threshold_hours == null ? 'Threshold unknown' : `Threshold ${formatHours(stage.threshold_hours)}`}</small></div>
           </li>
         )
       })}
@@ -323,14 +264,16 @@ function AuditHistory({ detail }: { detail: RequestDetail }) {
 function ImpactTab({ detail }: { detail: RequestDetail }) {
   const impact = detail.impact_snapshot
   if (!impact) return <EmptyState title="No impact snapshot" description="Capacity and redundancy exposure has not been calculated for this case." />
+  const powerState = impact.power_redundancy_lost == null ? 'Unknown' : impact.power_redundancy_lost ? 'Lost' : 'Available'
+  const coolingState = impact.cooling_redundancy_lost == null ? 'Unknown' : impact.cooling_redundancy_lost ? 'Lost' : 'Available'
   return (
     <div className="workspace-stack">
-      <section className="impact-hero"><div><span className="eyebrow">Operational exposure</span><h2>{impact.affected_gpu_count} GPUs and {impact.estimated_capacity_risk_kw.toFixed(0)} kW remain at risk</h2><p>{impact.affected_rack_count} racks are included in the latest impact snapshot.</p></div><StatusBadge label={titleCase(impact.redundancy_state)} tone={impact.redundancy_state.includes('LOST') ? 'critical' : 'success'} /></section>
+      <section className="impact-hero"><div><span className="eyebrow">Operational exposure</span><h2>{knownMetric(impact.affected_gpu_count, ' GPUs')} and {knownMetric(impact.estimated_capacity_risk_kw, ' kW')} remain at risk</h2><p>{knownMetric(impact.affected_rack_count, ' racks')} are included in the latest impact snapshot.</p></div><StatusBadge label={titleCase(impact.redundancy_state)} tone={impact.redundancy_state.includes('LOST') ? 'critical' : impact.redundancy_state === 'Unknown' ? 'neutral' : 'success'} /></section>
       <section className="case-metrics four">
-        <Metric label="GPU capacity" value={`${impact.estimated_gpu_capacity_risk_pct.toFixed(1)}%`} detail={`${impact.affected_gpu_count} affected GPUs`} tone="warning" icon={<Cpu size={17} />} />
-        <Metric label="Power redundancy" value={impact.power_redundancy_lost ? 'Lost' : 'Available'} detail="Power path state" tone={impact.power_redundancy_lost ? 'critical' : 'success'} icon={<Zap size={17} />} />
-        <Metric label="Cooling redundancy" value={impact.cooling_redundancy_lost ? 'Lost' : 'Available'} detail="Cooling path state" tone={impact.cooling_redundancy_lost ? 'critical' : 'success'} icon={<Activity size={17} />} />
-        <Metric label="Thermal exposure" value={`${impact.thermal_breach_minutes}m`} detail="Breach duration" tone={impact.thermal_breach_minutes ? 'warning' : 'success'} icon={<Thermometer size={17} />} />
+        <Metric label="GPU capacity" value={knownMetric(impact.estimated_gpu_capacity_risk_pct, '%', 1)} detail={`${knownMetric(impact.affected_gpu_count)} affected GPUs`} tone={impact.estimated_gpu_capacity_risk_pct == null ? 'neutral' : 'warning'} icon={<Cpu size={17} />} />
+        <Metric label="Power redundancy" value={powerState} detail="Power path state" tone={impact.power_redundancy_lost == null ? 'neutral' : impact.power_redundancy_lost ? 'critical' : 'success'} icon={<Zap size={17} />} />
+        <Metric label="Cooling redundancy" value={coolingState} detail="Cooling path state" tone={impact.cooling_redundancy_lost == null ? 'neutral' : impact.cooling_redundancy_lost ? 'critical' : 'success'} icon={<Activity size={17} />} />
+        <Metric label="Thermal exposure" value={knownMetric(impact.thermal_breach_minutes, 'm')} detail="Breach duration" tone={impact.thermal_breach_minutes == null ? 'neutral' : impact.thermal_breach_minutes ? 'warning' : 'success'} icon={<Thermometer size={17} />} />
       </section>
       <section className="overview-grid">
         <div className="workspace-section compact"><div className="section-heading"><div><h2>Recovery dependencies</h2><p>Vendor, spare, and mitigation state</p></div></div><div className="evidence-rows"><EvidenceRow label="Vendor state" value={titleCase(impact.vendor_status)} detail={impact.vendor_eta_at ? `ETA ${formatDateTime(impact.vendor_eta_at)}` : 'No ETA recorded'} tone={impact.vendor_status.includes('MISSED') ? 'critical' : 'neutral'} /><EvidenceRow label="Mitigation" value={titleCase(impact.mitigation_status)} detail="Latest operating state" tone={impact.mitigation_status.includes('DEGRADED') ? 'warning' : 'success'} /><EvidenceRow label="Snapshot source" value={titleCase(impact.source_system)} detail={formatDateTime(impact.snapshot_at)} /></div></div>
@@ -338,21 +281,35 @@ function ImpactTab({ detail }: { detail: RequestDetail }) {
       </section>
       <Disclosure title="Priority score inputs" summary="Explain why this case ranks where it does"><div className="score-grid">{[
         ['Downtime', detail.request.downtime_score], ['Stage delay', detail.request.stage_delay_score], ['Capacity risk', detail.request.capacity_risk_score], ['Redundancy risk', detail.request.redundancy_risk_score], ['Thermal risk', detail.request.thermal_risk_score], ['Vendor risk', detail.request.vendor_eta_risk_score],
-      ].map(([label, value]) => <div key={String(label)}><span>{label}</span><strong>{Number(value).toFixed(1)}</strong></div>)}</div></Disclosure>
+      ].map(([label, value]) => <div key={String(label)}><span>{label}</span><strong>{knownMetric(value as number | null, '', 1)}</strong></div>)}</div></Disclosure>
     </div>
   )
 }
 
-function EvidenceTab({ detail, semantic }: { detail: RequestDetail; semantic: RequestSemanticContext | null }) {
-  const validationPassed = semantic?.validation.conforms ?? false
+function knownMetric(value: number | null, suffix = '', fractionDigits = 0): string {
+  return value == null ? 'Unknown' : `${value.toFixed(fractionDigits)}${suffix}`
+}
+
+function EvidenceTab({ detail, semantic }: { detail: RequestDetail; semantic: Partial<RequestSemanticContext> | null }) {
+  const validationStatus = semantic?.validation?.status ?? 'UNKNOWN'
+  const validationPassed = validationStatus === 'CONFORMS'
+  const evidenceStatus = detail.impact_confidence_status
+  const evidenceTrusted = evidenceStatus === 'TRUSTED' && detail.impact_trust_flags.length === 0
+  const evidenceVerdict = detail.impact_trust_flags.length
+    ? 'Review the evidence before relying on this recommendation'
+    : evidenceTrusted
+      ? 'Evidence is trusted for the latest analysis run'
+      : 'No authoritative evidence verdict is available'
+  const incidentEvidence = semantic?.incidentEvidence
+  const incidentEvidenceLabel = incidentEvidence == null ? 'Unknown' : incidentEvidence.found ? 'Linked' : 'Missing'
   return (
     <div className="workspace-stack">
-      <section className="evidence-verdict"><div className={`verdict-icon ${detail.impact_trust_flags.length ? 'warning' : 'success'}`}>{detail.impact_trust_flags.length ? <AlertTriangle size={22} /> : <ShieldCheck size={22} />}</div><div><span className="eyebrow">Evidence verdict</span><h2>{detail.impact_trust_flags.length ? 'Review the evidence before relying on this recommendation' : 'Evidence is trusted for the latest analysis run'}</h2><p>{detail.restore_readiness.summary ?? 'No restore-readiness caveat was recorded.'}</p></div></section>
+      <section className="evidence-verdict"><div className={`verdict-icon ${evidenceTrusted ? 'success' : 'warning'}`}>{evidenceTrusted ? <ShieldCheck size={22} /> : <AlertTriangle size={22} />}</div><div><span className="eyebrow">Evidence verdict</span><h2>{evidenceVerdict}</h2><p>{detail.restore_readiness.summary ?? 'No restore-readiness caveat was recorded.'}</p></div></section>
       <section className="case-metrics four">
         <Metric label="Impact confidence" value={titleCase(detail.impact_confidence_status)} detail={`${detail.impact_trust_flags.length} issue${detail.impact_trust_flags.length === 1 ? '' : 's'}`} tone={evidenceTone(detail.impact_confidence_status, detail.impact_trust_flags.length)} icon={<ShieldCheck size={17} />} />
-        <Metric label="Source quality" value={detail.quality_flags.length ? 'Needs review' : 'Current'} detail={`${detail.quality_flags.length} source flag${detail.quality_flags.length === 1 ? '' : 's'}`} tone={detail.quality_flags.length ? 'warning' : 'success'} icon={<Database size={17} />} />
-        <Metric label="Graph validation" value={validationPassed ? 'Conforms' : 'Review'} detail={`${semantic?.validation.issue_count ?? 0} validation issues`} tone={validationPassed ? 'success' : 'warning'} icon={<CheckCircle2 size={17} />} />
-        <Metric label="Incident evidence" value={semantic?.incidentEvidence.found ? 'Linked' : 'Missing'} detail="Incident-to-asset assertion" tone={semantic?.incidentEvidence.found ? 'success' : 'critical'} icon={<GitBranch size={17} />} />
+        <Metric label="Source quality" value={detail.quality_flags.length ? 'Needs review' : evidenceTrusted ? 'Current' : 'Unknown'} detail={`${detail.quality_flags.length} source flag${detail.quality_flags.length === 1 ? '' : 's'}`} tone={detail.quality_flags.length ? 'warning' : evidenceTrusted ? 'success' : 'neutral'} icon={<Database size={17} />} />
+        <Metric label="Graph validation" value={titleCase(validationStatus)} detail={validationStatus === 'UNKNOWN' ? 'No authoritative validation summary' : `${semantic?.validation?.issue_count ?? 0} validation issues`} tone={validationPassed ? 'success' : validationStatus === 'UNKNOWN' ? 'neutral' : 'warning'} icon={<CheckCircle2 size={17} />} />
+        <Metric label="Incident evidence" value={incidentEvidenceLabel} detail="Incident-to-asset assertion" tone={incidentEvidence == null ? 'neutral' : incidentEvidence.found ? 'success' : 'critical'} icon={<GitBranch size={17} />} />
       </section>
       <section className="overview-grid">
         <div className="workspace-section compact"><div className="section-heading"><div><h2>Evidence issues</h2><p>What needs verification before use</p></div></div>{detail.impact_trust_flags.length ? <div className="issue-list">{detail.impact_trust_flags.map((flag, index) => <article key={`${flag.issue_type}-${index}`}><AlertTriangle size={16} /><div><strong>{titleCase(flag.issue_type)}</strong><p>{flag.message}</p><small>{titleCase(flag.severity)}</small></div></article>)}</div> : <EmptyState title="No impact evidence issues" description="Impact evidence matches the latest analysis run." />}</div>
@@ -360,7 +317,7 @@ function EvidenceTab({ detail, semantic }: { detail: RequestDetail; semantic: Re
       </section>
       <Disclosure title="Technical semantic evidence" summary="SHACL issues, graph facts, and provenance for specialist review">
         <div className="technical-grid">
-          <TechnicalGroup title="Graph validation" rows={(semantic?.validation.issues ?? []).map((issue) => ({ title: issue.message, detail: `${issue.focus_node} · ${issue.result_path}`, meta: issue.severity }))} empty="No SHACL contract issues" />
+          <TechnicalGroup title="Graph validation" rows={(semantic?.validation?.issues ?? []).map((issue) => ({ title: issue.message, detail: `${issue.focus_node} · ${issue.result_path}`, meta: issue.severity }))} empty="No SHACL contract issues" />
           <TechnicalGroup title="Provenance chain" rows={detail.provenance_trace.map((item) => ({ title: item.label, detail: item.detail, meta: item.resource_uri }))} empty="No provenance chain available" />
           <TechnicalGroup title="Direct facts" rows={detail.ontology_evidence.direct_facts.map((fact) => ({ title: fact.label, detail: fact.value, meta: fact.resource_uri ?? fact.detail }))} empty="No direct ontology facts" />
           <TechnicalGroup title="Inferred facts" rows={detail.ontology_evidence.inferred_facts.map((fact) => ({ title: fact.label, detail: fact.value, meta: fact.resource_uri ?? fact.detail }))} empty="No inferred ontology facts" />
@@ -374,7 +331,7 @@ function TechnicalGroup({ title, rows, empty }: { title: string; rows: { title: 
   return <section><h3>{title}</h3>{rows.length ? <div className="technical-list">{rows.map((row, index) => <div key={`${row.title}-${index}`}><strong>{row.title}</strong><span>{row.detail}</span><code>{row.meta}</code></div>)}</div> : <p className="technical-empty">{empty}</p>}</section>
 }
 
-function DependenciesTab({ detail, semantic, dependencies }: { detail: RequestDetail; semantic: RequestSemanticContext | null; dependencies: InfrastructureDependency[] }) {
+function DependenciesTab({ detail, semantic, dependencies }: { detail: RequestDetail; semantic: Partial<RequestSemanticContext> | null; dependencies: InfrastructureDependency[] }) {
   const activePathIncidents = dependencies.reduce((sum, item) => sum + item.dependent_active_incident_count + item.dependency_active_incident_count, 0)
   return (
     <div className="workspace-stack">
@@ -382,11 +339,11 @@ function DependenciesTab({ detail, semantic, dependencies }: { detail: RequestDe
       <section className="case-metrics four">
         <Metric label="Direct paths" value={dependencies.length} detail="Configured asset relationships" icon={<Network size={17} />} />
         <Metric label="Path incidents" value={activePathIncidents} detail="Active incidents on related paths" tone={activePathIncidents ? 'warning' : 'success'} icon={<AlertTriangle size={17} />} />
-        <Metric label="Inferred downstream" value={semantic?.blastRadius.inferred_downstream_assets.length ?? 0} detail="Reasoning graph traversal" tone="warning" icon={<GitBranch size={17} />} />
-        <Metric label="Capacity exposed" value={`${detail.request.estimated_capacity_risk_kw.toFixed(0)} kW`} detail={`${detail.request.affected_gpu_count} GPUs`} tone="warning" icon={<Zap size={17} />} />
+        <Metric label="Inferred downstream" value={semantic?.blastRadius ? semantic.blastRadius.inferred_downstream_assets.length : 'Unknown'} detail="Reasoning graph traversal" tone={semantic?.blastRadius ? 'warning' : 'neutral'} icon={<GitBranch size={17} />} />
+        <Metric label="Capacity exposed" value={knownMetric(detail.request.estimated_capacity_risk_kw, ' kW')} detail={`${knownMetric(detail.request.affected_gpu_count)} GPUs`} tone={detail.request.estimated_capacity_risk_kw == null ? 'neutral' : 'warning'} icon={<Zap size={17} />} />
       </section>
       <section className="workspace-section"><div className="section-heading"><div><h2>Infrastructure dependency paths</h2><p>Direct relationships involving {detail.request.asset_name}.</p></div></div>{dependencies.length ? <div className="dependency-list">{dependencies.map((item, index) => <article key={`${item.dependency_id}-${index}`}><div className="dependency-type"><Boxes size={16} /><span>{titleCase(item.dependency_role)}</span></div><div className="dependency-flow"><div><small>Dependent</small><strong>{item.dependent_asset_name}</strong><span>{titleCase(item.dependent_status)}</span></div><ArrowRight size={18} /><div><small>Dependency</small><strong>{item.dependency_asset_name}</strong><span>{titleCase(item.dependency_status)}</span></div></div><StatusBadge label={titleCase(item.impact_scope)} tone={item.dependency_active_incident_count || item.dependent_active_incident_count ? 'warning' : 'neutral'} /></article>)}</div> : <EmptyState title="No direct dependency paths" description="No configured power, cooling, or telemetry path matches this asset." />}</section>
-      <Disclosure title="Reasoning and blast-radius evidence" summary={`${semantic?.blastRadius.affected_incident_count ?? 0} affected incidents`}><div className="technical-grid"><TechnicalGroup title="Dependency findings" rows={(semantic?.dependencyImpact.reasoning_findings ?? []).map((item) => ({ title: item.summary, detail: item.source_record_uri ?? 'No source record', meta: item.finding_uri }))} empty="No dependency reasoning findings" /><TechnicalGroup title="Blast-radius findings" rows={(semantic?.blastRadius.reasoning_findings ?? []).map((item) => ({ title: item.summary, detail: item.source_record_uri ?? 'No source record', meta: item.finding_uri }))} empty="No blast-radius reasoning findings" /></div></Disclosure>
+      <Disclosure title="Reasoning and blast-radius evidence" summary={semantic?.blastRadius ? `${semantic.blastRadius.affected_incident_count} affected incidents` : 'Affected incident count unknown'}><div className="technical-grid"><TechnicalGroup title="Dependency findings" rows={(semantic?.dependencyImpact?.reasoning_findings ?? []).map((item) => ({ title: item.summary, detail: item.source_record_uri ?? 'No source record', meta: item.finding_uri }))} empty="No dependency reasoning findings" /><TechnicalGroup title="Blast-radius findings" rows={(semantic?.blastRadius?.reasoning_findings ?? []).map((item) => ({ title: item.summary, detail: item.source_record_uri ?? 'No source record', meta: item.finding_uri }))} empty="No blast-radius reasoning findings" /></div></Disclosure>
     </div>
   )
 }

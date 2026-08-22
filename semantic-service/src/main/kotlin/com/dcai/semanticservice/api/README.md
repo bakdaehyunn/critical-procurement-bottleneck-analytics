@@ -15,12 +15,17 @@ Implemented boundary:
 - internal `POST /semantic/internal/ai-proposal-review` request handling for
   controlled AI proposal approve/reject review decisions
 - loopback-only `PrivateSemanticQueryEndpointServer`
+- separate endpoint composition, HTTP transport, and JSON payload writer
 - success/error payloads through `SemanticResponseSerializer`
-- optional string-valued `parameters` for approved lookup queries only
+- optional string-valued `parameters`; approved paged queries additionally
+  accept typed `page`/`pageSize` values that are removed before SPARQL binding
 - fixed string-valued action request, transition, and AI proposal review DTO
   fields; graph URIs are derived from controlled release/run IDs server-side
+- structured OpenAPI route parity is checked by the runtime contract validator;
+  implemented action routes reference typed request and response schemas
 
-Allowed query IDs:
+Allowed query IDs are derived from `QueryContractRegistry`. The current
+manifest-backed set is:
 
 - `fixtureNamedGraphInventory`
 - `fixtureIncidentSummary`

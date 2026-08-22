@@ -3,7 +3,7 @@ package com.dcai.semanticservice.actions
 import com.dcai.semanticservice.graph.ManagedGraphWriteCoordinator
 import com.dcai.semanticservice.graph.NamedGraphSnapshot
 import com.dcai.semanticservice.graph.NamedGraphStore
-import com.dcai.semanticservice.ingestion.Dcai
+import com.dcai.semanticservice.ontology.Dcai
 import org.apache.jena.rdf.model.ModelFactory
 
 interface OntologyActionSubmitter {

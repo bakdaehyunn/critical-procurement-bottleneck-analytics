@@ -1,9 +1,9 @@
 package com.dcai.semanticservice.reasoning
 
-import com.dcai.semanticservice.ingestion.Dcai
+import com.dcai.semanticservice.ontology.Dcai
 import com.dcai.semanticservice.ingestion.EvidenceClass
 import com.dcai.semanticservice.ingestion.EvidenceSourceRecord
-import com.dcai.semanticservice.ingestion.Prov
+import com.dcai.semanticservice.ontology.Prov
 import com.dcai.semanticservice.ingestion.SourceExtractRdfMapper
 import com.dcai.semanticservice.testfixtures.ProductionSourceExtractFixtures
 import java.math.BigDecimal

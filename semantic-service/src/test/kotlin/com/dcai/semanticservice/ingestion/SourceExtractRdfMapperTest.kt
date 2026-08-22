@@ -1,5 +1,7 @@
 package com.dcai.semanticservice.ingestion
 
+import com.dcai.semanticservice.ontology.Dcai
+import com.dcai.semanticservice.ontology.Prov
 import com.dcai.semanticservice.testfixtures.ProductionSourceExtractFixtures
 import kotlin.test.Test
 import kotlin.test.assertTrue

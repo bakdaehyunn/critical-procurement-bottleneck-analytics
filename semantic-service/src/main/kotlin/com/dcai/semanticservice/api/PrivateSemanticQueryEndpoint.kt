@@ -12,6 +12,8 @@ import com.dcai.semanticservice.governance.AiGovernanceProposalValidationGate
 import com.dcai.semanticservice.governance.AiGovernanceReviewService
 import com.dcai.semanticservice.query.ApprovedQueryCatalog
 import com.dcai.semanticservice.query.JenaFusekiReadOnlyQueryExecutor
+import com.dcai.semanticservice.query.QueryPageRequest
+import com.dcai.semanticservice.query.QueryContractRegistry
 import com.dcai.semanticservice.query.QueryResultShaper
 import com.dcai.semanticservice.query.ReadOnlyQueryExecutor
 import com.dcai.semanticservice.response.SemanticErrorCode
@@ -23,11 +25,15 @@ import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
+private const val PAGE_PARAMETER = "page"
+private const val PAGE_SIZE_PARAMETER = "pageSize"
+private val PAGING_PARAMETER_NAMES = setOf(PAGE_PARAMETER, PAGE_SIZE_PARAMETER)
+
 class PrivateSemanticQueryEndpoint(
     private val queryExecutor: ReadOnlyQueryExecutor,
     private val queryResultShaper: QueryResultShaper,
     private val responseSerializer: SemanticResponseSerializer = SemanticResponseSerializer(),
-    private val allowedQueryIds: Set<String> = APPROVED_PRIVATE_QUERY_IDS,
+    private val allowedQueryIds: Set<String> = queryResultShaper.approvedPrivateQueryIds,
 ) {
     fun handle(request: PrivateSemanticQueryRequest): PrivateSemanticQueryResponse {
         if (request.method != "POST") {
@@ -66,14 +72,14 @@ class PrivateSemanticQueryEndpoint(
 
         return try {
             val parameters = request.parameters()
-            val pageRequest = SemanticPageRequest.from(parameters)
-            val queryParameters = parameters - SemanticPageRequest.PARAMETER_NAMES
-            val report = queryExecutor.execute(queryId, queryParameters)
+            val pageRequest = parameters.pageRequest()
+            val queryParameters = parameters - PAGING_PARAMETER_NAMES
+            val report = queryExecutor.execute(queryId, queryParameters, pageRequest)
             val envelope = queryResultShaper.shape(report)
-            val payload = responseSerializer.serialize(envelope)
+            val payload = responseSerializer.serialize(envelope, report.page)
             PrivateSemanticQueryResponse(
                 statusCode = 200,
-                payload = pageRequest?.applyTo(payload) ?: payload,
+                payload = payload,
             )
         } catch (error: IllegalArgumentException) {
             val code = if (error.message.orEmpty().contains("Missing required binding")) {
@@ -145,86 +151,14 @@ class PrivateSemanticQueryEndpoint(
         return PrivateEndpointPayload.parameters(body)
     }
 
-    companion object {
-        val APPROVED_PRIVATE_QUERY_IDS = setOf(
-            "fixtureNamedGraphInventory",
-            "fixtureIncidentSummary",
-            "fixtureProvenanceSourceRecords",
-            "semanticFollowUpQueueList",
-            "semanticDashboardOverview",
-            "semanticPlatformStatus",
-            "semanticFilterMetadata",
-            "semanticFollowUpDetail",
-            "semanticImpactSummary",
-            "semanticTopologyDependencies",
-            "semanticTrustFindingList",
-            "semanticStageBottlenecks",
-            "semanticAssetDelaySummary",
-            "semanticZoneDelaySummary",
-            "semanticSpareWaitSummary",
-            "semanticValidationSummary",
-            "semanticIncidentEvidence",
-            "semanticIncidentTimeline",
-            "semanticDependencyImpactByAsset",
-            "semanticBlastRadiusByAsset",
-            "semanticPromotionReviewQueue",
-            "semanticReasoningReviewQueue",
-            "semanticAvailableActionsByFinding",
-            "semanticActionAuditHistoryByRelease",
-            "semanticActionAuditHistoryByIncident",
-            "semanticActionAuditHistoryByTarget",
-            "semanticActionNotificationQueueByIncident",
-            "semanticActionReviewQueueByIncident",
-            "semanticActionTransitionHistoryByIncident",
-            "semanticActionDispatchQueueByIncident",
-            "semanticDynamicEventTimelineByIncident",
-            "semanticDynamicStateChangesByIncident",
-            "semanticDynamicReasoningChangesByIncident",
-            "semanticDynamicActionLifecycleByIncident",
-            "semanticAiProposalReviewQueue",
-            "semanticAiProposalDetailByIncident",
-        )
-    }
 }
 
-private data class SemanticPageRequest(
-    val page: Int,
-    val pageSize: Int,
-) {
-    fun applyTo(payload: Map<String, Any>): Map<String, Any> {
-        val records = payload["records"] as? List<*> ?: emptyList<Any>()
-        val totalRecords = records.size
-        val pageCount = maxOf(1, (totalRecords + pageSize - 1) / pageSize)
-        val start = ((page - 1) * pageSize).coerceAtMost(totalRecords)
-        val end = (start + pageSize).coerceAtMost(totalRecords)
-        val pageRecords = records.subList(start, end)
-        return payload + mapOf(
-            "recordCount" to pageRecords.size,
-            "records" to pageRecords,
-            "pageInfo" to mapOf(
-                "page" to page,
-                "pageSize" to pageSize,
-                "pageCount" to pageCount,
-                "totalRecords" to totalRecords,
-            ),
-        )
-    }
-
-    companion object {
-        const val PAGE_PARAMETER = "page"
-        const val PAGE_SIZE_PARAMETER = "pageSize"
-        val PARAMETER_NAMES = setOf(PAGE_PARAMETER, PAGE_SIZE_PARAMETER)
-
-        fun from(parameters: Map<String, String>): SemanticPageRequest? {
-            if (PARAMETER_NAMES.none(parameters::containsKey)) return null
-            val page = parameters[PAGE_PARAMETER]?.toIntOrNull() ?: 1
-            val pageSize = parameters[PAGE_SIZE_PARAMETER]?.toIntOrNull()
-                ?: throw IllegalArgumentException("Paged semantic queries require an integer pageSize.")
-            require(page >= 1) { "Semantic query page must be at least 1." }
-            require(pageSize in 1..100) { "Semantic query pageSize must be between 1 and 100." }
-            return SemanticPageRequest(page = page, pageSize = pageSize)
-        }
-    }
+private fun Map<String, String>.pageRequest(): QueryPageRequest? {
+    if (PAGING_PARAMETER_NAMES.none(::containsKey)) return null
+    val page = this[PAGE_PARAMETER]?.toIntOrNull() ?: 1
+    val pageSize = this[PAGE_SIZE_PARAMETER]?.toIntOrNull()
+        ?: throw IllegalArgumentException("Paged semantic queries require an integer pageSize.")
+    return QueryPageRequest(page = page, pageSize = pageSize)
 }
 
 data class PrivateSemanticQueryRequest(
@@ -239,243 +173,4 @@ data class PrivateSemanticQueryResponse(
     val contentType: String = "application/json; charset=utf-8",
 ) {
     fun jsonBody(): String = JsonPayloadWriter.write(payload)
-}
-
-class PrivateSemanticQueryEndpointServer(
-    private val endpoint: PrivateSemanticQueryEndpoint,
-    private val actionEndpoint: PrivateOntologyActionEndpoint? = null,
-    private val aiGovernanceEndpoint: PrivateAiGovernanceEndpoint? = null,
-    private val config: PrivateSemanticQueryEndpointServerConfig = PrivateSemanticQueryEndpointServerConfig(),
-) : AutoCloseable {
-    private val server: HttpServer = HttpServer.create(InetSocketAddress(config.host, config.port), 0)
-
-    val address: InetSocketAddress
-        get() = server.address
-
-    fun start(): PrivateSemanticQueryEndpointServer {
-        server.createContext("/semantic/query") { exchange -> handle(exchange) }
-        actionEndpoint?.let {
-            server.createContext(PrivateOntologyActionEndpoint.ACTION_REQUEST_PATH) { exchange -> handleAction(exchange, it) }
-            server.createContext(PrivateOntologyActionEndpoint.ACTION_TRANSITION_PATH) { exchange -> handleAction(exchange, it) }
-        }
-        aiGovernanceEndpoint?.let {
-            server.createContext(PrivateAiGovernanceEndpoint.AI_PROPOSAL_REVIEW_PATH) { exchange -> handleAiGovernance(exchange, it) }
-        }
-        server.executor = null
-        server.start()
-        return this
-    }
-
-    override fun close() {
-        server.stop(0)
-    }
-
-    private fun handle(exchange: HttpExchange) {
-        try {
-            exchange.responseHeaders.set("Access-Control-Allow-Origin", config.corsAllowOrigin)
-            exchange.responseHeaders.set("Access-Control-Allow-Methods", "POST, OPTIONS")
-            exchange.responseHeaders.set("Access-Control-Allow-Headers", "Content-Type")
-            if (exchange.requestMethod == "OPTIONS") {
-                exchange.sendResponseHeaders(204, -1)
-                exchange.close()
-                return
-            }
-
-            val response = endpoint.handle(
-                PrivateSemanticQueryRequest(
-                    method = exchange.requestMethod,
-                    path = exchange.requestURI.path,
-                    body = exchange.requestBody.bufferedReader(StandardCharsets.UTF_8).use { it.readText() },
-                ),
-            )
-            writeResponse(exchange, response)
-        } catch (error: RuntimeException) {
-            val response = PrivateSemanticQueryResponse(
-                statusCode = 500,
-                payload = SemanticResponseSerializer().error(
-                    code = SemanticErrorCode.INTERNAL_SEMANTIC_SERVICE_ERROR,
-                    message = "Private semantic query endpoint failed before a response could be written.",
-                    detail = error.message,
-                ),
-            )
-            writeResponse(exchange, response)
-        }
-    }
-
-    private fun handleAction(
-        exchange: HttpExchange,
-        actionEndpoint: PrivateOntologyActionEndpoint,
-    ) {
-        try {
-            exchange.responseHeaders.set("Access-Control-Allow-Origin", config.corsAllowOrigin)
-            exchange.responseHeaders.set("Access-Control-Allow-Methods", "POST, OPTIONS")
-            exchange.responseHeaders.set("Access-Control-Allow-Headers", "Content-Type")
-            if (exchange.requestMethod == "OPTIONS") {
-                exchange.sendResponseHeaders(204, -1)
-                exchange.close()
-                return
-            }
-
-            val response = actionEndpoint.handle(
-                PrivateSemanticQueryRequest(
-                    method = exchange.requestMethod,
-                    path = exchange.requestURI.path,
-                    body = exchange.requestBody.bufferedReader(StandardCharsets.UTF_8).use { it.readText() },
-                ),
-            )
-            writeResponse(exchange, response)
-        } catch (error: RuntimeException) {
-            val response = PrivateSemanticQueryResponse(
-                statusCode = 500,
-                payload = SemanticResponseSerializer().error(
-                    code = SemanticErrorCode.INTERNAL_SEMANTIC_SERVICE_ERROR,
-                    message = "Private ontology action endpoint failed before a response could be written.",
-                    detail = error.message,
-                ),
-            )
-            writeResponse(exchange, response)
-        }
-    }
-
-    private fun handleAiGovernance(
-        exchange: HttpExchange,
-        aiGovernanceEndpoint: PrivateAiGovernanceEndpoint,
-    ) {
-        try {
-            exchange.responseHeaders.set("Access-Control-Allow-Origin", config.corsAllowOrigin)
-            exchange.responseHeaders.set("Access-Control-Allow-Methods", "POST, OPTIONS")
-            exchange.responseHeaders.set("Access-Control-Allow-Headers", "Content-Type")
-            if (exchange.requestMethod == "OPTIONS") {
-                exchange.sendResponseHeaders(204, -1)
-                exchange.close()
-                return
-            }
-
-            val response = aiGovernanceEndpoint.handle(
-                PrivateSemanticQueryRequest(
-                    method = exchange.requestMethod,
-                    path = exchange.requestURI.path,
-                    body = exchange.requestBody.bufferedReader(StandardCharsets.UTF_8).use { it.readText() },
-                ),
-            )
-            writeResponse(exchange, response)
-        } catch (error: RuntimeException) {
-            val response = PrivateSemanticQueryResponse(
-                statusCode = 500,
-                payload = SemanticResponseSerializer().error(
-                    code = SemanticErrorCode.INTERNAL_SEMANTIC_SERVICE_ERROR,
-                    message = "Private AI governance endpoint failed before a response could be written.",
-                    detail = error.message,
-                ),
-            )
-            writeResponse(exchange, response)
-        }
-    }
-
-    private fun writeResponse(exchange: HttpExchange, response: PrivateSemanticQueryResponse) {
-        val bytes = response.jsonBody().toByteArray(StandardCharsets.UTF_8)
-        exchange.responseHeaders.set("Content-Type", response.contentType)
-        exchange.sendResponseHeaders(response.statusCode, bytes.size.toLong())
-        exchange.responseBody.use { output -> output.write(bytes) }
-    }
-
-    companion object {
-        fun fromRepoRoot(
-            repoRoot: Path,
-            config: PrivateSemanticQueryEndpointServerConfig = PrivateSemanticQueryEndpointServerConfig(),
-            fusekiConfig: FusekiReadOnlyConfig = FusekiReadOnlyConfig.fromEnvironment(),
-            graphStoreConfig: FusekiGraphStoreConfig = FusekiGraphStoreConfig.fromEnvironment(),
-        ): PrivateSemanticQueryEndpointServer {
-            val manifest = ApprovedQueryCatalog(repoRoot).load()
-            val endpoint = PrivateSemanticQueryEndpoint(
-                queryExecutor = JenaFusekiReadOnlyQueryExecutor(
-                    manifest = manifest,
-                    config = fusekiConfig,
-                ),
-                queryResultShaper = QueryResultShaper(manifest),
-            )
-            val actionEndpoint = PrivateOntologyActionEndpoint(
-                actionSubmitter = OntologyActionAuditService(
-                    mapper = OntologyActionRdfMapper(),
-                    preconditionValidator = OntologyActionPreconditionValidator(),
-                    validationGate = OntologyActionValidationGate(repoRoot),
-                    graphStore = FusekiNamedGraphWriter(graphStoreConfig),
-                ),
-                transitionSubmitter = OntologyActionTransitionService(
-                    validationGate = OntologyActionValidationGate(repoRoot),
-                    graphStore = FusekiNamedGraphWriter(graphStoreConfig),
-                ),
-            )
-            val aiGovernanceEndpoint = PrivateAiGovernanceEndpoint(
-                reviewSubmitter = AiGovernanceReviewService(
-                    validationGate = AiGovernanceProposalValidationGate(repoRoot),
-                    graphStore = FusekiNamedGraphWriter(graphStoreConfig),
-                    actionSubmitter = OntologyActionAuditService(
-                        mapper = OntologyActionRdfMapper(),
-                        preconditionValidator = OntologyActionPreconditionValidator(),
-                        validationGate = OntologyActionValidationGate(repoRoot),
-                        graphStore = FusekiNamedGraphWriter(graphStoreConfig),
-                    ),
-                ),
-            )
-            return PrivateSemanticQueryEndpointServer(endpoint, actionEndpoint, aiGovernanceEndpoint, config)
-        }
-    }
-}
-
-data class PrivateSemanticQueryEndpointServerConfig(
-    val host: String = "127.0.0.1",
-    val port: Int = 18080,
-    val corsAllowOrigin: String = "*",
-) {
-    init {
-        require(host == "127.0.0.1" || host == "localhost") {
-            "private semantic endpoint must bind to a loopback host"
-        }
-        require(port in 0..65535) { "port must be between 0 and 65535" }
-    }
-}
-
-object JsonPayloadWriter {
-    fun write(value: Any?): String {
-        return when (value) {
-            null -> "null"
-            is String -> "\"${value.escapeJson()}\""
-            is Number,
-            is Boolean,
-            -> value.toString()
-            is Map<*, *> -> value.entries.joinToString(
-                prefix = "{",
-                postfix = "}",
-            ) { (key, entryValue) ->
-                "\"${key.toString().escapeJson()}\":${write(entryValue)}"
-            }
-            is Iterable<*> -> value.joinToString(prefix = "[", postfix = "]") { item -> write(item) }
-            else -> "\"${value.toString().escapeJson()}\""
-        }
-    }
-
-    private fun String.escapeJson(): String {
-        return buildString {
-            for (char in this@escapeJson) {
-                when (char) {
-                    '\\' -> append("\\\\")
-                    '"' -> append("\\\"")
-                    '\b' -> append("\\b")
-                    '\u000C' -> append("\\f")
-                    '\n' -> append("\\n")
-                    '\r' -> append("\\r")
-                    '\t' -> append("\\t")
-                    else -> {
-                        if (char.code < 0x20) {
-                            append("\\u")
-                            append(char.code.toString(16).padStart(4, '0'))
-                        } else {
-                            append(char)
-                        }
-                    }
-                }
-            }
-        }
-    }
 }

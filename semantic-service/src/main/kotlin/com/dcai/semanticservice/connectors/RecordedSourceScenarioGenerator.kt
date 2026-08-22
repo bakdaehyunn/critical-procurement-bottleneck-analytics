@@ -1,5 +1,6 @@
 package com.dcai.semanticservice.connectors
 
+import com.dcai.semanticservice.graph.ControlledIdentifier
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
@@ -702,9 +703,7 @@ data class RecordedSourceScenarioGenerationRequest(
 ) {
     init {
         require(seed >= 0) { "seed must be non-negative" }
-        require(batchId.matches(Regex("[A-Za-z0-9._-]+"))) {
-            "batchId must contain only letters, numbers, dot, underscore, or hyphen"
-        }
+        ControlledIdentifier.requireRelease(batchId, "batchId")
     }
 }
 

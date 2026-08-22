@@ -1,8 +1,11 @@
 package com.dcai.semanticservice.actions
 
 import com.dcai.semanticservice.graph.NamedGraphStore
-import com.dcai.semanticservice.ingestion.Dcai
-import com.dcai.semanticservice.ingestion.Prov
+import com.dcai.semanticservice.graph.ManagedGraphKind
+import com.dcai.semanticservice.graph.ManagedGraphUri
+import com.dcai.semanticservice.graph.ControlledIdentifier
+import com.dcai.semanticservice.ontology.Dcai
+import com.dcai.semanticservice.ontology.Prov
 import org.apache.jena.rdf.model.Model
 import org.apache.jena.rdf.model.Resource
 import org.apache.jena.vocabulary.RDF
@@ -12,7 +15,7 @@ open class OntologyActionAuditInspector(
 ) {
     open fun inspect(plan: OntologyActionAuditInspectionPlan): OntologyActionAuditInspectionResult {
         return runCatching {
-            val graphUri = OntologyActionGraphUris.ACTION_AUDIT_PREFIX + plan.actionAuditReleaseId
+            val graphUri = ManagedGraphUri.of(ManagedGraphKind.ACTION_AUDIT, plan.actionAuditReleaseId, "actionAuditReleaseId").value
             val snapshot = graphStore.readNamedGraph(graphUri)
             OntologyActionAuditInspectionResult(
                 actionAuditReleaseId = plan.actionAuditReleaseId,
@@ -39,7 +42,7 @@ open class OntologyActionAuditInspector(
         }.getOrElse { error ->
             OntologyActionAuditInspectionResult(
                 actionAuditReleaseId = plan.actionAuditReleaseId,
-                actionAuditGraphUri = OntologyActionGraphUris.ACTION_AUDIT_PREFIX + plan.actionAuditReleaseId,
+                actionAuditGraphUri = ManagedGraphUri.of(ManagedGraphKind.ACTION_AUDIT, plan.actionAuditReleaseId, "actionAuditReleaseId").value,
                 errors = listOf("Action audit inspection failed: ${error.message}"),
             )
         }
@@ -70,9 +73,7 @@ data class OntologyActionAuditInspectionPlan(
     val actionAuditReleaseId: String,
 ) {
     init {
-        require(actionAuditReleaseId.matches(Regex("[A-Za-z0-9._-]+"))) {
-            "actionAuditReleaseId must contain only letters, numbers, dot, underscore, or hyphen"
-        }
+        ControlledIdentifier.requireRelease(actionAuditReleaseId, "actionAuditReleaseId")
     }
 }
 

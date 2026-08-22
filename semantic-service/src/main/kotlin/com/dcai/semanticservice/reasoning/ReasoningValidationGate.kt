@@ -1,19 +1,16 @@
 package com.dcai.semanticservice.reasoning
 
+import com.dcai.semanticservice.validation.SemanticValidationEngine
+import com.dcai.semanticservice.validation.SemanticValidationEngines
+import com.dcai.semanticservice.validation.SemanticValidationProfile
 import java.nio.file.Path
 import org.apache.jena.rdf.model.Model
-import org.apache.jena.rdf.model.ModelFactory
-import org.apache.jena.rdf.model.RDFNode
-import org.apache.jena.rdf.model.Resource
 import org.apache.jena.rdf.model.ResourceFactory
-import org.apache.jena.riot.RDFDataMgr
-import org.apache.jena.shacl.ShaclValidator
-import org.apache.jena.shacl.Shapes
 import org.apache.jena.vocabulary.RDF
-import org.apache.jena.vocabulary.RDFS
 
 class ReasoningValidationGate(
     private val repoRoot: Path,
+    private val validationEngine: SemanticValidationEngine = SemanticValidationEngines.forRepoRoot(repoRoot),
 ) {
     fun validate(model: Model): ReasoningValidationReport {
         val errors = validateShacl(model) + validateReasoningProvenance(model)
@@ -25,62 +22,7 @@ class ReasoningValidationGate(
     }
 
     private fun validateShacl(model: Model): List<String> {
-        val shapesModel = ModelFactory.createDefaultModel()
-        repoRoot.resolve("shapes").toFile()
-            .walkTopDown()
-            .filter { it.isFile && it.extension == "ttl" }
-            .sortedBy { it.path }
-            .forEach { RDFDataMgr.read(shapesModel, it.toURI().toString()) }
-
-        val shapes = Shapes.parse(shapesModel.graph)
-        val validationModel = withRdfsTypeClosure(model)
-        val report = ShaclValidator.get().validate(shapes, validationModel.graph)
-        return if (report.conforms()) {
-            emptyList()
-        } else {
-            val details = report.getEntries().joinToString(separator = "; ") { it.toString() }
-            listOf("SHACL validation failed: $details")
-        }
-    }
-
-    private fun withRdfsTypeClosure(model: Model): Model {
-        val validationModel = ModelFactory.createDefaultModel().add(model)
-        val ontologyModel = ModelFactory.createDefaultModel()
-        repoRoot.resolve("ontology/modules").toFile()
-            .walkTopDown()
-            .filter { it.isFile && it.extension == "ttl" }
-            .sortedBy { it.path }
-            .forEach { RDFDataMgr.read(ontologyModel, it.toURI().toString()) }
-
-        val superClasses = ontologyModel
-            .listStatements(null as Resource?, RDFS.subClassOf, null as RDFNode?)
-            .toList()
-            .filter { statement -> statement.subject.isURIResource && statement.`object`.isURIResource }
-            .groupBy(
-                keySelector = { statement -> statement.subject.asResource() },
-                valueTransform = { statement -> statement.`object`.asResource() },
-            )
-
-        validationModel.listStatements(null as Resource?, RDF.type, null as RDFNode?).toList()
-            .filter { statement -> statement.`object`.isURIResource }
-            .forEach { statement ->
-                ancestorsOf(statement.`object`.asResource(), superClasses).forEach { ancestor ->
-                    validationModel.add(statement.subject, RDF.type, ancestor)
-                }
-            }
-
-        return validationModel
-    }
-
-    private fun ancestorsOf(
-        resource: Resource,
-        superClasses: Map<Resource, List<Resource>>,
-        seen: Set<Resource> = emptySet(),
-    ): Set<Resource> {
-        val direct = superClasses[resource].orEmpty().filterNot { it in seen }
-        return direct.toSet() + direct.flatMap { ancestor ->
-            ancestorsOf(ancestor, superClasses, seen + ancestor)
-        }
+        return validationEngine.validate(model, SemanticValidationProfile.REASONING)
     }
 
     private fun validateReasoningProvenance(model: Model): List<String> {

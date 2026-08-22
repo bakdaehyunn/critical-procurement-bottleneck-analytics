@@ -1,5 +1,7 @@
 package com.dcai.semanticservice.actions
 
+import com.dcai.semanticservice.graph.ManagedGraphKind
+import com.dcai.semanticservice.graph.ManagedGraphUri
 import java.time.Instant
 
 enum class OntologyActionType(val id: String) {
@@ -64,46 +66,24 @@ data class OntologyActionGraphUris(
     val actionAuditGraphUri: String,
 ) {
     init {
-        require(canonicalGraphUri.startsWith(CANONICAL_PREFIX) && canonicalGraphUri.length > CANONICAL_PREFIX.length) {
-            "canonicalGraphUri must use $CANONICAL_PREFIX"
-        }
-        require(provenanceGraphUri.startsWith(PROVENANCE_PREFIX) && provenanceGraphUri.length > PROVENANCE_PREFIX.length) {
-            "provenanceGraphUri must use $PROVENANCE_PREFIX"
-        }
-        require(reasoningGraphUri == null || reasoningGraphUri.startsWith(REASONING_PREFIX) && reasoningGraphUri.length > REASONING_PREFIX.length) {
-            "reasoningGraphUri must use $REASONING_PREFIX"
-        }
-        require(actionAuditGraphUri.startsWith(ACTION_AUDIT_PREFIX) && actionAuditGraphUri.length > ACTION_AUDIT_PREFIX.length) {
-            "actionAuditGraphUri must use $ACTION_AUDIT_PREFIX"
-        }
+        ManagedGraphUri.requireKind(canonicalGraphUri, ManagedGraphKind.CANONICAL, "canonicalGraphUri")
+        ManagedGraphUri.requireKind(provenanceGraphUri, ManagedGraphKind.PROVENANCE, "provenanceGraphUri")
+        reasoningGraphUri?.let { ManagedGraphUri.requireKind(it, ManagedGraphKind.REASONING, "reasoningGraphUri") }
+        ManagedGraphUri.requireKind(actionAuditGraphUri, ManagedGraphKind.ACTION_AUDIT, "actionAuditGraphUri")
     }
 
     companion object {
-        const val CANONICAL_PREFIX = "urn:dcai:graph:canonical:"
-        const val PROVENANCE_PREFIX = "urn:dcai:graph:provenance:"
-        const val REASONING_PREFIX = "urn:dcai:graph:reasoning:"
-        const val ACTION_AUDIT_PREFIX = "urn:dcai:graph:action-audit:"
-
         fun forRelease(
             sourceReleaseId: String,
             reasoningRunId: String?,
             actionAuditReleaseId: String,
         ): OntologyActionGraphUris {
-            requireControlledId(sourceReleaseId, "sourceReleaseId")
-            reasoningRunId?.let { requireControlledId(it, "reasoningRunId") }
-            requireControlledId(actionAuditReleaseId, "actionAuditReleaseId")
             return OntologyActionGraphUris(
-                canonicalGraphUri = "$CANONICAL_PREFIX$sourceReleaseId",
-                provenanceGraphUri = "$PROVENANCE_PREFIX$sourceReleaseId",
-                reasoningGraphUri = reasoningRunId?.let { "$REASONING_PREFIX$it" },
-                actionAuditGraphUri = "$ACTION_AUDIT_PREFIX$actionAuditReleaseId",
+                canonicalGraphUri = ManagedGraphUri.of(ManagedGraphKind.CANONICAL, sourceReleaseId, "sourceReleaseId").value,
+                provenanceGraphUri = ManagedGraphUri.of(ManagedGraphKind.PROVENANCE, sourceReleaseId, "sourceReleaseId").value,
+                reasoningGraphUri = reasoningRunId?.let { ManagedGraphUri.of(ManagedGraphKind.REASONING, it, "reasoningRunId").value },
+                actionAuditGraphUri = ManagedGraphUri.of(ManagedGraphKind.ACTION_AUDIT, actionAuditReleaseId, "actionAuditReleaseId").value,
             )
-        }
-
-        private fun requireControlledId(value: String, label: String) {
-            require(value.matches(Regex("[A-Za-z0-9._-]+"))) {
-                "$label must contain only letters, numbers, dot, underscore, or hyphen"
-            }
         }
     }
 }

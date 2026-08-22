@@ -1,6 +1,6 @@
 package com.dcai.semanticservice.ingestion
 
-import com.dcai.semanticservice.runtime.SemanticServiceApplication
+import com.dcai.semanticservice.runtime.SemanticServiceComposition
 import kotlin.io.path.createTempFile
 import kotlin.io.path.writeText
 import kotlin.test.Test
@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class FileSourceExtractLoaderTest {
-    private val repoRoot = SemanticServiceApplication.locateRepoRoot()
+    private val repoRoot = SemanticServiceComposition.locateRepoRoot()
 
     @Test
     fun loadsControlledPropertiesFixture() {

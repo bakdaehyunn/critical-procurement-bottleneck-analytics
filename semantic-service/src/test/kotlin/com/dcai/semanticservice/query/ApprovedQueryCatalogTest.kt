@@ -1,6 +1,6 @@
 package com.dcai.semanticservice.query
 
-import com.dcai.semanticservice.runtime.SemanticServiceApplication
+import com.dcai.semanticservice.runtime.SemanticServiceComposition
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -8,7 +8,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class ApprovedQueryCatalogTest {
-    private val repoRoot = SemanticServiceApplication.locateRepoRoot()
+    private val repoRoot = SemanticServiceComposition.locateRepoRoot()
 
     @Test
     fun loadsOnlyPhaseSixteenApprovedReadOnlyQueries() {

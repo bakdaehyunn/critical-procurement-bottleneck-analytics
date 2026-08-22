@@ -1,5 +1,8 @@
 package com.dcai.semanticservice.ingestion
 
+import com.dcai.semanticservice.ontology.Dcai
+import com.dcai.semanticservice.ontology.Dcterms
+import com.dcai.semanticservice.ontology.Prov
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.Instant

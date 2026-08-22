@@ -1,17 +1,16 @@
-# Semantic Service API DTO Scaffold
+# Semantic Service API DTO Contract
 
 This document describes request and response DTO boundaries for the Kotlin
-semantic service. Phase 18 defined the response contract before HTTP runtime
-existed. Post-Phase-20 now implements an internal-only private query endpoint
-for approved fixture inspection and product read-model query IDs. Public
+semantic service. The historical Phase 18 checkpoint preceded HTTP runtime;
+the current contract covers the implemented loopback-only query, governed
+action, action-transition, and AI-review routes. Public
 exposure, DTO generation, reasoning endpoints, and graph-write commands remain
 out of scope.
 
-## Phase 18 Response Contract Checkpoint
+## Response Contract
 
-Future semantic query responses use typed result envelopes instead of raw
-binding rows. The response contract is intentionally stable before any HTTP
-runtime exists.
+Semantic query responses use typed result envelopes instead of raw binding
+rows.
 
 Shared response fields:
 
@@ -21,7 +20,7 @@ Shared response fields:
 - `records`: typed records for the selected result category
 - `provenance`: query id, graph scope, and result contract version
 
-Supported Phase 18 response result types:
+Supported response result types:
 
 - `named-graph-inventory`
 - `incident-summary`
@@ -56,7 +55,7 @@ Supported Phase 18 response result types:
 
 Versioning rules:
 
-- OpenAPI scaffold version: `2026-06-phase18-response-contract-checkpoint`
+- OpenAPI contract version: `2026-08-cohesion-contract-v1`
 - Query result provenance contract: `2026.06.phase17-result-envelope`
 - Error envelope contract: `2026.06.phase18-error-envelope`
 - Any breaking field rename, required-field change, result type removal, or
@@ -105,7 +104,9 @@ Response DTO:
   retain their original shape
 
 Paging parameters are `page` (one-based, default `1`) and `pageSize` (1–100).
-Paging is applied after typed shaping and stable-identity deduplication.
+Only read models with an explicit stable-identity and ordering policy accept
+paging. The service counts identities and applies `LIMIT`/`OFFSET` to the
+identity page in Fuseki, then shapes only the selected records.
 
 Named graph inventory record:
 
@@ -617,7 +618,7 @@ Initial semantic query error codes:
 - `contract-validation-failed`
 - `internal-semantic-service-error`
 
-Phase 19 internal serialization:
+Historical Phase 19 internal serialization checkpoint:
 
 - `SemanticResponseSerializer` converts Phase 17 result envelopes into
   Phase 18-shaped in-memory response maps.
@@ -626,17 +627,18 @@ Phase 19 internal serialization:
 - Post-Phase-20 wraps this serializer in a private loopback HTTP boundary for
   approved inspection and product read-model queries.
 
-Phase 20 endpoint readiness:
+Historical Phase 20 endpoint-readiness decision:
 
 - `endpoint-readiness.ttl` keeps the runtime internal-only for Phase 20.
-- A later private endpoint scaffold must use `SemanticResponseSerializer`.
-- A later endpoint must not return raw SPARQL bindings, accept arbitrary
+- It required any later private endpoint to use `SemanticResponseSerializer`.
+- It required that endpoint not return raw SPARQL bindings, accept arbitrary
   browser-supplied SPARQL, run SPARQL Update, or bypass the approved query
   manifest.
 
-Post-Phase-20 private endpoint:
+Current private endpoint:
 
-- the private scaffold now exists for the first approved-query slice
+- the private runtime exists for the approved registry-backed query set and
+  controlled internal action/review routes
 - it remains internal-only and loopback-bound
 - the public endpoint gates in `endpoint-readiness.ttl` are still not accepted
 

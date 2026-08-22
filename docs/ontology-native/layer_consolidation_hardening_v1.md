@@ -41,22 +41,35 @@ ontology action audit, action lifecycle transitions, dynamic playback, AI
 proposal creation, and AI proposal human review without changing product
 behavior.
 
-## Still Intentionally Left as Architecture Debt
+## Consolidated in the Cohesion Refactor
 
-The following concerns are real but are not fixed in this pass because they
-would be product-structure work rather than low-risk helper extraction:
+- The root `frontend/src/api.ts` module was removed. Recovery Queue, Recovery
+  Case, Review Inbox, and Platform Status now own models and repositories, with
+  enforced public cross-feature entry points.
+- Query approval, codec selection, ownership, endpoint exposure, and paging
+  policy now meet in `QueryContractRegistry`; the endpoint allowlist and result
+  dispatch derive from it.
+- SHACL parsing and RDFS type closure now run through one cached validation
+  engine with domain-owned shape profiles.
+- DCAI vocabulary and managed graph/controlled-ID policy moved to neutral
+  packages.
+- The live CLI path composes typed runtime operations through
+  `SemanticServiceWorkflow`.
+- Recovery Case now separates its typed model, query orchestration, semantic
+  mappers, loading hook, and page components while preserving the existing URL
+  tabs and keyboard contract.
+- CLI parsing, runtime composition, typed workflow execution, reporting,
+  loopback HTTP transport, and JSON writing now have separate production
+  boundaries. The nullable compatibility runner has been removed from main
+  source code.
+- Structured OpenAPI/runtime-route validation now runs as part of static
+  contract validation, and implemented internal action routes use typed request
+  and response schema references.
 
-- `frontend/src/api.ts` is still a large semantic adapter for workbench/detail
-  read-model DTOs and graph-to-UI mapping. Frontend hardening v1 split runtime
-  config, approved query posting, ontology action commands, and AI governance
-  commands into focused modules, but mapper/domain splitting remains future
-  work.
-- `frontend/src/App.tsx` is still a large workbench component tree. It should be
-  split into route, finding list, finding detail, action panel, AI governance,
-  dynamic playback, trust, impact, and dependency components.
-- The approved query catalog is broad and continues to grow. The catalog should
-  get ownership/version notes and stronger contract tests before more query IDs
-  are added.
+## Remaining Architecture Debt
+
+The following concerns remain intentionally narrow:
+
 - AI review-to-action mapping is intentionally narrow. In v1, approved
   `ACTION_RECOMMENDATION` proposals only become governed
   `AcknowledgeRestoreBlocker` action requests when supported by restore-readiness
@@ -77,13 +90,6 @@ would be product-structure work rather than low-risk helper extraction:
 
 ## Next Hardening Candidate
 
-The next consolidation pass should focus on frontend and query-contract
-structure, not another runtime layer:
-
-1. Split the remaining `frontend/src/api.ts` read-model mappers by workbench,
-   finding detail, dependency/reasoning, and trust/provenance domains.
-2. Split `frontend/src/App.tsx` workbench sections into stable components.
-3. Add stronger contract tests that keep the query catalog ownership table,
-   semantic-service result envelopes, and frontend consumer modules aligned.
-4. Keep all behavior unchanged unless a separate product/UI goal explicitly
-   approves redesign.
+Future work should add new domain behavior only behind the same feature,
+registry, graph-policy, and typed-operation boundaries. Keep behavior unchanged
+unless a separate product/UI goal explicitly approves redesign.

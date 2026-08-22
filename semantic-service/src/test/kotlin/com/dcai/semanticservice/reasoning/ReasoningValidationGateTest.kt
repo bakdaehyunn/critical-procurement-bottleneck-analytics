@@ -1,7 +1,7 @@
 package com.dcai.semanticservice.reasoning
 
 import com.dcai.semanticservice.ingestion.SourceExtractRdfMapper
-import com.dcai.semanticservice.runtime.SemanticServiceApplication
+import com.dcai.semanticservice.runtime.SemanticServiceComposition
 import com.dcai.semanticservice.testfixtures.ProductionSourceExtractFixtures
 import java.time.Instant
 import kotlin.test.Test
@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
 import org.apache.jena.rdf.model.ModelFactory
 
 class ReasoningValidationGateTest {
-    private val repoRoot = SemanticServiceApplication.locateRepoRoot()
+    private val repoRoot = SemanticServiceComposition.locateRepoRoot()
     private val gate = ReasoningValidationGate(repoRoot)
 
     @Test

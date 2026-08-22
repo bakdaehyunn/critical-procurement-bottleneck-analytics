@@ -7,7 +7,7 @@ import com.dcai.semanticservice.promotion.ProductionGraphUris
 import com.dcai.semanticservice.reasoning.ReasoningInput
 import com.dcai.semanticservice.reasoning.ReasoningModelBuilder
 import com.dcai.semanticservice.reasoning.ReasoningOutputGraphUris
-import com.dcai.semanticservice.runtime.SemanticServiceApplication
+import com.dcai.semanticservice.runtime.SemanticServiceComposition
 import com.dcai.semanticservice.testfixtures.InMemoryNamedGraphStore
 import java.time.Instant
 import kotlin.test.Test
@@ -15,7 +15,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class GraphLifecycleInspectorTest {
-    private val repoRoot = SemanticServiceApplication.locateRepoRoot()
+    private val repoRoot = SemanticServiceComposition.locateRepoRoot()
 
     @Test
     fun reportsPromotionAndReasoningLifecycleStatus() {

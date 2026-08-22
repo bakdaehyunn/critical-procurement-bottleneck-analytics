@@ -1,13 +1,13 @@
 package com.dcai.semanticservice.query
 
-import com.dcai.semanticservice.runtime.SemanticServiceApplication
+import com.dcai.semanticservice.runtime.SemanticServiceComposition
 import org.apache.jena.query.ParameterizedSparqlString
 import org.apache.jena.query.QueryFactory
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
 
 class JenaFusekiReadOnlyQueryExecutorTest {
-    private val repoRoot = SemanticServiceApplication.locateRepoRoot()
+    private val repoRoot = SemanticServiceComposition.locateRepoRoot()
 
     @Test
     fun rejectsUnapprovedQueryIdBeforeNetworkExecution() {

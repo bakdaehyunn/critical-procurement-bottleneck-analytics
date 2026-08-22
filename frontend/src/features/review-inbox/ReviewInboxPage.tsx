@@ -5,21 +5,17 @@ import {
   fetchActionReviewQueuePage,
   fetchAiProposalReviewQueuePage,
   fetchOntologyReviewQueuePage,
-  fetchReviewAttentionSignals,
-  submitAiProposalReview,
-  submitOntologyActionTransition,
-  type AiProposalItem,
-  type FollowUpItem,
-  type OntologyActionLifecycleState,
-  type OntologyActionReviewQueueItem,
-  type OntologyReviewQueueItem,
-  type PagedResult,
-} from '../../api'
+} from './reviewInboxRepository'
+import { fetchReviewAttentionSignals, type FollowUpItem } from '../recovery-queue'
+import { submitAiProposalReview } from '../../aiGovernanceApi'
+import { submitOntologyActionTransition, type OntologyActionLifecycleState } from '../../ontologyActionApi'
 import { AppShell } from '../../app/AppShell'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Pagination, StatusBadge, type Tone } from '../../components/ui'
 import { useAsyncResource } from '../../hooks/useAsyncResource'
 import { formatDateTime, relativeTime, titleCase } from '../../utils/format'
+import type { PagedResult } from '../../shared/pagination'
 import { availableActionTransitions, isAiProposalActionable } from './reviewUtils'
+import type { AiProposalItem, OntologyActionReviewQueueItem, OntologyReviewQueueItem } from './reviewInboxModel'
 
 type ReviewType = 'action' | 'ai' | 'promotion' | 'reasoning' | 'attention'
 type ReviewRecord =

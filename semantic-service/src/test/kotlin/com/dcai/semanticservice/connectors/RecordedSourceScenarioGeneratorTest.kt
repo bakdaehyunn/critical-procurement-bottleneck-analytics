@@ -13,7 +13,7 @@ import com.dcai.semanticservice.reasoning.ReasoningOutputGraphUris
 import com.dcai.semanticservice.reasoning.ReasoningPromotionPlan
 import com.dcai.semanticservice.reasoning.ReasoningPromotionService
 import com.dcai.semanticservice.reasoning.ReasoningValidationGate
-import com.dcai.semanticservice.runtime.SemanticServiceApplication
+import com.dcai.semanticservice.runtime.SemanticServiceComposition
 import com.dcai.semanticservice.testfixtures.InMemoryNamedGraphStore
 import java.nio.file.Files
 import java.nio.file.Path
@@ -24,7 +24,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class RecordedSourceScenarioGeneratorTest {
-    private val repoRoot = SemanticServiceApplication.locateRepoRoot()
+    private val repoRoot = SemanticServiceComposition.locateRepoRoot()
     private val generator = RecordedSourceScenarioGenerator()
     private val loader = RecordedSourceConnectorSimulationLoader()
 

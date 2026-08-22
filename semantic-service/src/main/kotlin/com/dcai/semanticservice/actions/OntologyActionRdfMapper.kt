@@ -1,7 +1,7 @@
 package com.dcai.semanticservice.actions
 
-import com.dcai.semanticservice.ingestion.Dcai
-import com.dcai.semanticservice.ingestion.Prov
+import com.dcai.semanticservice.ontology.Dcai
+import com.dcai.semanticservice.ontology.Prov
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import org.apache.jena.datatypes.xsd.XSDDatatype

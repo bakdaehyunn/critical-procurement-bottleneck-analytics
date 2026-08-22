@@ -61,8 +61,10 @@ Every response envelope includes:
 
 Paged callers supply `pageSize` (1–100) and an optional one-based `page`. The
 response then adds backward-compatible `pageInfo` with `page`, `pageSize`,
-`pageCount`, and the post-shaping `totalRecords`; unpaged envelopes are
-unchanged.
+`pageCount`, and stable-identity `totalRecords`. Pageable read models declare
+their identity and ordering policy; Fuseki counts identities, applies a bounded
+identity page, and returns rows for that page before typed shaping. Unpaged
+envelopes are unchanged.
 
 `semanticPlatformStatus` is the approved read-only platform-health query. Its
 verdict is `OPERATIONAL`, `DEGRADED`, or `UNKNOWN` and is based only on
@@ -74,4 +76,4 @@ Semantic errors use stable machine-readable codes such as
 `internal-semantic-service-error`.
 
 See `semantic-service/api-dtos.md` and
-`semantic-service/openapi.semantic-service.yaml` for the current DTO scaffold.
+`semantic-service/openapi.semantic-service.yaml` for the current DTO contract.

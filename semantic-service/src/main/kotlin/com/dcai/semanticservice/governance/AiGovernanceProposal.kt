@@ -1,5 +1,7 @@
 package com.dcai.semanticservice.governance
 
+import com.dcai.semanticservice.graph.ManagedGraphKind
+import com.dcai.semanticservice.graph.ManagedGraphUri
 import java.time.Instant
 
 enum class AiProposalType(val id: String) {
@@ -68,46 +70,24 @@ data class AiGovernanceGraphUris(
     val aiAuditGraphUri: String,
 ) {
     init {
-        require(canonicalGraphUri.startsWith(CANONICAL_PREFIX) && canonicalGraphUri.length > CANONICAL_PREFIX.length) {
-            "canonicalGraphUri must use $CANONICAL_PREFIX"
-        }
-        require(provenanceGraphUri.startsWith(PROVENANCE_PREFIX) && provenanceGraphUri.length > PROVENANCE_PREFIX.length) {
-            "provenanceGraphUri must use $PROVENANCE_PREFIX"
-        }
-        require(reasoningGraphUri == null || reasoningGraphUri.startsWith(REASONING_PREFIX) && reasoningGraphUri.length > REASONING_PREFIX.length) {
-            "reasoningGraphUri must use $REASONING_PREFIX"
-        }
-        require(aiAuditGraphUri.startsWith(AI_AUDIT_PREFIX) && aiAuditGraphUri.length > AI_AUDIT_PREFIX.length) {
-            "aiAuditGraphUri must use $AI_AUDIT_PREFIX"
-        }
+        ManagedGraphUri.requireKind(canonicalGraphUri, ManagedGraphKind.CANONICAL, "canonicalGraphUri")
+        ManagedGraphUri.requireKind(provenanceGraphUri, ManagedGraphKind.PROVENANCE, "provenanceGraphUri")
+        reasoningGraphUri?.let { ManagedGraphUri.requireKind(it, ManagedGraphKind.REASONING, "reasoningGraphUri") }
+        ManagedGraphUri.requireKind(aiAuditGraphUri, ManagedGraphKind.AI_AUDIT, "aiAuditGraphUri")
     }
 
     companion object {
-        const val CANONICAL_PREFIX = "urn:dcai:graph:canonical:"
-        const val PROVENANCE_PREFIX = "urn:dcai:graph:provenance:"
-        const val REASONING_PREFIX = "urn:dcai:graph:reasoning:"
-        const val AI_AUDIT_PREFIX = "urn:dcai:graph:ai-audit:"
-
         fun forRelease(
             sourceReleaseId: String,
             reasoningRunId: String?,
             aiAuditReleaseId: String,
         ): AiGovernanceGraphUris {
-            requireControlledId(sourceReleaseId, "sourceReleaseId")
-            reasoningRunId?.let { requireControlledId(it, "reasoningRunId") }
-            requireControlledId(aiAuditReleaseId, "aiAuditReleaseId")
             return AiGovernanceGraphUris(
-                canonicalGraphUri = "$CANONICAL_PREFIX$sourceReleaseId",
-                provenanceGraphUri = "$PROVENANCE_PREFIX$sourceReleaseId",
-                reasoningGraphUri = reasoningRunId?.let { "$REASONING_PREFIX$it" },
-                aiAuditGraphUri = "$AI_AUDIT_PREFIX$aiAuditReleaseId",
+                canonicalGraphUri = ManagedGraphUri.of(ManagedGraphKind.CANONICAL, sourceReleaseId, "sourceReleaseId").value,
+                provenanceGraphUri = ManagedGraphUri.of(ManagedGraphKind.PROVENANCE, sourceReleaseId, "sourceReleaseId").value,
+                reasoningGraphUri = reasoningRunId?.let { ManagedGraphUri.of(ManagedGraphKind.REASONING, it, "reasoningRunId").value },
+                aiAuditGraphUri = ManagedGraphUri.of(ManagedGraphKind.AI_AUDIT, aiAuditReleaseId, "aiAuditReleaseId").value,
             )
-        }
-
-        private fun requireControlledId(value: String, label: String) {
-            require(value.matches(Regex("[A-Za-z0-9._-]+"))) {
-                "$label must contain only letters, numbers, dot, underscore, or hyphen"
-            }
         }
     }
 }

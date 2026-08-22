@@ -13,8 +13,8 @@ class SemanticResponseContractTest {
     private val dtoDocs = repoRoot.resolve("semantic-service/api-dtos.md").toFile().readText()
 
     @Test
-    fun openApiPinsPhaseEighteenResponseContractSchemas() {
-        assertTrue(openApi.contains("version: 2026-06-phase18-response-contract-checkpoint"))
+    fun openApiPinsCurrentResponseContractSchemas() {
+        assertTrue(openApi.contains("version: 2026-08-cohesion-contract-v1"))
         assertTrue(openApi.contains("QueryExecutionResponse:"))
         assertTrue(openApi.contains("NamedGraphInventoryResponse:"))
         assertTrue(openApi.contains("IncidentSummaryResponse:"))
@@ -33,7 +33,7 @@ class SemanticResponseContractTest {
 
     @Test
     fun responseContractDocumentsVersionAndErrorRules() {
-        assertTrue(dtoDocs.contains("Phase 18 Response Contract Checkpoint"))
+        assertTrue(dtoDocs.contains("Semantic Service API DTO Contract"))
         assertTrue(dtoDocs.contains(QueryResultEnvelopeProvenance.CONTRACT_VERSION))
         assertTrue(dtoDocs.contains("2026.06.phase18-error-envelope"))
         assertTrue(openApi.contains("unapproved-query-id"))

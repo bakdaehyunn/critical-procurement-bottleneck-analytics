@@ -66,6 +66,11 @@ dedicated workspaces.
 
 ## Recovery Case
 
+The core case read model is loaded first. Workflow timeline, evidence/trust,
+impact reasoning, governed actions/audit, AI governance, dynamic playback, and
+topology are independent resources with explicit partial-failure handling. A
+resource refresh must not repeat queue, detail, or incident-evidence queries.
+
 The case header keeps the incident, priority, current stage, time blocked,
 owner, exposure, restore readiness, evidence status, and recommended action
 visible before tab content.

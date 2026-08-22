@@ -3,14 +3,14 @@ package com.dcai.semanticservice.dynamic
 import com.dcai.semanticservice.graph.NamedGraphSnapshot
 import com.dcai.semanticservice.graph.NamedGraphStore
 import com.dcai.semanticservice.graph.NamedGraphWriteResult
-import com.dcai.semanticservice.ingestion.Dcai
+import com.dcai.semanticservice.ontology.Dcai
 import com.dcai.semanticservice.ingestion.SourceExtractRdfMapper
 import com.dcai.semanticservice.promotion.GraphPromotionService
 import com.dcai.semanticservice.promotion.ProductionGraphValidationGate
 import com.dcai.semanticservice.reasoning.ReasoningModelBuilder
 import com.dcai.semanticservice.reasoning.ReasoningPromotionService
 import com.dcai.semanticservice.reasoning.ReasoningValidationGate
-import com.dcai.semanticservice.runtime.SemanticServiceApplication
+import com.dcai.semanticservice.runtime.SemanticServiceComposition
 import com.dcai.semanticservice.testfixtures.InMemoryNamedGraphStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -23,7 +23,7 @@ import org.apache.jena.rdf.model.Resource
 import org.apache.jena.vocabulary.RDF
 
 class DynamicPlaybackServiceTest {
-    private val repoRoot = SemanticServiceApplication.locateRepoRoot()
+    private val repoRoot = SemanticServiceComposition.locateRepoRoot()
     private val scenario = LocalDynamicPlaybackScenario.scenario()
     private val graphs = com.dcai.semanticservice.actions.OntologyActionGraphUris.forRelease(
         sourceReleaseId = LocalDynamicPlaybackScenario.DEFAULT_SCENARIO_ID,
@@ -65,7 +65,7 @@ class DynamicPlaybackServiceTest {
     @Test
     fun validationRejectsPlaybackModelWithoutEventProvenance() {
         val model = DynamicPlaybackRdfMapper().map(scenario)
-        model.removeAll(null, com.dcai.semanticservice.ingestion.Prov.used, null)
+        model.removeAll(null, com.dcai.semanticservice.ontology.Prov.used, null)
 
         val validation = DynamicPlaybackValidationGate(repoRoot).validate(model)
 

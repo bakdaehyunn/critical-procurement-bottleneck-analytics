@@ -1,7 +1,7 @@
 package com.dcai.semanticservice.reasoning
 
 import com.dcai.semanticservice.ingestion.SourceExtractRdfMapper
-import com.dcai.semanticservice.runtime.SemanticServiceApplication
+import com.dcai.semanticservice.runtime.SemanticServiceComposition
 import com.dcai.semanticservice.testfixtures.InMemoryNamedGraphStore
 import com.dcai.semanticservice.testfixtures.ProductionSourceExtractFixtures
 import java.time.Instant
@@ -16,7 +16,7 @@ import org.apache.jena.rdf.model.ModelFactory
 import org.apache.jena.rdf.model.ResourceFactory
 
 class ReasoningPromotionServiceTest {
-    private val repoRoot = SemanticServiceApplication.locateRepoRoot()
+    private val repoRoot = SemanticServiceComposition.locateRepoRoot()
 
     @Test
     fun promotesReasoningAuditAndApprovedReasoningGraphs() {

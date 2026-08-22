@@ -2,7 +2,7 @@ package com.dcai.semanticservice.fixtures
 
 import com.dcai.semanticservice.graph.NamedGraphWriteResult
 import com.dcai.semanticservice.graph.NamedGraphWriter
-import com.dcai.semanticservice.runtime.SemanticServiceApplication
+import com.dcai.semanticservice.runtime.SemanticServiceComposition
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
 import org.apache.jena.rdf.model.Model
 
 class ControlledFixtureGraphLoaderTest {
-    private val repoRoot = SemanticServiceApplication.locateRepoRoot()
+    private val repoRoot = SemanticServiceComposition.locateRepoRoot()
 
     @Test
     fun writesSourceAndCanonicalGraphsOnlyAfterValidation() {

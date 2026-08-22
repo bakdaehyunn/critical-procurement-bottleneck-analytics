@@ -1,12 +1,12 @@
 package com.dcai.semanticservice.actions
 
-import com.dcai.semanticservice.runtime.SemanticServiceApplication
+import com.dcai.semanticservice.runtime.SemanticServiceComposition
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class OntologyActionRequestLoaderTest {
-    private val repoRoot = SemanticServiceApplication.locateRepoRoot()
+    private val repoRoot = SemanticServiceComposition.locateRepoRoot()
 
     @Test
     fun parsesControlledLocalActionRequestFixture() {
@@ -24,17 +24,16 @@ class OntologyActionRequestLoaderTest {
     fun actionRequestFileMustResolveUnderControlledDirectory() {
         assertEquals(
             repoRoot.resolve("fixtures/action-requests/acknowledge-restore-blocker.properties"),
-            SemanticServiceApplication.resolveControlledActionRequestPath(
+            SemanticServiceComposition.resolveControlledActionRequestPath(
                 repoRoot = repoRoot,
                 actionRequestPathArgument = "fixtures/action-requests/acknowledge-restore-blocker.properties",
             ),
         )
         assertFailsWith<IllegalArgumentException> {
-            SemanticServiceApplication.resolveControlledActionRequestPath(
+            SemanticServiceComposition.resolveControlledActionRequestPath(
                 repoRoot = repoRoot,
                 actionRequestPathArgument = "../uncontrolled-action.properties",
             )
         }
     }
 }
-

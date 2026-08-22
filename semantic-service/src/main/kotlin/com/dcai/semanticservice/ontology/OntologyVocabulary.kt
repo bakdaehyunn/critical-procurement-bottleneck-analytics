@@ -1,13 +1,13 @@
-package com.dcai.semanticservice.ingestion
+package com.dcai.semanticservice.ontology
 
 import org.apache.jena.rdf.model.ResourceFactory
 
-internal object Dcterms {
+object Dcterms {
     const val NAMESPACE = "http://purl.org/dc/terms/"
     val title = ResourceFactory.createProperty("${NAMESPACE}title")
 }
 
-internal object Prov {
+object Prov {
     const val NAMESPACE = "http://www.w3.org/ns/prov#"
     val generated = ResourceFactory.createProperty("${NAMESPACE}generated")
     val generatedAtTime = ResourceFactory.createProperty("${NAMESPACE}generatedAtTime")
@@ -16,7 +16,7 @@ internal object Prov {
     val wasGeneratedBy = ResourceFactory.createProperty("${NAMESPACE}wasGeneratedBy")
 }
 
-internal object Dcai {
+object Dcai {
     const val NAMESPACE = "urn:dcai:ontology:"
 
     val SourceSystem = resource("SourceSystem")

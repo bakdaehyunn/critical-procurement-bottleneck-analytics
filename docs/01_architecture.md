@@ -43,12 +43,26 @@ promotion requires parseable RDF, SHACL conformance, and provenance links.
 - SHACL shapes validate canonical, evidence, topology, provenance, reasoning,
   and AI interaction contracts.
 - Approved SPARQL files under `queries/` define read models.
-- `queries/manifest.ttl` is the allowlist for executable query IDs.
+- `queries/manifest.ttl` supplies approved definitions; the Kotlin
+  `QueryContractRegistry` is the runtime authority that binds each definition
+  to its codec, owner, endpoint exposure, and paging policy.
 - The Kotlin/JVM semantic-service loads contracts, reads Fuseki graphs,
   executes approved read-only SPARQL, shapes typed envelopes, serializes
   semantic responses, and rejects unapproved query IDs.
 - The React semantic operations workbench preserves the follow-up workflow UX while reading from
   the semantic-service private endpoint.
+- One cached semantic validation engine loads ontology superclass data once and
+  caches explicit shape profiles; domain gates retain their provenance and
+  policy checks.
+- Neutral ontology vocabulary and managed graph/identifier policies live under
+  `ontology` and `graph`, rather than under ingestion or feature packages.
+- The production CLI composes typed runtime operations and executes them through
+  `SemanticServiceWorkflow`; service/plan pairs are not nullable. CLI parsing,
+  composition, reporting, loopback HTTP transport, pagination, and JSON writing
+  are separate boundaries.
+- Static contract validation parses OpenAPI path metadata and checks implemented
+  private routes against runtime route constants; marker checks are no longer
+  the only API/spec enforcement.
 
 ## Design Choices
 
@@ -62,6 +76,19 @@ queries.
 
 The service executes query IDs, not arbitrary browser-supplied SPARQL. This
 keeps graph access inspectable, testable, and safe for a future private API.
+
+### Frontend Feature Boundary
+
+Recovery Queue, Recovery Case, Review Inbox, and Platform Status own their
+models and repositories. Cross-feature consumers use public feature entry
+points, while ESLint rejects imports into another feature's internals. Semantic
+responses are validated at runtime, including query identity, provenance,
+paging totals, and query-specific required record fields.
+
+Recovery Case additionally separates its resource repository, typed model,
+semantic mappers, and lifecycle hook. Missing numeric or categorical facts stay
+nullable/unknown through mapping and presentation instead of becoming zero or
+a successful state.
 
 ### Provenance as Product Data
 

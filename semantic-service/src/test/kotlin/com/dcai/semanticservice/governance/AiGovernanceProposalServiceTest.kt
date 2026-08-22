@@ -3,13 +3,13 @@ package com.dcai.semanticservice.governance
 import com.dcai.semanticservice.graph.NamedGraphSnapshot
 import com.dcai.semanticservice.graph.NamedGraphStore
 import com.dcai.semanticservice.graph.NamedGraphWriteResult
-import com.dcai.semanticservice.ingestion.Dcai
+import com.dcai.semanticservice.ontology.Dcai
 import com.dcai.semanticservice.ingestion.FileSourceExtractLoader
-import com.dcai.semanticservice.ingestion.Prov
+import com.dcai.semanticservice.ontology.Prov
 import com.dcai.semanticservice.ingestion.SourceExtractRdfMapper
 import com.dcai.semanticservice.reasoning.ReasoningInput
 import com.dcai.semanticservice.reasoning.ReasoningModelBuilder
-import com.dcai.semanticservice.runtime.SemanticServiceApplication
+import com.dcai.semanticservice.runtime.SemanticServiceComposition
 import com.dcai.semanticservice.testfixtures.InMemoryNamedGraphStore
 import java.time.Instant
 import kotlin.test.Test
@@ -25,7 +25,7 @@ import org.apache.jena.rdf.model.ResourceFactory
 import org.apache.jena.vocabulary.RDF
 
 class AiGovernanceProposalServiceTest {
-    private val repoRoot = SemanticServiceApplication.locateRepoRoot()
+    private val repoRoot = SemanticServiceComposition.locateRepoRoot()
     private val sourceReleaseId = "local-controlled-source-v1"
     private val reasoningRunId = "local-controlled-reasoning-v1"
     private val aiAuditReleaseId = "local-ai-governance-v1"

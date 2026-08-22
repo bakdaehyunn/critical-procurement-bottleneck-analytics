@@ -18,6 +18,8 @@ import com.dcai.semanticservice.query.ApprovedQueryDefinition
 import com.dcai.semanticservice.query.ApprovedQueryManifest
 import com.dcai.semanticservice.query.QueryExecutionReport
 import com.dcai.semanticservice.query.QueryMode
+import com.dcai.semanticservice.query.QueryPageRequest
+import com.dcai.semanticservice.query.QueryPageResult
 import com.dcai.semanticservice.query.QueryResultShaper
 import com.dcai.semanticservice.query.ReadOnlyQueryExecutor
 import java.net.URI
@@ -56,17 +58,18 @@ class PrivateSemanticQueryEndpointTest {
     }
 
     @Test
-    fun returnsBackwardCompatiblePagedPayloadWithoutPassingPagingToSparql() {
+    fun returnsBackwardCompatiblePayloadFromBoundedExecutorPage() {
         val executor = CapturingQueryExecutor(
             QueryExecutionReport(
                 queryId = "fixtureNamedGraphInventory",
                 mode = QueryMode.SELECT,
-                rows = (1..5).map { index ->
+                rows = (3..4).map { index ->
                     mapOf(
                         "graph" to "urn:dcai:graph:fixture:canonical:$index",
                         "subjectCount" to index.toString(),
                     )
                 },
+                page = QueryPageResult(page = 2, pageSize = 2, totalRecords = 5),
             ),
         )
         val endpoint = PrivateSemanticQueryEndpoint(
@@ -83,6 +86,7 @@ class PrivateSemanticQueryEndpointTest {
 
         assertEquals(200, response.statusCode)
         assertEquals(emptyMap(), executor.lastParameters)
+        assertEquals(QueryPageRequest(page = 2, pageSize = 2), executor.lastPageRequest)
         assertEquals(2, response.payload["recordCount"])
         val records = response.payload["records"] as List<*>
         assertEquals(2, records.size)
@@ -936,6 +940,7 @@ class PrivateSemanticQueryEndpointTest {
         private val report: QueryExecutionReport,
     ) : ReadOnlyQueryExecutor {
         var lastParameters: Map<String, String> = emptyMap()
+        var lastPageRequest: QueryPageRequest? = null
 
         override fun execute(queryId: String): QueryExecutionReport {
             return execute(queryId, emptyMap())
@@ -945,7 +950,16 @@ class PrivateSemanticQueryEndpointTest {
             queryId: String,
             parameters: Map<String, String>,
         ): QueryExecutionReport {
+            return execute(queryId, parameters, null)
+        }
+
+        override fun execute(
+            queryId: String,
+            parameters: Map<String, String>,
+            pageRequest: QueryPageRequest?,
+        ): QueryExecutionReport {
             lastParameters = parameters
+            lastPageRequest = pageRequest
             return report.copy(queryId = queryId)
         }
     }

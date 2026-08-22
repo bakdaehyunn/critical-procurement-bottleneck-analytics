@@ -27,10 +27,13 @@ not part of the read-only query catalog and write only to managed audit graphs.
 | --- | --- |
 | `frontend/src/semanticQueryCatalog.ts` | Stable frontend keys for approved semantic query IDs and query path construction. |
 | `frontend/src/semanticRuntimeConfig.ts` | Local semantic-service base URL and controlled release/run IDs from Vite environment variables. |
-| `frontend/src/semanticQueryClient.ts` | Approved query POST envelope handling for read-only semantic query IDs. |
+| `frontend/src/semanticQueryClient.ts` | Runtime validation and approved query POST handling for read-only semantic query IDs. |
 | `frontend/src/ontologyActionApi.ts` | Private internal action request and transition submissions into the managed action-audit graph. |
 | `frontend/src/aiGovernanceApi.ts` | Private internal AI proposal approve/reject submissions into managed ai-audit and optional action-audit graphs. |
-| `frontend/src/api.ts` | Workbench/detail read-model DTOs, semantic record DTOs, and graph-to-UI mappers. |
+| `frontend/src/features/recovery-queue/` | Queue contracts, semantic mapping, filters, and queue repository. |
+| `frontend/src/features/recovery-case/` | Independently loaded case resources, case contracts/mapping, and case UX. |
+| `frontend/src/features/review-inbox/` | Governed review contracts, paging repositories, and review UX. |
+| `frontend/src/features/platform-status/` | Platform evidence/trust contracts and repository. |
 
 ## Approved Query Ownership
 
@@ -89,5 +92,6 @@ browser-supplied query execution.
 - Action and AI review modules call private internal endpoints and keep
   protected graph mutation out of the browser boundary.
 - New query IDs must add manifest metadata, a semantic-service result envelope,
-  frontend consumer mapping, and this ownership table before being considered
-  part of the MVP catalog.
+  registry declaration, and (when feature-owned) a frontend runtime contract.
+  Cross-layer tests require the manifest, registry, and frontend catalog to
+  remain aligned; internal inspection and legacy read models stay backend-only.

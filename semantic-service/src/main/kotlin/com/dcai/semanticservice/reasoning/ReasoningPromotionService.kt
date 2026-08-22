@@ -1,5 +1,8 @@
 package com.dcai.semanticservice.reasoning
 
+import com.dcai.semanticservice.graph.ControlledIdentifier
+import com.dcai.semanticservice.graph.ManagedGraphKind
+import com.dcai.semanticservice.graph.ManagedGraphUri
 import com.dcai.semanticservice.graph.ManagedGraphWriteCoordinator
 import com.dcai.semanticservice.graph.NamedGraphStore
 import java.time.Instant
@@ -92,9 +95,7 @@ data class ReasoningPromotionPlan(
     val outputGraphs: ReasoningOutputGraphUris,
 ) {
     init {
-        require(runId.matches(Regex("[A-Za-z0-9._-]+"))) {
-            "runId must contain only letters, numbers, dot, underscore, or hyphen"
-        }
+        ControlledIdentifier.requireRelease(runId, "runId")
     }
 }
 
@@ -103,25 +104,15 @@ data class ReasoningInputGraphUris(
     val provenanceGraphUri: String,
 ) {
     init {
-        require(canonicalGraphUri.startsWith(CANONICAL_PREFIX) && canonicalGraphUri.length > CANONICAL_PREFIX.length) {
-            "canonicalGraphUri must use $CANONICAL_PREFIX with a release-specific suffix"
-        }
-        require(provenanceGraphUri.startsWith(PROVENANCE_PREFIX) && provenanceGraphUri.length > PROVENANCE_PREFIX.length) {
-            "provenanceGraphUri must use $PROVENANCE_PREFIX with a release-specific suffix"
-        }
+        ManagedGraphUri.requireKind(canonicalGraphUri, ManagedGraphKind.CANONICAL, "canonicalGraphUri")
+        ManagedGraphUri.requireKind(provenanceGraphUri, ManagedGraphKind.PROVENANCE, "provenanceGraphUri")
     }
 
     companion object {
-        const val CANONICAL_PREFIX = "urn:dcai:graph:canonical:"
-        const val PROVENANCE_PREFIX = "urn:dcai:graph:provenance:"
-
         fun forRelease(releaseId: String): ReasoningInputGraphUris {
-            require(releaseId.matches(Regex("[A-Za-z0-9._-]+"))) {
-                "releaseId must contain only letters, numbers, dot, underscore, or hyphen"
-            }
             return ReasoningInputGraphUris(
-                canonicalGraphUri = "$CANONICAL_PREFIX$releaseId",
-                provenanceGraphUri = "$PROVENANCE_PREFIX$releaseId",
+                canonicalGraphUri = ManagedGraphUri.of(ManagedGraphKind.CANONICAL, releaseId, "releaseId").value,
+                provenanceGraphUri = ManagedGraphUri.of(ManagedGraphKind.PROVENANCE, releaseId, "releaseId").value,
             )
         }
     }
@@ -132,12 +123,8 @@ data class ReasoningOutputGraphUris(
     val reasoningGraphUri: String,
 ) {
     init {
-        require(auditGraphUri.startsWith(AUDIT_PREFIX) && auditGraphUri.length > AUDIT_PREFIX.length) {
-            "auditGraphUri must use $AUDIT_PREFIX with a run-specific suffix"
-        }
-        require(reasoningGraphUri.startsWith(REASONING_PREFIX) && reasoningGraphUri.length > REASONING_PREFIX.length) {
-            "reasoningGraphUri must use $REASONING_PREFIX with a run-specific suffix"
-        }
+        ManagedGraphUri.requireKind(auditGraphUri, ManagedGraphKind.REASONING_AUDIT, "auditGraphUri")
+        ManagedGraphUri.requireKind(reasoningGraphUri, ManagedGraphKind.REASONING, "reasoningGraphUri")
     }
 
     fun models(output: ReasoningOutput): LinkedHashMap<String, Model> {
@@ -148,16 +135,10 @@ data class ReasoningOutputGraphUris(
     }
 
     companion object {
-        const val AUDIT_PREFIX = "urn:dcai:graph:reasoning-audit:"
-        const val REASONING_PREFIX = "urn:dcai:graph:reasoning:"
-
         fun forRun(runId: String): ReasoningOutputGraphUris {
-            require(runId.matches(Regex("[A-Za-z0-9._-]+"))) {
-                "runId must contain only letters, numbers, dot, underscore, or hyphen"
-            }
             return ReasoningOutputGraphUris(
-                auditGraphUri = "$AUDIT_PREFIX$runId",
-                reasoningGraphUri = "$REASONING_PREFIX$runId",
+                auditGraphUri = ManagedGraphUri.of(ManagedGraphKind.REASONING_AUDIT, runId, "runId").value,
+                reasoningGraphUri = ManagedGraphUri.of(ManagedGraphKind.REASONING, runId, "runId").value,
             )
         }
     }

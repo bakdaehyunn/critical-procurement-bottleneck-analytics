@@ -12,15 +12,17 @@ Current package areas:
 - `api`: loopback-only private semantic query endpoint
 - `contracts`: contract loading and version checks
 - `fixtures`: controlled RDF fixture loading
-- `graph`: Fuseki/TDB2 graph access boundaries
+- `graph`: Fuseki/TDB2 access plus managed graph URI and controlled-ID policy
 - `ingestion`: source extract DTOs and controlled local source loaders
 - `lifecycle`: read-only graph lifecycle inspection
 - `promotion`: source/canonical/provenance promotion orchestration
 - `query`: approved query execution and result shaping
 - `reasoning`: executable dependency exposure and blast-radius reasoning
-- `provenance`: future dedicated lineage lookup boundary
-- `governance`: future AI governance handoff boundary
+- `ontology`: neutral DCAI, PROV, and Dublin Core vocabulary objects
+- `validation`: cached SHACL/RDFS validation infrastructure with owned profiles
+- `runtime`: separate CLI parsing, composition, typed workflow operations,
+  reporting, and loopback endpoint launching
+- `governance`: managed AI proposal and human-review audit workflows
 
-Do not add public endpoints, authentication, frontend read-model changes,
-production connector jobs, or AI governance workflows without a later approved
-scope.
+Do not add public endpoints, raw SPARQL, SPARQL Update, production connector
+writeback, or external AI/system mutation without separately approved scope.

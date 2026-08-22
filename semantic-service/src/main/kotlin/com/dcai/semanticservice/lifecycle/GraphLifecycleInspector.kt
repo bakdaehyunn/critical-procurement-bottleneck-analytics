@@ -1,8 +1,8 @@
 package com.dcai.semanticservice.lifecycle
 
 import com.dcai.semanticservice.graph.NamedGraphStore
-import com.dcai.semanticservice.ingestion.Dcai
-import com.dcai.semanticservice.ingestion.Prov
+import com.dcai.semanticservice.ontology.Dcai
+import com.dcai.semanticservice.ontology.Prov
 import com.dcai.semanticservice.promotion.ProductionGraphUris
 import com.dcai.semanticservice.reasoning.ReasoningOutputGraphUris
 import org.apache.jena.rdf.model.Model

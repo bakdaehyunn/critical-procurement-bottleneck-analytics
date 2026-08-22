@@ -1,18 +1,17 @@
 openapi: 3.1.0
 info:
   title: AI Data Center Semantic Service API Contract
-  version: 2026-06-phase18-response-contract-checkpoint
+  version: 2026-08-cohesion-contract-v1
   description: >
-    Non-runtime OpenAPI-style scaffold for the future Java/Kotlin semantic
-    service. Phase 18 aligns future response DTO shapes with the Phase 17
-    query-result envelopes. This contract documents endpoint shapes and DTOs
-    only. It is not wired to controllers, code generation, authentication,
-    orchestration, graph promotion, or production SPARQL execution.
+    Contract for the loopback-only Kotlin semantic service. Paths annotated
+    implemented-private are wired by the JDK HTTP transport. Paths annotated
+    documented-only remain future contracts and are not runtime endpoints.
 servers:
-  - url: https://semantic-service.example.invalid
-    description: Placeholder only; no runtime service exists in Phase 18.
+  - url: http://127.0.0.1:18080
+    description: Loopback-only local runtime; public exposure is not supported.
 paths:
   /semantic/query/{queryId}:
+    x-runtime-status: implemented-private
     post:
       operationId: executeSemanticQuery
       summary: Execute an approved semantic query by id
@@ -43,6 +42,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/SemanticErrorResponse"
   /semantic/reasoning/validate:
+    x-runtime-status: documented-only
     post:
       operationId: validateReasoningOutput
       summary: Validate candidate reasoning output against SHACL shapes
@@ -60,6 +60,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReasoningValidationResponse"
   /semantic/provenance/{resourceId}:
+    x-runtime-status: documented-only
     get:
       operationId: lookupProvenance
       summary: Look up provenance for a semantic resource
@@ -78,6 +79,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProvenanceLookupResponse"
   /semantic/promotion/review:
+    x-runtime-status: documented-only
     post:
       operationId: reviewPromotionCandidate
       summary: Review reasoning candidates before graph promotion
@@ -95,6 +97,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/PromotionReviewResponse"
   /semantic/ai-governance/handoff:
+    x-runtime-status: documented-only
     post:
       operationId: handoffAIGovernance
       summary: Hand off AI-proposed graph changes or high-impact findings
@@ -112,6 +115,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AIGovernanceHandoffResponse"
   /semantic/internal/ai-proposal-review:
+    x-runtime-status: implemented-private
     post:
       operationId: reviewAIProposalInternal
       summary: Record an internal human review decision for a managed AI proposal
@@ -134,6 +138,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AIProposalReviewResponse"
+        default:
+          description: Semantic service error envelope.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticErrorResponse"
+  /semantic/internal/action-request:
+    x-runtime-status: implemented-private
+    post:
+      operationId: submitOntologyActionRequestInternal
+      summary: Record a governed ontology action request in managed action-audit state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OntologyActionRequest"
+      responses:
+        "200":
+          description: Governed action audit result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OntologyActionRequestResponse"
+        default:
+          description: Semantic service error envelope.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticErrorResponse"
+  /semantic/internal/action-transition:
+    x-runtime-status: implemented-private
+    post:
+      operationId: submitOntologyActionTransitionInternal
+      summary: Record a controlled lifecycle transition in managed action-audit state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OntologyActionTransitionRequest"
+      responses:
+        "200":
+          description: Governed action transition result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OntologyActionTransitionResponse"
         default:
           description: Semantic service error envelope.
           content:
@@ -2135,6 +2187,149 @@ components:
           type: array
           items:
             type: string
+    OntologyActionRequest:
+      type: object
+      required:
+        - requestId
+        - actionId
+        - idempotencyKey
+        - actorId
+        - requestedAt
+        - incidentUri
+        - actionReason
+        - sourceRecordUri
+        - sourceReleaseId
+        - actionAuditReleaseId
+      properties:
+        requestId: { type: string }
+        actionId: { type: string }
+        idempotencyKey: { type: string }
+        actorId: { type: string }
+        requestedAt: { type: string, format: date-time }
+        incidentUri: { type: string }
+        actionReason: { type: string }
+        sourceRecordUri: { type: string }
+        restoreReadinessFindingUri: { type: string }
+        recoveryBlockerUri: { type: string }
+        trustFindingUri: { type: string }
+        validationEvidenceUri: { type: string }
+        assignedTeam: { type: string }
+        assigneeId: { type: string }
+        reviewedStatus: { type: string }
+        reviewSummary: { type: string }
+        supportingEvidenceUri: { type: string }
+        sourceReleaseId: { type: string }
+        reasoningRunId: { type: string }
+        actionAuditReleaseId: { type: string }
+      additionalProperties: false
+    OntologyActionRequestResponse:
+      type: object
+      required:
+        - resultType
+        - audited
+        - actionId
+        - requestId
+        - idempotencyKey
+        - actionAuditGraphUri
+        - writtenGraphUris
+        - idempotentReplay
+        - notificationStatus
+        - currentState
+        - canonicalGraphMutation
+        - reasoningGraphMutation
+        - operationsGraphMutation
+        - externalSystemMutation
+        - validation
+      properties:
+        resultType: { type: string, enum: [ontology-action-request] }
+        audited: { type: boolean }
+        actionId: { type: string }
+        requestId: { type: string }
+        idempotencyKey: { type: string }
+        actionAuditGraphUri: { type: string }
+        writtenGraphUris:
+          type: array
+          items: { type: string }
+        idempotentReplay: { type: boolean }
+        notificationStatus: { type: string }
+        currentState: { type: string }
+        canonicalGraphMutation: { type: boolean }
+        reasoningGraphMutation: { type: boolean }
+        operationsGraphMutation: { type: boolean }
+        externalSystemMutation: { type: boolean }
+        validation:
+          $ref: "#/components/schemas/OntologyActionValidation"
+      additionalProperties: false
+    OntologyActionTransitionRequest:
+      type: object
+      required:
+        - transitionId
+        - idempotencyKey
+        - actorId
+        - requestedAt
+        - targetExecutionUri
+        - toState
+        - transitionReason
+        - sourceReleaseId
+        - actionAuditReleaseId
+      properties:
+        transitionId: { type: string }
+        idempotencyKey: { type: string }
+        actorId: { type: string }
+        requestedAt: { type: string, format: date-time }
+        targetExecutionUri: { type: string }
+        toState: { type: string }
+        transitionReason: { type: string }
+        sourceReleaseId: { type: string }
+        reasoningRunId: { type: string }
+        actionAuditReleaseId: { type: string }
+      additionalProperties: false
+    OntologyActionTransitionResponse:
+      type: object
+      required:
+        - resultType
+        - transitioned
+        - transitionId
+        - idempotencyKey
+        - targetExecutionUri
+        - currentState
+        - actionAuditGraphUri
+        - writtenGraphUris
+        - idempotentReplay
+        - canonicalGraphMutation
+        - reasoningGraphMutation
+        - operationsGraphMutation
+        - externalSystemMutation
+        - validation
+      properties:
+        resultType: { type: string, enum: [ontology-action-transition] }
+        transitioned: { type: boolean }
+        transitionId: { type: string }
+        idempotencyKey: { type: string }
+        targetExecutionUri: { type: string }
+        currentState: { type: string }
+        actionAuditGraphUri: { type: string }
+        writtenGraphUris:
+          type: array
+          items: { type: string }
+        idempotentReplay: { type: boolean }
+        canonicalGraphMutation: { type: boolean }
+        reasoningGraphMutation: { type: boolean }
+        operationsGraphMutation: { type: boolean }
+        externalSystemMutation: { type: boolean }
+        validation:
+          $ref: "#/components/schemas/OntologyActionValidation"
+      additionalProperties: false
+    OntologyActionValidation:
+      type: object
+      required: [conforms, tripleCount, errors]
+      properties:
+        conforms: { type: boolean }
+        tripleCount: { type: integer }
+        errors:
+          type: array
+          items: { type: string }
+      additionalProperties: false
     AIProposalReviewRequest:
       type: object
       required:

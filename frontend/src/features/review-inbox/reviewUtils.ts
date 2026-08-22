@@ -1,4 +1,4 @@
-import type { OntologyActionLifecycleState } from '../../api'
+import type { OntologyActionLifecycleState } from '../../ontologyActionApi'
 
 const transitions: Partial<Record<OntologyActionLifecycleState, OntologyActionLifecycleState[]>> = {
   REQUESTED: ['VALIDATED'],

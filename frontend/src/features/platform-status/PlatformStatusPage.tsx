@@ -1,11 +1,12 @@
 import { useCallback, type ReactNode } from 'react'
 import { Activity, AlertTriangle, CheckCircle2, Database, GitBranch, RefreshCcw, Server, ShieldCheck, Workflow } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { fetchOntologyReviewQueuePage, fetchPlatformStatus, fetchQualityCheckPage, type OntologyReviewQueueItem } from '../../api'
+import { fetchOntologyReviewQueuePage, type OntologyReviewQueueItem } from '../review-inbox'
 import { AppShell } from '../../app/AppShell'
 import { Disclosure, EmptyState, ErrorState, LoadingState, Metric, PageHeader, Pagination, StatusBadge, type Tone } from '../../components/ui'
 import { useAsyncResource } from '../../hooks/useAsyncResource'
 import { formatDateTime, relativeTime, titleCase } from '../../utils/format'
+import { fetchPlatformStatus, fetchQualityCheckPage } from './platformStatusRepository'
 
 const QUALITY_PAGE_SIZE = 15
 

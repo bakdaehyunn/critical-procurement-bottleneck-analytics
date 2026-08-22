@@ -1,6 +1,6 @@
 package com.dcai.semanticservice.connectors
 
-import com.dcai.semanticservice.runtime.SemanticServiceApplication
+import com.dcai.semanticservice.runtime.SemanticServiceComposition
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.writeText
@@ -10,7 +10,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class RecordedSourceConnectorSimulationLoaderTest {
-    private val repoRoot = SemanticServiceApplication.locateRepoRoot()
+    private val repoRoot = SemanticServiceComposition.locateRepoRoot()
     private val fixtureDirectory = repoRoot.resolve("fixtures/source-extracts/recorded-source-systems/local-ops-v1")
     private val loader = RecordedSourceConnectorSimulationLoader()
 

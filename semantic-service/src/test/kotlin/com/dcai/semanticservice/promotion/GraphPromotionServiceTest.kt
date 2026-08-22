@@ -6,7 +6,7 @@ import com.dcai.semanticservice.graph.NamedGraphWriteResult
 import com.dcai.semanticservice.connectors.RecordedSourceConnectorSimulationLoader
 import com.dcai.semanticservice.ingestion.FileSourceExtractLoader
 import com.dcai.semanticservice.ingestion.SourceExtractRdfMapper
-import com.dcai.semanticservice.runtime.SemanticServiceApplication
+import com.dcai.semanticservice.runtime.SemanticServiceComposition
 import com.dcai.semanticservice.testfixtures.ProductionSourceExtractFixtures
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,7 +20,7 @@ import org.apache.jena.rdf.model.ResourceFactory
 import org.apache.jena.vocabulary.RDF
 
 class GraphPromotionServiceTest {
-    private val repoRoot = SemanticServiceApplication.locateRepoRoot()
+    private val repoRoot = SemanticServiceComposition.locateRepoRoot()
 
     @Test
     fun writesSourceCanonicalAndProvenanceGraphsAfterValidation() {

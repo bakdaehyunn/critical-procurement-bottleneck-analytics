@@ -17,7 +17,7 @@ object SemanticServiceContractCatalog {
             path = "semantic-service/openapi.semantic-service.yaml",
             requiredMarkers = setOf(
                 "openapi: 3.1.0",
-                "2026-06-phase18-response-contract-checkpoint",
+                "2026-08-cohesion-contract-v1",
                 "/semantic/query/{queryId}",
                 "/semantic/reasoning/validate",
                 "/semantic/provenance/{resourceId}",
@@ -33,7 +33,7 @@ object SemanticServiceContractCatalog {
         ContractArtifact(
             path = "semantic-service/api-dtos.md",
             requiredMarkers = setOf(
-                "Phase 18 Response Contract Checkpoint",
+                "Semantic Service API DTO Contract",
                 "Phase 19 internal serialization",
                 "2026.06.phase17-result-envelope",
                 "2026.06.phase18-error-envelope",

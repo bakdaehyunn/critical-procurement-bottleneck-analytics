@@ -27,6 +27,7 @@ import com.dcai.semanticservice.query.PlatformStatusEnvelope
 import com.dcai.semanticservice.query.ProvenanceSourceRecordsEnvelope
 import com.dcai.semanticservice.query.QueryResultEnvelope
 import com.dcai.semanticservice.query.QueryResultEnvelopeProvenance
+import com.dcai.semanticservice.query.QueryPageResult
 import com.dcai.semanticservice.query.SpareWaitSummaryEnvelope
 import com.dcai.semanticservice.query.StageBottlenecksEnvelope
 import com.dcai.semanticservice.query.TopologyDependenciesEnvelope
@@ -35,7 +36,10 @@ import com.dcai.semanticservice.query.ValidationSummaryEnvelope
 import com.dcai.semanticservice.query.ZoneDelaySummaryEnvelope
 
 class SemanticResponseSerializer {
-    fun serialize(envelope: QueryResultEnvelope): Map<String, Any> {
+    fun serialize(
+        envelope: QueryResultEnvelope,
+        page: QueryPageResult? = null,
+    ): Map<String, Any> {
         val records = when (envelope) {
             is NamedGraphInventoryEnvelope -> envelope.records.map { record ->
                 mapOf(
@@ -621,13 +625,24 @@ class SemanticResponseSerializer {
             is AiProposalDetailEnvelope -> envelope.records.map { aiProposalPayload(it) }
         }
 
-        return mapOf(
-            "queryId" to envelope.queryId,
-            "resultType" to envelope.resultType.value,
-            "recordCount" to envelope.recordCount,
-            "records" to records,
-            "provenance" to envelope.provenance.toPayload(),
-        )
+        return buildMap {
+            put("queryId", envelope.queryId)
+            put("resultType", envelope.resultType.value)
+            put("recordCount", envelope.recordCount)
+            put("records", records)
+            put("provenance", envelope.provenance.toPayload())
+            page?.let {
+                put(
+                    "pageInfo",
+                    mapOf(
+                        "page" to it.page,
+                        "pageSize" to it.pageSize,
+                        "pageCount" to it.pageCount,
+                        "totalRecords" to it.totalRecords,
+                    ),
+                )
+            }
+        }
     }
 
     fun error(

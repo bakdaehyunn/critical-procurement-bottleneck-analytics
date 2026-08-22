@@ -113,22 +113,10 @@ class FusekiNamedGraphWriter(
     }
 
     private fun requireControlledGraphUri(graphUri: String) {
-        require(CONTROLLED_GRAPH_PREFIXES.any { prefix -> graphUri.startsWith(prefix) && graphUri.length > prefix.length }) {
-            "Only controlled DCAI graph URIs can be written"
-        }
+        ManagedGraphUri.parse(graphUri)
     }
 
     private companion object {
         private const val TIMEOUT_MILLIS = 10_000
-        private val CONTROLLED_GRAPH_PREFIXES = setOf(
-            "urn:dcai:graph:fixture:",
-            "urn:dcai:graph:source:",
-            "urn:dcai:graph:canonical:",
-            "urn:dcai:graph:provenance:",
-            "urn:dcai:graph:reasoning-audit:",
-            "urn:dcai:graph:reasoning:",
-            "urn:dcai:graph:action-audit:",
-            "urn:dcai:graph:ai-audit:",
-        )
     }
 }

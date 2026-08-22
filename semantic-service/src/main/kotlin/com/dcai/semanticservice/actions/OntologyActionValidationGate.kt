@@ -1,21 +1,20 @@
 package com.dcai.semanticservice.actions
 
-import com.dcai.semanticservice.ingestion.Dcai
-import com.dcai.semanticservice.ingestion.Prov
+import com.dcai.semanticservice.ontology.Dcai
+import com.dcai.semanticservice.ontology.Prov
+import com.dcai.semanticservice.graph.ControlledIdentifier
+import com.dcai.semanticservice.validation.SemanticValidationEngine
+import com.dcai.semanticservice.validation.SemanticValidationEngines
+import com.dcai.semanticservice.validation.SemanticValidationProfile
 import java.nio.file.Path
 import org.apache.jena.rdf.model.Model
-import org.apache.jena.rdf.model.ModelFactory
-import org.apache.jena.rdf.model.RDFNode
 import org.apache.jena.rdf.model.Resource
 import org.apache.jena.rdf.model.ResourceFactory
-import org.apache.jena.riot.RDFDataMgr
-import org.apache.jena.shacl.ShaclValidator
-import org.apache.jena.shacl.Shapes
 import org.apache.jena.vocabulary.RDF
-import org.apache.jena.vocabulary.RDFS
 
 class OntologyActionValidationGate(
     private val repoRoot: Path,
+    private val validationEngine: SemanticValidationEngine = SemanticValidationEngines.forRepoRoot(repoRoot),
 ) {
     fun validate(model: Model): OntologyActionValidationReport {
         val errors = validateShacl(model) + validateActionProvenance(model)
@@ -27,61 +26,11 @@ class OntologyActionValidationGate(
     }
 
     private fun validateShacl(model: Model): List<String> {
-        val shapesModel = ModelFactory.createDefaultModel()
-        repoRoot.resolve("shapes").toFile()
-            .walkTopDown()
-            .filter { it.isFile && it.extension == "ttl" }
-            .sortedBy { it.path }
-            .forEach { RDFDataMgr.read(shapesModel, it.toURI().toString()) }
-
-        val shapes = Shapes.parse(shapesModel.graph)
-        val report = ShaclValidator.get().validate(shapes, withRdfsTypeClosure(model).graph)
-        return if (report.conforms()) {
-            emptyList()
-        } else {
-            val details = report.getEntries().joinToString(separator = "; ") { it.toString() }
-            listOf("Action audit SHACL validation failed: $details")
-        }
-    }
-
-    private fun withRdfsTypeClosure(model: Model): Model {
-        val validationModel = ModelFactory.createDefaultModel().add(model)
-        val ontologyModel = ModelFactory.createDefaultModel()
-        repoRoot.resolve("ontology/modules").toFile()
-            .walkTopDown()
-            .filter { it.isFile && it.extension == "ttl" }
-            .sortedBy { it.path }
-            .forEach { RDFDataMgr.read(ontologyModel, it.toURI().toString()) }
-
-        val superClasses = ontologyModel
-            .listStatements(null as Resource?, RDFS.subClassOf, null as RDFNode?)
-            .toList()
-            .filter { statement -> statement.subject.isURIResource && statement.`object`.isURIResource }
-            .groupBy(
-                keySelector = { statement -> statement.subject.asResource() },
-                valueTransform = { statement -> statement.`object`.asResource() },
-            )
-
-        validationModel.listStatements(null as Resource?, RDF.type, null as RDFNode?).toList()
-            .filter { statement -> statement.`object`.isURIResource }
-            .forEach { statement ->
-                ancestorsOf(statement.`object`.asResource(), superClasses).forEach { ancestor ->
-                    validationModel.add(statement.subject, RDF.type, ancestor)
-                }
-            }
-
-        return validationModel
-    }
-
-    private fun ancestorsOf(
-        resource: Resource,
-        superClasses: Map<Resource, List<Resource>>,
-        seen: Set<Resource> = emptySet(),
-    ): Set<Resource> {
-        val direct = superClasses[resource].orEmpty().filterNot { it in seen }
-        return direct.toSet() + direct.flatMap { ancestor ->
-            ancestorsOf(ancestor, superClasses, seen + ancestor)
-        }
+        return validationEngine.validate(
+            model,
+            SemanticValidationProfile.ONTOLOGY_ACTION,
+            "Action audit SHACL validation failed",
+        )
     }
 
     private fun validateActionProvenance(model: Model): List<String> {
@@ -196,10 +145,10 @@ class OntologyActionPreconditionValidator {
         provenanceModel: Model,
     ): List<String> {
         val errors = mutableListOf<String>()
-        if (!CONTROLLED_TOKEN.matches(request.idempotencyKey)) {
+        if (!ControlledIdentifier.isLocal(request.idempotencyKey)) {
             errors += "idempotencyKey must contain only letters, numbers, dot, underscore, colon, or hyphen"
         }
-        if (!CONTROLLED_TOKEN.matches(request.actorId)) {
+        if (!ControlledIdentifier.isLocal(request.actorId)) {
             errors += "actorId must use the controlled local identifier vocabulary"
         }
         if (!canonicalModel.containsTypedResource(request.incidentUri, Dcai.InfrastructureIncident)) {
@@ -249,7 +198,7 @@ class OntologyActionPreconditionValidator {
         val assignedTeam = request.assignedTeam
         if (assignedTeam.isNullOrBlank()) {
             errors += "assignedTeam is required for AssignEvidenceReview"
-        } else if (!CONTROLLED_TOKEN.matches(assignedTeam)) {
+        } else if (!ControlledIdentifier.isLocal(assignedTeam)) {
             errors += "assignedTeam must use the controlled local team vocabulary"
         }
         return errors
@@ -283,7 +232,6 @@ class OntologyActionPreconditionValidator {
     }
 
     private companion object {
-        private val CONTROLLED_TOKEN = Regex("[A-Za-z0-9._:-]+")
         private val CONTROLLED_REVIEW_STATUS = setOf(
             "PASSED",
             "FAILED",

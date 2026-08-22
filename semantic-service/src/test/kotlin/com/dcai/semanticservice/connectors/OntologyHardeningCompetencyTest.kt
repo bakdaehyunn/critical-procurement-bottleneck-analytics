@@ -1,7 +1,7 @@
 package com.dcai.semanticservice.connectors
 
-import com.dcai.semanticservice.ingestion.Dcai
-import com.dcai.semanticservice.ingestion.Prov
+import com.dcai.semanticservice.ontology.Dcai
+import com.dcai.semanticservice.ontology.Prov
 import com.dcai.semanticservice.ingestion.SourceExtractRdfMapper
 import com.dcai.semanticservice.reasoning.ReasoningInput
 import com.dcai.semanticservice.reasoning.ReasoningModelBuilder

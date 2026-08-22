@@ -15,10 +15,11 @@ import {
   X,
 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { fetchFilterMetadata, fetchRecoveryQueueSnapshot, type FollowUpItem } from '../../api'
+import { fetchFilterMetadata, fetchRecoveryQueueSnapshot } from './recoveryQueueRepository'
 import { AppShell } from '../../app/AppShell'
 import { ErrorState, LoadingState, Metric, PageHeader, StatusBadge } from '../../components/ui'
 import { useAsyncResource } from '../../hooks/useAsyncResource'
+import type { FollowUpItem } from './recoveryQueueModel'
 import {
   dependencyOwner,
   evidenceLabel,
@@ -59,11 +60,27 @@ function filteredRows(rows: FollowUpItem[], params: URLSearchParams) {
       return evidence === 'review' ? needsReview : !needsReview
     })
     .sort((left, right) => {
-      if (sort === 'blocked') return right.hours_in_current_stage - left.hours_in_current_stage
-      if (sort === 'capacity') return right.estimated_capacity_risk_kw - left.estimated_capacity_risk_kw
-      if (sort === 'gpus') return right.affected_gpu_count - left.affected_gpu_count
+      if (sort === 'blocked') return compareNullableDesc(left.hours_in_current_stage, right.hours_in_current_stage)
+      if (sort === 'capacity') return compareNullableDesc(left.estimated_capacity_risk_kw, right.estimated_capacity_risk_kw)
+      if (sort === 'gpus') return compareNullableDesc(left.affected_gpu_count, right.affected_gpu_count)
       return left.priority_rank - right.priority_rank
     })
+}
+
+function compareNullableDesc(left: number | null, right: number | null): number {
+  if (left == null) return right == null ? 0 : 1
+  if (right == null) return -1
+  return right - left
+}
+
+function sumKnown(values: (number | null)[]): number | null {
+  return values.some((value) => value == null)
+    ? null
+    : values.reduce<number>((sum, value) => sum + (value ?? 0), 0)
+}
+
+function knownMetric(value: number | null, suffix = '', fractionDigits = 0): string {
+  return value == null ? 'Unknown' : `${value.toFixed(fractionDigits)}${suffix}`
 }
 
 export function RecoveryQueuePage() {
@@ -100,6 +117,8 @@ export function RecoveryQueuePage() {
   const restoreBlocked = rows.filter((row) => row.restore_readiness_status === 'NOT_READY').length
   const evidenceReview = rows.filter((row) => row.impact_confidence_status !== 'TRUSTED' || row.impact_trust_issue_count > 0).length
   const redundancyLost = rows.filter((row) => row.redundancy_state?.includes('LOST')).length
+  const capacityExposed = sumKnown(rows.map((row) => row.estimated_capacity_risk_kw))
+  const affectedGpus = sumKnown(rows.map((row) => row.affected_gpu_count))
 
   return (
     <AppShell>
@@ -131,7 +150,7 @@ export function RecoveryQueuePage() {
             <Metric label="Active cases" value={rows.length} detail={`${data.followUps.length} across all filters`} icon={<Clock3 size={17} />} />
             <Metric label="Restore blocked" value={restoreBlocked} detail="Not ready for service" tone={restoreBlocked ? 'critical' : 'success'} icon={<AlertTriangle size={17} />} />
             <Metric label="Critical priority" value={critical} detail="Immediate coordination" tone={critical ? 'critical' : 'success'} icon={<ShieldAlert size={17} />} />
-            <Metric label="Capacity exposed" value={`${rows.reduce((sum, row) => sum + row.estimated_capacity_risk_kw, 0).toFixed(0)} kW`} detail={`${rows.reduce((sum, row) => sum + row.affected_gpu_count, 0)} affected GPUs`} tone="warning" icon={<Zap size={17} />} />
+            <Metric label="Capacity exposed" value={knownMetric(capacityExposed, ' kW')} detail={`${knownMetric(affectedGpus)} affected GPUs`} tone={capacityExposed == null ? 'neutral' : 'warning'} icon={<Zap size={17} />} />
             <Metric label="Evidence review" value={evidenceReview} detail={`${redundancyLost} with redundancy loss`} tone={evidenceReview ? 'warning' : 'success'} icon={<CheckCircle2 size={17} />} />
           </section>
 
@@ -245,7 +264,7 @@ function RecoveryTable({ rows, selectedId, onSelect }: { rows: FollowUpItem[]; s
               <td data-label="Priority"><div className="priority-cell"><strong>#{row.priority_rank}</strong><StatusBadge label={titleCase(row.priority_level)} tone={priorityTone(row.priority_level)} icon={false} /></div></td>
               <td data-label="Recovery case"><div className="case-cell"><strong>{row.request_number}</strong><span>{row.asset_name}</span><small>{row.zone_name}</small></div></td>
               <td data-label="Current blocker"><div className="blocker-cell"><strong>{titleCase(row.current_stage)}</strong><span><Clock3 size={13} /> {formatHours(row.hours_in_current_stage)} in stage</span><small>{row.recommended_action}</small></div></td>
-              <td data-label="Exposure"><div className="exposure-cell"><span><Cpu size={14} /> {row.affected_gpu_count} GPUs</span><span><Zap size={14} /> {row.estimated_capacity_risk_kw.toFixed(0)} kW</span>{row.redundancy_state?.includes('LOST') ? <small className="critical-text">Redundancy lost</small> : null}</div></td>
+              <td data-label="Exposure"><div className="exposure-cell"><span><Cpu size={14} /> {knownMetric(row.affected_gpu_count)} GPUs</span><span><Zap size={14} /> {knownMetric(row.estimated_capacity_risk_kw, ' kW')}</span>{row.redundancy_state?.includes('LOST') ? <small className="critical-text">Redundancy lost</small> : null}</div></td>
               <td data-label="Owner / dependency"><span className="owner-cell">{dependencyOwner(row)}</span></td>
               <td data-label="Evidence"><StatusBadge label={evidenceLabel(row.impact_confidence_status, row.impact_trust_issue_count)} tone={evidenceTone(row.impact_confidence_status, row.impact_trust_issue_count)} /></td>
               <td data-label="Open"><Link className="row-link" to={`/recovery-cases/${row.incident_id}`} onClick={(event) => event.stopPropagation()} aria-label={`Open recovery case ${row.request_number}`}><ArrowRight size={17} /></Link></td>
@@ -271,7 +290,7 @@ function SelectedCasePanel({ row }: { row: FollowUpItem | null }) {
         <div><dt>Current blocker</dt><dd>{titleCase(row.current_stage)}</dd></div>
         <div><dt>Time blocked</dt><dd>{formatHours(row.hours_in_current_stage)}</dd></div>
         <div><dt>Owner / dependency</dt><dd>{dependencyOwner(row)}</dd></div>
-        <div><dt>Operational exposure</dt><dd>{row.affected_gpu_count} GPUs · {row.estimated_capacity_risk_kw.toFixed(0)} kW</dd></div>
+        <div><dt>Operational exposure</dt><dd>{knownMetric(row.affected_gpu_count)} GPUs · {knownMetric(row.estimated_capacity_risk_kw, ' kW')}</dd></div>
       </dl>
       <div className="preview-statuses">
         <StatusBadge label={readinessLabel(row.restore_readiness_status)} tone={readinessTone(row.restore_readiness_status)} />

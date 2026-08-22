@@ -1,7 +1,8 @@
 package com.dcai.semanticservice.reasoning
 
-import com.dcai.semanticservice.ingestion.Dcai
-import com.dcai.semanticservice.ingestion.Prov
+import com.dcai.semanticservice.graph.ControlledIdentifier
+import com.dcai.semanticservice.ontology.Dcai
+import com.dcai.semanticservice.ontology.Prov
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.Instant
@@ -641,9 +642,7 @@ data class ReasoningInput(
     val provenanceModel: Model = ModelFactory.createDefaultModel(),
 ) {
     init {
-        require(runId.matches(Regex("[A-Za-z0-9._-]+"))) {
-            "runId must contain only letters, numbers, dot, underscore, or hyphen"
-        }
+        ControlledIdentifier.requireRelease(runId, "runId")
         require(!canonicalModel.isEmpty) { "canonicalModel must not be empty" }
     }
 }

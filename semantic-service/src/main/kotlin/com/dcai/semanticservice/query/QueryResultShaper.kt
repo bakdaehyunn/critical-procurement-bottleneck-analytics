@@ -1,57 +1,54 @@
 package com.dcai.semanticservice.query
 
 class QueryResultShaper(
-    private val manifest: ApprovedQueryManifest,
+    private val registry: QueryContractRegistry,
 ) {
+    constructor(manifest: ApprovedQueryManifest) : this(QueryContractRegistry.fromManifest(manifest))
+
+    val approvedPrivateQueryIds: Set<String>
+        get() = registry.privateEndpointQueryIds
+
     fun shape(report: QueryExecutionReport): QueryResultEnvelope {
-        val definition = manifest.requireQuery(report.queryId)
+        val contract = registry.require(report.queryId)
+        val definition = contract.definition
         require(report.mode == definition.mode) {
             "Query result mode mismatch for ${report.queryId}: report=${report.mode.value}, manifest=${definition.mode.value}"
         }
         require(report.mode == QueryMode.SELECT) {
             "Query result envelopes are only defined for SELECT results: ${report.queryId}"
         }
-        return when (report.queryId) {
-            "fixtureNamedGraphInventory" -> shapeNamedGraphInventory(report, definition)
-            "fixtureIncidentSummary" -> shapeIncidentSummary(report, definition)
-            "fixtureProvenanceSourceRecords" -> shapeProvenanceSourceRecords(report, definition)
-            "semanticFollowUpQueueList" -> shapeFollowUpQueue(report, definition)
-            "semanticDashboardOverview" -> shapeDashboardOverview(report, definition)
-            "semanticPlatformStatus" -> shapePlatformStatus(report, definition)
-            "semanticFilterMetadata" -> shapeFilterMetadata(report, definition)
-            "semanticFollowUpDetail" -> shapeFollowUpDetail(report, definition)
-            "semanticImpactSummary" -> shapeImpactSummary(report, definition)
-            "semanticTopologyDependencies" -> shapeTopologyDependencies(report, definition)
-            "semanticTrustFindingList" -> shapeTrustFindings(report, definition)
-            "semanticStageBottlenecks" -> shapeStageBottlenecks(report, definition)
-            "semanticAssetDelaySummary" -> shapeAssetDelaySummary(report, definition)
-            "semanticZoneDelaySummary" -> shapeZoneDelaySummary(report, definition)
-            "semanticSpareWaitSummary" -> shapeSpareWaitSummary(report, definition)
-            "semanticValidationSummary" -> shapeValidationSummary(report, definition)
-            "semanticIncidentEvidence" -> shapeIncidentEvidence(report, definition)
-            "semanticIncidentTimeline" -> shapeIncidentTimeline(report, definition)
-            "semanticDependencyImpactByAsset" -> shapeDependencyImpact(report, definition)
-            "semanticBlastRadiusByAsset" -> shapeBlastRadius(report, definition)
-            "semanticPromotionReviewQueue",
-            "semanticReasoningReviewQueue",
-            -> shapeOntologyReviewQueue(report, definition)
-            "semanticAvailableActionsByFinding" -> shapeActionAvailability(report, definition)
-            "semanticActionAuditHistoryByRelease",
-            "semanticActionAuditHistoryByIncident",
-            "semanticActionAuditHistoryByTarget",
-            -> shapeActionAuditHistory(report, definition)
-            "semanticActionNotificationQueueByIncident" -> shapeActionNotificationQueue(report, definition)
-            "semanticActionReviewQueueByIncident" -> shapeActionReviewQueue(report, definition)
-            "semanticActionTransitionHistoryByIncident" -> shapeActionTransitionHistory(report, definition)
-            "semanticActionDispatchQueueByIncident" -> shapeActionDispatchQueue(report, definition)
-            "semanticDynamicEventTimelineByIncident",
-            "semanticDynamicStateChangesByIncident",
-            "semanticDynamicReasoningChangesByIncident",
-            "semanticDynamicActionLifecycleByIncident",
-            -> shapeDynamicPlayback(report, definition)
-            "semanticAiProposalReviewQueue" -> shapeAiProposalReviewQueue(report, definition)
-            "semanticAiProposalDetailByIncident" -> shapeAiProposalDetail(report, definition)
-            else -> error("No result envelope contract for query id: ${report.queryId}")
+        return when (contract.codec) {
+            QueryResultCodec.UNSUPPORTED -> error("No result envelope contract for query id: ${report.queryId}")
+            QueryResultCodec.NAMED_GRAPH_INVENTORY -> shapeNamedGraphInventory(report, definition)
+            QueryResultCodec.INCIDENT_SUMMARY -> shapeIncidentSummary(report, definition)
+            QueryResultCodec.PROVENANCE_SOURCE_RECORDS -> shapeProvenanceSourceRecords(report, definition)
+            QueryResultCodec.FOLLOW_UP_QUEUE -> shapeFollowUpQueue(report, definition)
+            QueryResultCodec.DASHBOARD_OVERVIEW -> shapeDashboardOverview(report, definition)
+            QueryResultCodec.PLATFORM_STATUS -> shapePlatformStatus(report, definition)
+            QueryResultCodec.FILTER_METADATA -> shapeFilterMetadata(report, definition)
+            QueryResultCodec.FOLLOW_UP_DETAIL -> shapeFollowUpDetail(report, definition)
+            QueryResultCodec.IMPACT_SUMMARY -> shapeImpactSummary(report, definition)
+            QueryResultCodec.TOPOLOGY_DEPENDENCIES -> shapeTopologyDependencies(report, definition)
+            QueryResultCodec.TRUST_FINDINGS -> shapeTrustFindings(report, definition)
+            QueryResultCodec.STAGE_BOTTLENECKS -> shapeStageBottlenecks(report, definition)
+            QueryResultCodec.ASSET_DELAY_SUMMARY -> shapeAssetDelaySummary(report, definition)
+            QueryResultCodec.ZONE_DELAY_SUMMARY -> shapeZoneDelaySummary(report, definition)
+            QueryResultCodec.SPARE_WAIT_SUMMARY -> shapeSpareWaitSummary(report, definition)
+            QueryResultCodec.VALIDATION_SUMMARY -> shapeValidationSummary(report, definition)
+            QueryResultCodec.INCIDENT_EVIDENCE -> shapeIncidentEvidence(report, definition)
+            QueryResultCodec.INCIDENT_TIMELINE -> shapeIncidentTimeline(report, definition)
+            QueryResultCodec.DEPENDENCY_IMPACT -> shapeDependencyImpact(report, definition)
+            QueryResultCodec.BLAST_RADIUS -> shapeBlastRadius(report, definition)
+            QueryResultCodec.ONTOLOGY_REVIEW_QUEUE -> shapeOntologyReviewQueue(report, definition)
+            QueryResultCodec.ACTION_AVAILABILITY -> shapeActionAvailability(report, definition)
+            QueryResultCodec.ACTION_AUDIT_HISTORY -> shapeActionAuditHistory(report, definition)
+            QueryResultCodec.ACTION_NOTIFICATION_QUEUE -> shapeActionNotificationQueue(report, definition)
+            QueryResultCodec.ACTION_REVIEW_QUEUE -> shapeActionReviewQueue(report, definition)
+            QueryResultCodec.ACTION_TRANSITION_HISTORY -> shapeActionTransitionHistory(report, definition)
+            QueryResultCodec.ACTION_DISPATCH_QUEUE -> shapeActionDispatchQueue(report, definition)
+            QueryResultCodec.DYNAMIC_PLAYBACK -> shapeDynamicPlayback(report, definition)
+            QueryResultCodec.AI_PROPOSAL_REVIEW_QUEUE -> shapeAiProposalReviewQueue(report, definition)
+            QueryResultCodec.AI_PROPOSAL_DETAIL -> shapeAiProposalDetail(report, definition)
         }
     }
 

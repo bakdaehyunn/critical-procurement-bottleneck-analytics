@@ -1,4 +1,4 @@
-import type { FollowUpItem } from '../api'
+import type { FollowUpItem } from '../features/recovery-queue/recoveryQueueModel'
 import type { Tone } from '../components/ui'
 
 export function titleCase(value?: string | null) {
@@ -11,7 +11,8 @@ export function titleCase(value?: string | null) {
     .replace(/\b\w/g, (character) => character.toUpperCase())
 }
 
-export function formatHours(value: number) {
+export function formatHours(value: number | null | undefined) {
+  if (value == null) return 'Unknown'
   return `${value.toFixed(value >= 10 ? 0 : 1)}h`
 }
 
@@ -60,8 +61,6 @@ export function readinessTone(status: string): Tone {
 
 export function dependencyOwner(row: FollowUpItem) {
   if (row.dependency_roles.length) return row.dependency_roles.map(titleCase).join(', ')
-  if (row.vendor_status && row.vendor_status !== 'UNKNOWN') return `Vendor · ${titleCase(row.vendor_status)}`
-  if (row.current_stage.includes('VALIDATION')) return 'Validation team'
-  if (row.current_stage.includes('SPARE') || row.current_stage.includes('VENDOR')) return 'Vendor / spares'
-  return 'Facilities operations'
+  if (row.vendor_status && row.vendor_status !== 'UNKNOWN') return `Vendor dependency · ${titleCase(row.vendor_status)}`
+  return 'No owner or dependency recorded'
 }

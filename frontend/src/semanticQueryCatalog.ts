@@ -6,7 +6,6 @@ export const semanticQueryCatalog = {
   actionTransitionHistoryByIncident: 'semanticActionTransitionHistoryByIncident',
   aiProposalDetailByIncident: 'semanticAiProposalDetailByIncident',
   aiProposalReviewQueue: 'semanticAiProposalReviewQueue',
-  assetDelaySummary: 'semanticAssetDelaySummary',
   availableActionsByFinding: 'semanticAvailableActionsByFinding',
   blastRadiusByAsset: 'semanticBlastRadiusByAsset',
   dashboardOverview: 'semanticDashboardOverview',
@@ -18,23 +17,48 @@ export const semanticQueryCatalog = {
   filterMetadata: 'semanticFilterMetadata',
   followUpDetail: 'semanticFollowUpDetail',
   followUpQueueList: 'semanticFollowUpQueueList',
-  impactSummary: 'semanticImpactSummary',
   platformStatus: 'semanticPlatformStatus',
   incidentEvidence: 'semanticIncidentEvidence',
   incidentTimeline: 'semanticIncidentTimeline',
   promotionReviewQueue: 'semanticPromotionReviewQueue',
   reasoningReviewQueue: 'semanticReasoningReviewQueue',
-  spareWaitSummary: 'semanticSpareWaitSummary',
-  stageBottlenecks: 'semanticStageBottlenecks',
   topologyDependencies: 'semanticTopologyDependencies',
   trustFindingList: 'semanticTrustFindingList',
   validationSummary: 'semanticValidationSummary',
-  zoneDelaySummary: 'semanticZoneDelaySummary',
 } as const
 
 export type SemanticQueryId = typeof semanticQueryCatalog[keyof typeof semanticQueryCatalog]
 
 export type SemanticQueryParameters = Record<string, string>
+
+export const semanticQueryRequiredFields: Record<SemanticQueryId, readonly string[]> = {
+  semanticActionAuditHistoryByIncident: ['executionId', 'requestId'],
+  semanticActionDispatchQueueByIncident: ['dispatchId', 'executionId'],
+  semanticActionNotificationQueueByIncident: ['notificationId', 'executionId'],
+  semanticActionReviewQueueByIncident: ['executionId', 'currentState'],
+  semanticActionTransitionHistoryByIncident: ['transitionId', 'toState'],
+  semanticAiProposalDetailByIncident: ['proposalId', 'incidentId'],
+  semanticAiProposalReviewQueue: ['proposalId', 'reviewStatus'],
+  semanticAvailableActionsByFinding: ['actionId', 'detailKind'],
+  semanticBlastRadiusByAsset: ['assetId'],
+  semanticDashboardOverview: ['totalIncidents'],
+  semanticDependencyImpactByAsset: ['assetId'],
+  semanticDynamicActionLifecycleByIncident: ['eventId', 'incidentId'],
+  semanticDynamicEventTimelineByIncident: ['eventId', 'incidentId'],
+  semanticDynamicReasoningChangesByIncident: ['eventId', 'incidentId'],
+  semanticDynamicStateChangesByIncident: ['eventId', 'incidentId'],
+  semanticFilterMetadata: ['filterType', 'id'],
+  semanticFollowUpDetail: ['incidentId', 'assetId'],
+  semanticFollowUpQueueList: ['incidentId', 'assetId'],
+  semanticIncidentEvidence: ['incidentId'],
+  semanticIncidentTimeline: ['eventUri', 'incidentId'],
+  semanticPlatformStatus: ['serviceBoundary', 'platformVerdict'],
+  semanticPromotionReviewQueue: ['queueId', 'queueKind'],
+  semanticReasoningReviewQueue: ['queueId', 'queueKind'],
+  semanticTopologyDependencies: ['dependencyId', 'dependentAssetId'],
+  semanticTrustFindingList: ['trustFindingUri', 'summary'],
+  semanticValidationSummary: ['sourceRecordCount', 'incidentCount'],
+}
 
 export function semanticQueryPath(queryId: SemanticQueryId): string {
   return `/semantic/query/${queryId}`
