@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest'
 import type { OntologyActionAffordance } from './recoveryCaseModel'
 import { actionAvailability, buildActionSubmission } from './actionUtils'
 
-function action(actionId: string, role: string): OntologyActionAffordance {
+function action(
+  actionId: string,
+  role: string,
+  status: OntologyActionAffordance['status'] = 'AVAILABLE_FOR_LOCAL_AUDIT',
+): OntologyActionAffordance {
   return {
     action_id: actionId,
     label: actionId,
     description: 'Test action',
-    status: 'DISABLED',
+    status,
     incident_uri: 'urn:dcai:incident:1',
     incident_id: 'INC-1',
     source_record_uri: 'urn:dcai:source:1',
@@ -36,6 +40,16 @@ describe('governed recovery action inputs', () => {
     })
     expect(actionAvailability(affordance).available).toBe(true)
     expect(submission).toMatchObject({ actor_id: 'operator-42', assigned_team: 'FACILITIES-QA', assignee_id: 'reviewer-7' })
+  })
+
+  it('does not override a disabled backend action even when its target exists', () => {
+    const affordance = action('AssignEvidenceReview', 'TrustFinding', 'DISABLED')
+    affordance.disabled_reasons = ['No active trust finding requires assignment.']
+
+    expect(actionAvailability(affordance)).toEqual({
+      available: false,
+      reason: 'No active trust finding requires assignment.',
+    })
   })
 
   it('requires a source-backed validation review summary', () => {

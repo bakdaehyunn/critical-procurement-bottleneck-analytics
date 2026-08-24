@@ -24,8 +24,8 @@ center operations:
 
 | Source family | Canonical semantic target | Operational question answered | Trust risk |
 | --- | --- | --- | --- |
-| Incident system | `dcai:InfrastructureIncident` | What is open, which asset and zone are affected, and what state is current? | Missing required fields, stale current stage, duplicate source incident |
-| Workflow event history | workflow stages and evidence records | Which state transitions actually happened and when? | Missing stage evidence, event before incident report, state mismatch |
+| Incident export | `dcai:InfrastructureIncident` | Which source-provided stage and asset are recorded? | Missing required fields, stale current stage, duplicate source incident |
+| Workflow event export | workflow stages and event records | Which events were recorded and when? | Missing stage evidence, duplicate event, mismatch with source-provided current stage |
 | Facility work orders | `dcai:WorkOrderEvidence` | Who owns repair work and whether work is waiting, started, or complete? | Work order without incident, waiting state without spare evidence |
 | Spare and inventory context | work-order spare fields and blocker findings | Is the blocker stock, critical spare availability, or vendor dispatch? | Out-of-stock spare, missing required spare link |
 | Vendor ETA context | impact/vendor state fields | Is external recovery late, confirmed, or not required? | ETA in the past without missed status, event/snapshot mismatch |
@@ -33,7 +33,10 @@ center operations:
 | Validation and impact | `dcai:ValidationEvidence` and `dcai:ImpactObservation` | Is return-to-service safe, and how much rack/GPU/capacity exposure remains? | Validation before completed work, stale or missing impact snapshot |
 | Infrastructure topology | dependency paths and dependency impact findings | Which upstream power, cooling, telemetry, or redundancy assets does an affected asset depend on? | Missing asset reference, invalid dependency type, stale topology extract |
 
-Each source is mapped into canonical RDF with source-record provenance. Graph
+These are source families within one local recorded connector format, not real
+heterogeneous connectors. Accepted rows are mapped into canonical RDF with
+source-record provenance. Provenance contains source identity, record IDs, and
+payload hashes; complete CSV payloads remain in the recorded files. Graph
 promotion requires parseable RDF, SHACL conformance, and provenance links.
 
 ## Runtime Responsibilities
@@ -56,7 +59,7 @@ promotion requires parseable RDF, SHACL conformance, and provenance links.
   policy checks.
 - Neutral ontology vocabulary and managed graph/identifier policies live under
   `ontology` and `graph`, rather than under ingestion or feature packages.
-- The production CLI composes typed runtime operations and executes them through
+- The local CLI composes typed runtime operations and executes them through
   `SemanticServiceWorkflow`; service/plan pairs are not nullable. CLI parsing,
   composition, reporting, loopback HTTP transport, pagination, and JSON writing
   are separate boundaries.
@@ -71,6 +74,14 @@ promotion requires parseable RDF, SHACL conformance, and provenance links.
 The old relational backend has been removed from the active source tree.
 Current product reads must come from named graphs and approved semantic-service
 queries.
+
+This is an implementation choice, not a benchmark result. A relational design
+could represent the same domain. The graph model is useful here because direct
+dependencies, source derivations, explicit versus inferred facts, and SHACL
+shape constraints are first-class edges/contracts consumed by SPARQL. The
+repository has not measured graph-versus-relational latency, storage cost,
+operational complexity, or maintainability, so it does not claim that RDF is
+universally or empirically superior to PostgreSQL.
 
 ### Approved Query Boundary
 
@@ -95,6 +106,13 @@ a successful state.
 Follow-up rows, evidence details, trust findings, topology dependencies, and
 reasoning outputs carry graph/source provenance so operators can see why a
 decision is trusted or needs review.
+
+### Bounded reasoning
+
+The current reasoner derives restore-readiness, blocker, trust, direct
+dependency-exposure, and direct blast-radius findings. Dependency logic follows
+one explicit edge only. It does not reconstruct current incident stage, derive
+queue rank/score/recommended-action facts, or traverse multi-hop topology.
 
 ### Follow-Up Workflow First
 

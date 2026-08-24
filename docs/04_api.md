@@ -1,79 +1,108 @@
 # Semantic API
 
-The active runtime API is the Kotlin/JVM semantic-service private endpoint:
+The implemented HTTP surface is loopback/private. It has no authentication,
+authorization, TLS termination, or supported public binding.
+
+## Implemented private routes
 
 ```text
 POST /semantic/query/{queryId}
+POST /semantic/internal/action-request
+POST /semantic/internal/action-transition
+POST /semantic/internal/ai-proposal-review
 ```
 
-The endpoint accepts approved query IDs from `queries/manifest.ttl`. It does
-not accept raw SPARQL, graph writes, SPARQL Update, or public endpoint binding.
-All success and error payloads go through `SemanticResponseSerializer`.
-Approved queries may accept string-valued `parameters`; raw SPARQL remains
-forbidden.
+Runtime status is authoritative in
+`semantic-service/openapi.semantic-service.yaml`: only paths marked
+`x-runtime-status: implemented-private` are endpoints. Paths marked
+`documented-only` are design contracts, not available routes.
 
-## Product Read Models
+The query endpoint accepts an approved query ID and string parameters. It
+rejects raw SPARQL and SPARQL Update. Responses include `queryId`, `resultType`,
+`recordCount`, `records`, and provenance metadata. Pageable contracts also
+include stable-identity `pageInfo`.
 
-Approved product read-model query IDs include:
+## Feature-owned query IDs
 
-- `semanticDashboardOverview`
+The runtime owner in `QueryContractRegistry.kt` is the authority. The frontend
+catalog is tested to match every non-legacy, non-inspection owner.
+
+Recovery Queue:
+
 - `semanticFollowUpQueueList`
+- `semanticDashboardOverview`
 - `semanticFilterMetadata`
+
+Recovery Case:
+
 - `semanticFollowUpDetail`
-- `semanticImpactSummary`
 - `semanticTopologyDependencies`
-- `semanticTrustFindingList`
-- `semanticStageBottlenecks`
-- `semanticAssetDelaySummary`
-- `semanticZoneDelaySummary`
-- `semanticSpareWaitSummary`
 - `semanticValidationSummary`
 - `semanticIncidentEvidence`
 - `semanticIncidentTimeline`
 - `semanticDependencyImpactByAsset`
 - `semanticBlastRadiusByAsset`
+- `semanticAvailableActionsByFinding`
+- `semanticActionAuditHistoryByIncident`
+- `semanticActionNotificationQueueByIncident`
+- `semanticActionTransitionHistoryByIncident`
+- `semanticActionDispatchQueueByIncident`
+- `semanticDynamicEventTimelineByIncident`
+- `semanticDynamicStateChangesByIncident`
+- `semanticDynamicReasoningChangesByIncident`
+- `semanticDynamicActionLifecycleByIncident`
+- `semanticAiProposalDetailByIncident`
 
-## Follow-Up Workflow Support
+Review Inbox:
 
-The workbench adapter uses these semantic read models to replace the old
-analytics route surface:
+- `semanticPromotionReviewQueue`
+- `semanticReasoningReviewQueue`
+- `semanticActionReviewQueueByIncident`
+- `semanticAiProposalReviewQueue`
 
-- overview KPI and exposure summaries from graph-backed aggregate queries
-- ranked follow-up queue rows from `semanticFollowUpQueueList`
-- selected follow-up detail from `semanticFollowUpDetail`
-- chronological stage history from `semanticIncidentTimeline`
-- evidence, trust, validation, work-order, and telemetry context from
-  `semanticIncidentEvidence`
-- dependency and blast-radius context from topology and reasoning read models
-- parameterized incident, asset, and trust-finding detail lookups through the
-  same approved-query endpoint
+Platform Status:
 
-## Response Contract
+- `semanticPlatformStatus`
+- `semanticTrustFindingList`
 
-Every response envelope includes:
+Dynamic playback and AI proposal queries expose local simulated fixtures; they
+are feature-owned contracts but not evidence of live streaming or a deployed
+AI recommendation system.
 
-- `queryId`
-- `resultType`
-- `recordCount`
-- `records`
-- `provenance.contractVersion`
-- `provenance.graphScope`
+## Internal and legacy query IDs
 
-Paged callers supply `pageSize` (1–100) and an optional one-based `page`. The
-response then adds backward-compatible `pageInfo` with `page`, `pageSize`,
-`pageCount`, and stable-identity `totalRecords`. Pageable read models declare
-their identity and ordering policy; Fuseki counts identities, applies a bounded
-identity page, and returns rows for that page before typed shaping. Unpaged
-envelopes are unchanged.
+The approved manifest also contains backend-only contracts. They are not
+frontend product queries:
 
-`semanticPlatformStatus` is the approved read-only platform-health query. Its
-verdict is `OPERATIONAL`, `DEGRADED`, or `UNKNOWN` and is based only on
-persisted source import, promotion, reasoning, and reconciliation evidence.
-Graph validation remains `UNKNOWN` unless an authoritative report is persisted.
+- internal inspection: `fixtureNamedGraphInventory`,
+  `fixtureIncidentSummary`, `fixtureProvenanceSourceRecords`,
+  `semanticActionAuditHistoryByRelease`, and
+  `semanticActionAuditHistoryByTarget`
+- legacy read models: `semanticImpactSummary`, `semanticStageBottlenecks`,
+  `semanticAssetDelaySummary`, `semanticZoneDelaySummary`, and
+  `semanticSpareWaitSummary`
 
-Semantic errors use stable machine-readable codes such as
-`unapproved-query-id`, `missing-required-binding`, `graph-unavailable`, and
-`internal-semantic-service-error`.
+Approval means a query can be executed through the private controlled boundary;
+it does not by itself make that query a product surface.
 
-See `semantic-service/api-dtos.md` and
-`semantic-service/openapi.semantic-service.yaml` for the current DTO contract.
+## Action availability and mutation boundary
+
+`semanticAvailableActionsByFinding` returns one of:
+
+- `AVAILABLE_FOR_LOCAL_AUDIT`: required source-backed target facts exist for a
+  supported local audit action.
+- `DISABLED`: the backend supplies the missing-target or runtime reason.
+
+The frontend renders that status and cannot promote `DISABLED` to available.
+The action request and transition routes write managed action-audit graph facts
+only. They do not mutate canonical, reasoning, provenance, source, operations,
+production, or external systems.
+
+## Contract references
+
+- `queries/manifest.ttl`: approved query definitions
+- `semantic-service/src/main/kotlin/com/dcai/semanticservice/query/QueryContractRegistry.kt`:
+  codecs and owners
+- `frontend/src/semanticQueryCatalog.ts`: feature-owned frontend catalog
+- `semantic-service/api-dtos.md`: response fields
+- `semantic-service/openapi.semantic-service.yaml`: route and schema contract

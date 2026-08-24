@@ -73,14 +73,20 @@ WHERE {
         dcai:hasFindingSummary ?trustSummary .
     }
     FILTER(STRSTARTS(STR(?reasoningGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?reasoningGraph), "urn:dcai:graph:reasoning:"))
-    FILTER(?trustSource = ?incident || (BOUND(?impact) && ?trustSource = ?impact) || (BOUND(?validationEvidence) && ?trustSource = ?validationEvidence))
+    FILTER(
+      ?trustSource = ?incident ||
+      EXISTS { GRAPH ?graph { ?trustSource dcai:supportsFact ?incident . } } ||
+      EXISTS { GRAPH ?graph { ?trustSource rdf:type dcai:ImpactObservation ; dcai:impactForIncident ?incident . } } ||
+      EXISTS {
+        GRAPH ?graph {
+          ?trustSource dcai:supportsFact ?trustSupportedImpact .
+          ?trustSupportedImpact rdf:type dcai:ImpactObservation ; dcai:impactForIncident ?incident .
+        }
+      }
+    )
   }
 
-  VALUES ?actionStatus { "DISABLED" }
   VALUES (?sharedKind ?sharedRole ?sharedLabel ?sharedValue ?sharedSort) {
-    ("disabledReason" "runtime" "Action execution runtime is not implemented in this read-only UI slice" "Action execution runtime is not implemented in this read-only UI slice" 900)
-    ("disabledReason" "endpoint" "No public or private write endpoint is available for ontology actions" "No public or private write endpoint is available for ontology actions" 901)
-    ("disabledReason" "authorization" "Actor identity and authorization policy are not configured" "Actor identity and authorization policy are not configured" 902)
     ("provenanceRequirement" "audit" "Action audit event with actor, timestamp, action type, and target object" "Action audit event with actor, timestamp, action type, and target object" 700)
     ("provenanceRequirement" "used-links" "prov:used links to selected finding, incident, source record, and supporting evidence" "prov:used links to selected finding, incident, source record, and supporting evidence" 701)
     ("provenanceRequirement" "validation-report" "Validation report before any future operations/reasoning graph promotion" "Validation report before any future operations/reasoning graph promotion" 702)
@@ -90,6 +96,13 @@ WHERE {
     VALUES (?actionId ?actionLabel ?actionDescription ?uiPlacement) {
       ("AcknowledgeRestoreBlocker" "Acknowledge restore blocker" "Record that an operator reviewed the restore-readiness blocker without changing canonical or reasoning graph state." "summary")
     }
+    BIND(IF(EXISTS {
+      GRAPH ?availableReasoningGraph {
+        ?availableRestoreReadiness rdf:type dcai:RestoreReadinessFinding ; prov:wasDerivedFrom ?incident .
+        ?availableRecoveryBlocker rdf:type dcai:RecoveryBlocker ; prov:wasDerivedFrom ?incident .
+      }
+      FILTER(STRSTARTS(STR(?availableReasoningGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?availableReasoningGraph), "urn:dcai:graph:reasoning:"))
+    }, "AVAILABLE_FOR_LOCAL_AUDIT", "DISABLED") AS ?actionStatus)
     {
       VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
         ("requiredParameter" "findingUri" "findingUri" "findingUri" 300)
@@ -150,6 +163,23 @@ WHERE {
       ("AssignEvidenceReview" "Assign evidence review" "Assign a trust or evidence issue to a controlled review owner without editing source evidence." "summary")
       ("AssignEvidenceReview" "Assign evidence review" "Assign a trust or evidence issue to a controlled review owner without editing source evidence." "trust")
     }
+    BIND(IF(EXISTS {
+      GRAPH ?availableReasoningGraph {
+        ?availableTrustFinding rdf:type dcai:TrustFinding ; prov:wasDerivedFrom ?availableTrustSource .
+      }
+      FILTER(STRSTARTS(STR(?availableReasoningGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?availableReasoningGraph), "urn:dcai:graph:reasoning:"))
+      FILTER(
+        ?availableTrustSource = ?incident ||
+        EXISTS { GRAPH ?graph { ?availableTrustSource dcai:supportsFact ?incident . } } ||
+        EXISTS { GRAPH ?graph { ?availableTrustSource rdf:type dcai:ImpactObservation ; dcai:impactForIncident ?incident . } } ||
+        EXISTS {
+          GRAPH ?graph {
+            ?availableTrustSource dcai:supportsFact ?availableTrustSupportedImpact .
+            ?availableTrustSupportedImpact rdf:type dcai:ImpactObservation ; dcai:impactForIncident ?incident .
+          }
+        }
+      )
+    }, "AVAILABLE_FOR_LOCAL_AUDIT", "DISABLED") AS ?actionStatus)
     {
       VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
         ("requiredParameter" "trustFindingUri" "trustFindingUri" "trustFindingUri" 300)
@@ -186,7 +216,7 @@ WHERE {
       BIND("No active trust finding requires assignment" AS ?detailLabel)
       BIND("No active trust finding requires assignment" AS ?detailValue)
       BIND(910 AS ?detailSortOrder)
-      FILTER(!BOUND(?trustFinding))
+      FILTER(?actionStatus = "DISABLED")
     }
     UNION {
       BIND("disabledReason" AS ?detailKind)
@@ -209,6 +239,23 @@ WHERE {
       ("RecordValidationReview" "Record validation review" "Record operator review of validation evidence without overwriting canonical validation evidence." "summary")
       ("RecordValidationReview" "Record validation review" "Record operator review of validation evidence without overwriting canonical validation evidence." "trust")
     }
+    BIND(IF(
+      EXISTS {
+        GRAPH ?availableCanonicalGraph {
+          ?availableValidationEvidence rdf:type dcai:ValidationEvidence ; dcai:supportsFact ?incident .
+        }
+        FILTER(STRSTARTS(STR(?availableCanonicalGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?availableCanonicalGraph), "urn:dcai:graph:canonical:"))
+      } ||
+      EXISTS {
+        GRAPH ?availableCanonicalGraph {
+          ?availableValidationEvidence rdf:type dcai:ValidationEvidence ; dcai:supportsFact ?availableValidationImpact .
+          ?availableValidationImpact rdf:type dcai:ImpactObservation ; dcai:impactForIncident ?incident .
+        }
+        FILTER(STRSTARTS(STR(?availableCanonicalGraph), "urn:dcai:graph:fixture:canonical:") || STRSTARTS(STR(?availableCanonicalGraph), "urn:dcai:graph:canonical:"))
+      },
+      "AVAILABLE_FOR_LOCAL_AUDIT",
+      "DISABLED"
+    ) AS ?actionStatus)
     {
       VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
         ("requiredParameter" "incidentUri" "incidentUri" "incidentUri" 300)
@@ -246,7 +293,7 @@ WHERE {
       BIND("Validation evidence URI is missing" AS ?detailLabel)
       BIND("Validation evidence URI is missing" AS ?detailValue)
       BIND(910 AS ?detailSortOrder)
-      FILTER(!BOUND(?validationEvidence))
+      FILTER(?actionStatus = "DISABLED")
     }
     UNION {
       BIND(?sharedKind AS ?detailKind)
@@ -260,6 +307,7 @@ WHERE {
     VALUES (?actionId ?actionLabel ?actionDescription ?uiPlacement) {
       ("RequestReasoningRefresh" "Request reasoning refresh" "Request an internal reasoning refresh for the selected incident or asset scope while preserving current approved graph state." "summary")
     }
+    BIND("DISABLED" AS ?actionStatus)
     {
       VALUES (?detailKind ?detailRole ?detailLabel ?detailValue ?detailSortOrder) {
         ("requiredParameter" "scopeType" "scopeType" "scopeType" 300)

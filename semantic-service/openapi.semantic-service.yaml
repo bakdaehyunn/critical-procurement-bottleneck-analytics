@@ -1324,6 +1324,7 @@ components:
         actionStatus:
           type: string
           enum:
+            - AVAILABLE_FOR_LOCAL_AUDIT
             - DISABLED
         uiPlacement:
           type: string

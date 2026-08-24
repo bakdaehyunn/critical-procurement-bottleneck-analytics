@@ -1,66 +1,41 @@
-# Production Rollout
+# Local Runtime and Production Gaps
 
-## Runtime Components
+## Runnable local stack
 
 ```text
-source extracts or controlled fixtures
-  -> RDF mapping and graph promotion gates
-  -> Fuseki/TDB2 dataset
-  -> Kotlin/JVM semantic-service
-  -> React/Vite semantic operations workbench
+recorded fixtures -> mapping/promotion -> Fuseki/TDB2
+                  -> reasoning       -> private Kotlin semantic-service
+                                     -> React/Vite frontend
 ```
 
-## Local Runtime
+The exact local commands are maintained in the root `README.md`. The endpoint
+binds to loopback, uses approved query and action contracts, and is suitable for
+local demonstration and automated tests.
 
-Run Fuseki:
+## What the local gates cover
 
-```bash
-docker compose up fuseki
-```
+- controlled input paths and connector format
+- source-row quarantine for supported validation failures
+- RDF parsing, SHACL, provenance, and managed graph URI policy
+- rollback behavior for injected graph-write failures
+- approved read-only query IDs and typed response shaping
+- local action-request validation, idempotency, audit records, and controlled
+  lifecycle transitions
+- frontend unit tests, lint, and production compilation
 
-Run the private semantic endpoint:
+## Required before production
 
-```bash
-docker run --rm \
-  -v "$PWD":/workspace \
-  -w /workspace/semantic-service \
-  -e DCAI_FUSEKI_DATASET_URL=http://host.docker.internal:3030/infrastructure \
-  gradle:8.10.2-jdk17 \
-  gradle --no-daemon run --args="--repo-root=/workspace --serve-private-query-endpoint"
-```
+| Area | Current repository | Production requirement |
+| --- | --- | --- |
+| Sources | Recorded CSV simulation | Authenticated, source-specific DCIM/BMS/CMMS/telemetry connectors |
+| Identity | Request-provided actor strings | Authentication, authorization, service identity, and policy enforcement |
+| Actions | Local audit records | Approved external writeback contracts, if desired |
+| Runtime | Loopback service and local Compose | Deployment, secrets, TLS, scaling, backup, recovery, and change control |
+| Operations | UI platform read model and logs | Metrics, alerts, tracing, SLOs, incident response, and capacity planning |
+| Data | Deterministic fixtures | Domain validation, retention, privacy, migration, and production load testing |
+| Resilience | Unit/in-memory failure injection | Environment-level failover, restore drills, and disaster recovery |
 
-Run the frontend:
-
-```bash
-cd frontend
-npm run dev
-```
-
-Set `VITE_SEMANTIC_API_BASE_URL` when the semantic-service endpoint is not
-available at `http://127.0.0.1:18080`.
-
-## Deployment Gates
-
-- Fuseki dataset URL is configured.
-- RDF fixtures/source extracts parse.
-- SHACL validation gates pass.
-- Approved SPARQL query files parse and remain read-only.
-- semantic-service tests pass.
-- frontend build passes.
-- `docker compose config` shows Fuseki as the only Compose-managed data
-  runtime.
-- scans show no active FastAPI/Postgres runtime references.
-
-## Observability Direction
-
-The first production signal should be semantic runtime health:
-
-- graph store reachable
-- approved query catalog loaded
-- response serializer contract version
-- SHACL conformance state
-- latest graph promotion activity
-- query execution failure counts
-
-Tracing, scheduled orchestration, Kubernetes, Airflow, Kafka, and OpenTelemetry
-can be added later if they solve a concrete deployment or integration problem.
+No shadow rollout, customer adoption, production monitoring result, or business
+benefit has occurred. Kubernetes, orchestration, streaming, and observability
+products are options to evaluate after requirements are known, not implemented
+capabilities.

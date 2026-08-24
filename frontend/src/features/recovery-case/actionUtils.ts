@@ -17,6 +17,9 @@ function target(action: OntologyActionAffordance, role: string) {
 }
 
 export function actionAvailability(action: OntologyActionAffordance) {
+  if (action.status !== 'AVAILABLE_FOR_LOCAL_AUDIT') {
+    return { available: false, reason: action.disabled_reasons[0] ?? 'The backend action contract marks this action as disabled.' }
+  }
   if (!supportedActions.has(action.action_id)) return { available: false, reason: 'This action is informational in the current local workflow.' }
   if (!action.incident_uri || !action.source_record_uri) return { available: false, reason: 'Required incident provenance is missing.' }
   if (action.action_id === 'AcknowledgeRestoreBlocker' && !target(action, 'RestoreReadinessFinding')) return { available: false, reason: 'Restore-readiness evidence is missing.' }

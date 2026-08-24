@@ -149,7 +149,7 @@ export type OntologyActionAffordance = {
   action_id: string
   label: string
   description: string
-  status: 'DISABLED'
+  status: 'AVAILABLE_FOR_LOCAL_AUDIT' | 'DISABLED'
   incident_uri: string
   incident_id: string
   source_record_uri: string

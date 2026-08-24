@@ -122,7 +122,7 @@ export type SemanticActionAvailabilityRecord = {
   actionId: string
   actionLabel: string
   actionDescription: string
-  actionStatus: string
+  actionStatus: OntologyActionAffordance['status']
   uiPlacement: OntologyActionPlacement
   detailKind: 'targetObject' | 'requiredParameter' | 'precondition' | 'provenanceRequirement' | 'disabledReason'
   detailRole: string
@@ -583,7 +583,7 @@ function mapOntologyActionAffordances(records: SemanticActionAvailabilityRecord[
       action_id: record.actionId,
       label: record.actionLabel,
       description: record.actionDescription,
-      status: 'DISABLED',
+      status: record.actionStatus,
       incident_uri: record.incidentUri,
       incident_id: record.incidentId,
       source_record_uri: record.sourceRecordUri,

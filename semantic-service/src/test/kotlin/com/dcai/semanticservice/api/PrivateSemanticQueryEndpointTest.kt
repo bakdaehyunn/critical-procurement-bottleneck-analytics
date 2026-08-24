@@ -883,7 +883,7 @@ class PrivateSemanticQueryEndpointTest {
             "actionId" to "AcknowledgeRestoreBlocker",
             "actionLabel" to "Acknowledge restore blocker",
             "actionDescription" to "Record that an operator reviewed the restore-readiness blocker.",
-            "actionStatus" to "DISABLED",
+            "actionStatus" to "AVAILABLE_FOR_LOCAL_AUDIT",
             "uiPlacement" to "summary",
             "detailKind" to "targetObject",
             "detailRole" to "RestoreReadinessFinding",

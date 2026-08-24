@@ -41,12 +41,12 @@ Content order:
 2. Critical recovery signals
 3. Search, sorting, and optional filters
 4. Applied-filter context and visible result count
-5. Ranked recovery table
+5. Recovery table ordered by available read-model fields
 6. Selected-case decision preview
 
 Queue rows compare:
 
-- operational rank and priority
+- optional controlled-fixture rank and priority
 - incident, asset, and zone
 - active recovery blocker
 - time in the current stage
@@ -71,9 +71,11 @@ impact reasoning, governed actions/audit, AI governance, dynamic playback, and
 topology are independent resources with explicit partial-failure handling. A
 resource refresh must not repeat queue, detail, or incident-evidence queries.
 
-The case header keeps the incident, priority, current stage, time blocked,
-owner, exposure, restore readiness, evidence status, and recommended action
-visible before tab content.
+The case header keeps the incident, source-provided current stage, time blocked,
+owner, exposure, restore readiness, and evidence status visible before tab
+content. Queue score, rank, or recommended-action fields are displayed only
+when supplied by the controlled read model; the current reasoner does not derive
+them.
 
 Tabs are URL-addressable through `?tab=` and use the following hierarchy:
 
@@ -122,7 +124,7 @@ mutate canonical, reasoning, operations, or external source-system state.
 
 ### Dependencies
 
-- direct infrastructure dependency paths
+- direct, one-edge infrastructure dependency paths
 - active incidents on related paths
 - inferred downstream assets
 - blast-radius incident count

@@ -8,12 +8,11 @@ models, especially
 `semanticTopologyDependencies`, `semanticDependencyImpactByAsset`, and
 `semanticBlastRadiusByAsset`.
 
-The intended dependency vocabulary covers paths such as:
-
-```text
-rack -> PDU -> UPS -> switchgear -> generator
-rack -> CRAH/CDU/chiller
-```
+The committed generated scenarios use explicit single edges such as GPU pod to
+UPS feed and GPU pod to chilled-water loop. The current reasoner follows one
+edge and its declared path resource. It does not infer rack-to-PDU-to-UPS chains,
+recursively traverse topology, discover topology, or aggregate transitive blast
+radius.
 
 Topology should stay focused on explaining dependency impact, not replacing the
 follow-up queue as the primary product workflow.
@@ -30,12 +29,12 @@ follow-up queue as the primary product workflow.
 
 ## Connector Direction
 
-Production connectors should map external extracts into RDF named graphs with
+Future production connectors could map external extracts into RDF named graphs with
 source-record provenance. A connector is not trusted just because it loads
 data; it must pass parse, SHACL, provenance, and promotion gates before product
 read models depend on it.
 
-Required connector contract areas:
+Potential source-specific connector areas:
 
 - incidents
 - workflow events
@@ -63,6 +62,6 @@ batch should exercise dependency exposure, blast radius, trust findings,
 restore readiness, and recovery blockers. That inventory is explanatory and is
 not promoted into canonical RDF in v1.
 
-The local contract is useful for deterministic MVP verification, but it remains
-separate from future source-system-specific connector contracts for DCIM, BMS,
-work-order, validation, topology, and telemetry platforms.
+The local contract is useful for deterministic verification, but every CSV
+family uses that same format and loader. Source-specific DCIM, BMS, work-order,
+validation, topology, and telemetry connectors are not implemented.

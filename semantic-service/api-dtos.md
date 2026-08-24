@@ -390,8 +390,9 @@ Action availability record:
 - `sourceRecordUri`: selected incident source record IRI
 - `actionId`: controlled ontology action identifier
 - `actionLabel`: action label
-- `actionDescription`: read-only action description
-- `actionStatus`: disabled action status for browser display
+- `actionDescription`: audit-only action description
+- `actionStatus`: backend-authoritative availability: `AVAILABLE_FOR_LOCAL_AUDIT`
+  or `DISABLED`
 - `uiPlacement`: selected finding UI placement such as `summary` or `trust`
 - `detailKind`: row category for target objects, required parameters,
   preconditions, provenance requirements, or disabled reasons
